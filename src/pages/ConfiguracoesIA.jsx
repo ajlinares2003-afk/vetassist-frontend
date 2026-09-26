@@ -18,6 +18,7 @@ function ConfiguracoesIA() {
   const [salvando, setSalvando] = useState(false);
   const [statusTeste, setStatusTeste] = useState({});
   const [testandoProvedor, setTestandoProvedor] = useState(null);
+  const [feedback, setFeedback] = useState(null); // { texto: "", tipo: "sucesso" | "erro" }
 
   const perfilUsuario = localStorage.getItem("perfil") || "RECEPCAO";
 
@@ -56,16 +57,17 @@ function ConfiguracoesIA() {
   const salvarConfiguracoes = async (e) => {
     e.preventDefault();
     setSalvando(true);
+    setFeedback(null);
     try {
       const token = localStorage.getItem("token");
       await api.put("/configuracoes/ia", modelos, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert("Configurações de IA salvas com sucesso!");
+      setFeedback({ texto: "Configurações de IA salvas com sucesso!", tipo: "sucesso" });
       carregarConfiguracoes();
     } catch (err) {
       const mensagemErro = err.response?.data?.detail || err.message;
-      alert(`Erro ao salvar: ${mensagemErro}`);
+      setFeedback({ texto: `Erro ao salvar: ${mensagemErro}`, tipo: "erro" });
     } finally {
       setSalvando(false);
     }
@@ -111,6 +113,14 @@ function ConfiguracoesIA() {
             </p>
           </div>
         </div>
+
+        {/* FEEDBACK AMIGÁVEL NO TOPO */}
+        {feedback && (
+          <div style={feedback.tipo === "sucesso" ? estiloSucessoGlobal : estiloErroGlobal}>
+            {feedback.tipo === "sucesso" ? <MdCheckCircle size={20} /> : <MdError size={20} />}
+            <span>{feedback.texto}</span>
+          </div>
+        )}
 
         {carregando ? (
           <div style={{ textAlign: "center", padding: "40px", color: "#0D9488", fontWeight: "600" }}>
@@ -227,6 +237,7 @@ function ConfiguracoesIA() {
               )}
             </div>
 
+            {/* BOTÃO SALVAR ALTERAÇÕES */}
             <button
               type="submit"
               disabled={salvando}
@@ -246,7 +257,7 @@ function ConfiguracoesIA() {
                 marginTop: "10px"
               }}
             >
-              <MdSave size={18} /> {salvando ? "A guardar..." : "Guardar Alterações"}
+              <MdSave size={18} /> {salvando ? "Salvando..." : "Salvar Alterações"}
             </button>
 
           </form>
@@ -297,6 +308,34 @@ const estiloBotaoTeste = {
   fontSize: "11px",
   fontWeight: "600",
   cursor: "pointer"
+};
+
+const estiloSucessoGlobal = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  marginBottom: "16px",
+  fontSize: "13px",
+  fontWeight: "600",
+  color: "#166534",
+  backgroundColor: "#F0FDF4",
+  padding: "12px 16px",
+  borderRadius: "10px",
+  border: "1px solid #DCFCE7"
+};
+
+const estiloErroGlobal = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  marginBottom: "16px",
+  fontSize: "13px",
+  fontWeight: "600",
+  color: "#991B1B",
+  backgroundColor: "#FEF2F2",
+  padding: "12px 16px",
+  borderRadius: "10px",
+  border: "1px solid #FECACA"
 };
 
 const estiloSucesso = {
