@@ -33,6 +33,18 @@ function Dashboard() {
   const nomeUsuario = localStorage.getItem("usuario_nome") || "Recepcao Teste";
   const perfilUsuario = localStorage.getItem("perfil") || "RECEPCAO";
 
+  // Função para determinar a saudação com base na hora atual
+  const obterSaudacaoDinamica = () => {
+    const hora = new Date().getHours();
+    if (hora >= 18) {
+      return "Boa noite";
+    } else if (hora >= 12) {
+      return "Boa tarde";
+    } else {
+      return "Bom dia";
+    }
+  };
+
   useEffect(() => {
     carregarDashboard(true);
     const intervalo = setInterval(() => carregarDashboard(false), 15000);
@@ -115,11 +127,11 @@ function Dashboard() {
     <Layout>
       <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
         
-        {/* TOPO E SAUDAÇÃO */}
+        {/* TOPO E SAUDAÇÃO DINÂMICA */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", width: "100%", marginBottom: "20px" }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", textAlign: "left" }}>
             <h1 style={{ margin: 0, padding: 0, fontSize: "24px", fontWeight: "700", color: "#0F172A", lineHeight: "1.2" }}>
-              Bom dia, {nomeUsuario}
+              {obterSaudacaoDinamica()}, {nomeUsuario}
             </h1>
             <p style={{ margin: "4px 0 0 0", padding: 0, fontSize: "14px", color: "#64748B", lineHeight: "1.4" }}>
               Painel de controle com suporte operacional VetAssist AI
@@ -235,7 +247,7 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* PAINÉIS SECUNDÁRIOS: AGENDA & UTI (FORÇANDO 50% / 50% RIGOROSO) */}
+            {/* PAINÉIS SECUNDÁRIOS: AGENDA & UTI */}
             <div style={{ display: "flex", gap: "20px", marginBottom: "20px", width: "100%" }}>
               
               {/* AGENDA DO DIA */}
@@ -276,7 +288,7 @@ function Dashboard() {
                 )}
               </div>
 
-              {/* UTI - EXATAMENTE 50% DE LARGURA E 290px DE ALTURA */}
+              {/* UTI */}
               <div style={{ backgroundColor: "#FFFFFF", borderRadius: "16px", border: "1px solid #E2E8F0", padding: "18px", display: "flex", flexDirection: "column", height: "290px", width: "50%", boxSizing: "border-box" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexShrink: 0 }}>
                   <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0F172A", display: "flex", alignItems: "center", gap: "8px" }}>
