@@ -450,31 +450,6 @@ function Dashboard() {
           </>
         ) : null}
 
-        {/* BOTÃO FLUTUANTE (FAB) */}
-        <button
-          onClick={() => setPainelIaAberto(true)}
-          style={{
-            position: "fixed",
-            bottom: "28px",
-            right: "28px",
-            backgroundColor: "#0D9488",
-            color: "white",
-            border: "none",
-            borderRadius: "30px",
-            padding: "14px 22px",
-            fontSize: "14px",
-            fontWeight: "700",
-            boxShadow: "0 10px 25px -5px rgba(13, 148, 136, 0.4)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            zIndex: 999
-          }}
-        >
-          <MdAutoAwesome size={20} /> ✨ Falar com a IA
-        </button>
-
         {/* DRAWER LATERAL IA */}
         {painelIaAberto && (
           <div style={{
