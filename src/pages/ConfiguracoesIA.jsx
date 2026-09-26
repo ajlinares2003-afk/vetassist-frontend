@@ -8,8 +8,11 @@ function ConfiguracoesIA() {
   const navigate = useNavigate();
   const [modelos, setModelos] = useState({
     groq_model_1: "",
+    groq_api_key_1: "",
     groq_model_2: "",
-    gemini_model: ""
+    groq_api_key_2: "",
+    gemini_model: "",
+    gemini_api_key: ""
   });
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -36,8 +39,11 @@ function ConfiguracoesIA() {
       if (res.data) {
         setModelos({
           groq_model_1: res.data.groq_model_1 || "",
+          groq_api_key_1: res.data.groq_api_key_1 || "",
           groq_model_2: res.data.groq_model_2 || "",
-          gemini_model: res.data.gemini_model || ""
+          groq_api_key_2: res.data.groq_api_key_2 || "",
+          gemini_model: res.data.gemini_model || "",
+          gemini_api_key: res.data.gemini_api_key || ""
         });
       }
     } catch (err) {
@@ -56,6 +62,7 @@ function ConfiguracoesIA() {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert("Configurações de IA salvas com sucesso!");
+      carregarConfiguracoes();
     } catch (err) {
       const mensagemErro = err.response?.data?.detail || err.message;
       alert(`Erro ao salvar: ${mensagemErro}`);
@@ -64,10 +71,10 @@ function ConfiguracoesIA() {
     }
   };
 
-  const testarModelo = async (provedor, modeloChave) => {
-    const nomeModelo = modelos[modeloChave];
-    setTestandoProvedor(modeloChave);
-    setStatusTeste((prev) => ({ ...prev, [modeloChave]: null }));
+  const testarModelo = async (provedor, campoModelo, campoChave) => {
+    const nomeModelo = modelos[campoModelo];
+    setTestandoProvedor(campoChave);
+    setStatusTeste((prev) => ({ ...prev, [campoChave]: null }));
 
     try {
       const token = localStorage.getItem("token");
@@ -76,11 +83,11 @@ function ConfiguracoesIA() {
         { provedor, modelo: nomeModelo },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setStatusTeste((prev) => ({ ...prev, [modeloChave]: res.data }));
+      setStatusTeste((prev) => ({ ...prev, [campoChave]: res.data }));
     } catch (err) {
       setStatusTeste((prev) => ({
         ...prev,
-        [modeloChave]: { sucesso: false, erro: "Falha na requisição de teste." }
+        [campoChave]: { sucesso: false, erro: "Falha na requisição de teste." }
       }));
     } finally {
       setTestandoProvedor(null);
@@ -91,7 +98,6 @@ function ConfiguracoesIA() {
     <Layout>
       <div style={{ width: "100%", maxWidth: "800px", margin: "0 auto", boxSizing: "border-box" }}>
         
-        {/* CABEÇALHO */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
           <div style={{ width: "42px", height: "42px", borderRadius: "10px", backgroundColor: "#0D9488", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <MdSmartToy size={24} />
@@ -101,7 +107,7 @@ function ConfiguracoesIA() {
               Configurações de Modelos de IA
             </h1>
             <p style={{ margin: "2px 0 0 0", fontSize: "13px", color: "#64748B" }}>
-              Altere os identificadores dos modelos utilizados pelo VetAssist AI em tempo real.
+              Altere os identificadores e chaves de API utilizadas pelo VetAssist AI em tempo real.
             </p>
           </div>
         </div>
@@ -119,24 +125,32 @@ function ConfiguracoesIA() {
                 <label style={estiloLabel}>Groq AI Model 1</label>
                 <button
                   type="button"
-                  onClick={() => testarModelo("groq", "groq_model_1")}
-                  disabled={testandoProvedor === "groq_model_1"}
+                  onClick={() => testarModelo("groq_1", "groq_model_1", "groq_api_key_1")}
+                  disabled={testandoProvedor === "groq_api_key_1"}
                   style={estiloBotaoTeste}
                 >
-                  {testandoProvedor === "groq_model_1" ? "Testando..." : "Testar Conexão"}
+                  {testandoProvedor === "groq_api_key_1" ? "Testando..." : "Testar Conexão"}
                 </button>
               </div>
               <input
                 type="text"
                 value={modelos.groq_model_1}
                 onChange={(e) => setModelos({ ...modelos, groq_model_1: e.target.value })}
-                style={estiloInput}
+                style={{ ...estiloInput, marginBottom: "10px" }}
                 placeholder="Ex: openai/gpt-oss-120b"
               />
-              {statusTeste.groq_model_1 && (
-                <div style={statusTeste.groq_model_1.sucesso ? estiloSucesso : estiloErro}>
-                  {statusTeste.groq_model_1.sucesso ? <MdCheckCircle size={16} /> : <MdError size={16} />}
-                  <span>{statusTeste.groq_model_1.sucesso ? `Resposta: ${statusTeste.groq_model_1.resposta}` : statusTeste.groq_model_1.erro}</span>
+              <label style={estiloSubLabel}>Chave API Groq (Model 1)</label>
+              <input
+                type="password"
+                value={modelos.groq_api_key_1}
+                onChange={(e) => setModelos({ ...modelos, groq_api_key_1: e.target.value })}
+                style={estiloInput}
+                placeholder="Insira a chave API da Groq"
+              />
+              {statusTeste.groq_api_key_1 && (
+                <div style={statusTeste.groq_api_key_1.sucesso ? estiloSucesso : estiloErro}>
+                  {statusTeste.groq_api_key_1.sucesso ? <MdCheckCircle size={16} /> : <MdError size={16} />}
+                  <span>{statusTeste.groq_api_key_1.sucesso ? `Resposta: ${statusTeste.groq_api_key_1.resposta}` : statusTeste.groq_api_key_1.erro}</span>
                 </div>
               )}
             </div>
@@ -147,24 +161,32 @@ function ConfiguracoesIA() {
                 <label style={estiloLabel}>Groq AI Model 2</label>
                 <button
                   type="button"
-                  onClick={() => testarModelo("groq", "groq_model_2")}
-                  disabled={testandoProvedor === "groq_model_2"}
+                  onClick={() => testarModelo("groq_2", "groq_model_2", "groq_api_key_2")}
+                  disabled={testandoProvedor === "groq_api_key_2"}
                   style={estiloBotaoTeste}
                 >
-                  {testandoProvedor === "groq_model_2" ? "Testando..." : "Testar Conexão"}
+                  {testandoProvedor === "groq_api_key_2" ? "Testando..." : "Testar Conexão"}
                 </button>
               </div>
               <input
                 type="text"
                 value={modelos.groq_model_2}
                 onChange={(e) => setModelos({ ...modelos, groq_model_2: e.target.value })}
-                style={estiloInput}
+                style={{ ...estiloInput, marginBottom: "10px" }}
                 placeholder="Ex: qwen/qwen3.8-27b"
               />
-              {statusTeste.groq_model_2 && (
-                <div style={statusTeste.groq_model_2.sucesso ? estiloSucesso : estiloErro}>
-                  {statusTeste.groq_model_2.sucesso ? <MdCheckCircle size={16} /> : <MdError size={16} />}
-                  <span>{statusTeste.groq_model_2.sucesso ? `Resposta: ${statusTeste.groq_model_2.resposta}` : statusTeste.groq_model_2.erro}</span>
+              <label style={estiloSubLabel}>Chave API Groq (Model 2)</label>
+              <input
+                type="password"
+                value={modelos.groq_api_key_2}
+                onChange={(e) => setModelos({ ...modelos, groq_api_key_2: e.target.value })}
+                style={estiloInput}
+                placeholder="Insira a chave API da Groq"
+              />
+              {statusTeste.groq_api_key_2 && (
+                <div style={statusTeste.groq_api_key_2.sucesso ? estiloSucesso : estiloErro}>
+                  {statusTeste.groq_api_key_2.sucesso ? <MdCheckCircle size={16} /> : <MdError size={16} />}
+                  <span>{statusTeste.groq_api_key_2.sucesso ? `Resposta: ${statusTeste.groq_api_key_2.resposta}` : statusTeste.groq_api_key_2.erro}</span>
                 </div>
               )}
             </div>
@@ -175,29 +197,36 @@ function ConfiguracoesIA() {
                 <label style={estiloLabel}>Google Gemini (Modelo Principal)</label>
                 <button
                   type="button"
-                  onClick={() => testarModelo("gemini", "gemini_model")}
-                  disabled={testandoProvedor === "gemini_model"}
+                  onClick={() => testarModelo("gemini", "gemini_model", "gemini_api_key")}
+                  disabled={testandoProvedor === "gemini_api_key"}
                   style={estiloBotaoTeste}
                 >
-                  {testandoProvedor === "gemini_model" ? "Testando..." : "Testar Conexão"}
+                  {testandoProvedor === "gemini_api_key" ? "Testando..." : "Testar Conexão"}
                 </button>
               </div>
               <input
                 type="text"
                 value={modelos.gemini_model}
                 onChange={(e) => setModelos({ ...modelos, gemini_model: e.target.value })}
-                style={estiloInput}
+                style={{ ...estiloInput, marginBottom: "10px" }}
                 placeholder="Ex: gemini-3.6-flash"
               />
-              {statusTeste.gemini_model && (
-                <div style={statusTeste.gemini_model.sucesso ? estiloSucesso : estiloErro}>
-                  {statusTeste.gemini_model.sucesso ? <MdCheckCircle size={16} /> : <MdError size={16} />}
-                  <span>{statusTeste.gemini_model.sucesso ? `Resposta: ${statusTeste.gemini_model.resposta}` : statusTeste.gemini_model.erro}</span>
+              <label style={estiloSubLabel}>Chave API Gemini</label>
+              <input
+                type="password"
+                value={modelos.gemini_api_key}
+                onChange={(e) => setModelos({ ...modelos, gemini_api_key: e.target.value })}
+                style={estiloInput}
+                placeholder="Insira a chave API do Google Gemini"
+              />
+              {statusTeste.gemini_api_key && (
+                <div style={statusTeste.gemini_api_key.sucesso ? estiloSucesso : estiloErro}>
+                  {statusTeste.gemini_api_key.sucesso ? <MdCheckCircle size={16} /> : <MdError size={16} />}
+                  <span>{statusTeste.gemini_api_key.sucesso ? `Resposta: ${statusTeste.gemini_api_key.resposta}` : statusTeste.gemini_api_key.erro}</span>
                 </div>
               )}
             </div>
 
-            {/* BOTÃO GUARDAR */}
             <button
               type="submit"
               disabled={salvando}
@@ -241,6 +270,13 @@ const estiloLabel = {
   fontSize: "13px",
   fontWeight: "700",
   color: "#0F172A"
+};
+
+const estiloSubLabel = {
+  fontSize: "11px",
+  fontWeight: "600",
+  color: "#475569",
+  marginBottom: "4px"
 };
 
 const estiloInput = {
