@@ -38,7 +38,7 @@ function Agenda() {
 
     try {
       const resAgendamentos = await api.get(`/agendamentos/?data_consulta=${dataSelecionada}`, config);
-      // Filtra para esconder agendamentos cancelados da visualização principal
+      // Filtra para esconder agendamentos cancelados da visualização
       const ativosOuEspera = (resAgendamentos.data || []).filter(item => item.status !== "CANCELADO");
       setAgendamentos(ativosOuEspera);
     } catch (err) {
@@ -92,7 +92,9 @@ function Agenda() {
   const alterarStatus = async (id, novoStatus) => {
     try {
       const token = localStorage.getItem("token");
-      await api.put(`/agendamentos/${id}/status`, { novo_status: novoStatus }, {
+      // Envia corretamente como parâmetro de query conforme esperado pelo endpoint do backend
+      await api.put(`/agendamentos/${id}/status`, null, {
+        params: { novo_status: novoStatus },
         headers: { Authorization: `Bearer ${token}` }
       });
       setMensagemSucesso("✅ Status do agendamento atualizado!");
@@ -108,7 +110,8 @@ function Agenda() {
     if (!agendamentoParaCancelar) return;
     try {
       const token = localStorage.getItem("token");
-      await api.put(`/agendamentos/${agendamentoParaCancelar.id}/status`, { novo_status: "CANCELADO" }, {
+      await api.put(`/agendamentos/${agendamentoParaCancelar.id}/status`, null, {
+        params: { novo_status: "CANCELADO" },
         headers: { Authorization: `Bearer ${token}` }
       });
       setMensagemSucesso("✅ Agendamento cancelado com sucesso!");
@@ -246,10 +249,10 @@ function Agenda() {
         )}
       </div>
 
-      {/* MODAL DE CONFIRMAÇÃO DE CANCELAMENTO (Centralizado na tela inteira) */}
+      {/* MODAL DE CONFIRMAÇÃO DE CANCELAMENTO (Perfeitamente centralizado na viewport do browser) */}
       {agendamentoParaCancelar && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(2px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 99999, margin: 0 }}>
-          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "14px", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)", textAlign: "center", maxWidth: "400px", width: "90%" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(2px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 999999, margin: 0, padding: 0 }}>
+          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "14px", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", textAlign: "center", maxWidth: "400px", width: "90%" }}>
             <div style={{ fontSize: "42px", marginBottom: "8px" }}>⚠️</div>
             <h3 style={{ marginTop: 0, color: "#111827", fontSize: "18px" }}>Confirmar Cancelamento</h3>
             <p style={{ color: "#4b5563", fontSize: "14px", lineHeight: "1.5" }}>
