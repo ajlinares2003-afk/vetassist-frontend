@@ -220,32 +220,14 @@ function Tutores() {
         estado: estado ? estado.toUpperCase() : null,
       };
 
-      let url = "http://127.0.0.1:8000/tutores/";
-      let metodo = "POST";
-
       if (tutorEditando) {
-        url = `http://127.0.0.1:8000/tutores/${tutorEditando.id}`;
-        metodo = "PUT";
-      }
-
-      const response = await fetch(url, {
-        method: metodo,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(novoTutor),
-      });
-
-      if (response.status === 401) {
-        tratarSessaoExpirada();
-        return;
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Erro ao salvar as alterações.");
+        await api.put(`/tutores/${tutorEditando.id}`, novoTutor, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } else {
+        await api.post("/tutores/", novoTutor, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       }
 
       limparFormulario();
@@ -258,8 +240,12 @@ function Tutores() {
           : "✅ Tutor cadastrado com sucesso!"
       );
     } catch (error) {
+      if (error.response?.status === 401) {
+        tratarSessaoExpirada();
+        return;
+      }
       console.error("ERRO SALVAR TUTOR:", error);
-      setMensagemErro(`❌ ${error.message}`);
+      setMensagemErro(`❌ ${error.response?.data?.detail || error.message || "Erro ao salvar as alterações."}`);
     }
   };
 
@@ -274,32 +260,21 @@ function Tutores() {
         return;
       }
 
-      const response = await fetch(
-        `http://127.0.0.1:8000/tutores/${tutorParaExcluir.id}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.status === 401) {
-        setTutorParaExcluir(null);
-        tratarSessaoExpirada();
-        return;
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Erro ao excluir tutor.");
-      }
+      await api.delete(`/tutores/${tutorParaExcluir.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       setMensagemSucesso("✅ Tutor excluído com sucesso!");
       setTutorParaExcluir(null);
       carregarTutores();
     } catch (error) {
+      if (error.response?.status === 401) {
+        setTutorParaExcluir(null);
+        tratarSessaoExpirada();
+        return;
+      }
       console.error("ERRO DELETE TUTOR:", error);
-      setMensagemErro(`❌ Erro ao excluir: ${error.message}`);
+      setMensagemErro(`❌ Erro ao excluir: ${error.response?.data?.detail || error.message}`);
       setTutorParaExcluir(null);
     }
   };
