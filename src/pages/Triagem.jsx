@@ -27,7 +27,6 @@ function Triagem() {
   const [atendimentoSelecionado, setAtendimentoSelecionado] = useState(null);
   const [mostrarModalNovoCheckin, setMostrarModalNovoCheckin] = useState(false);
 
-  // Form de sinais vitais / Check-in
   const [animalIdDireto, setAnimalIdDireto] = useState("");
   const [peso, setPeso] = useState("");
   const [temperatura, setTemperatura] = useState("");
@@ -74,7 +73,7 @@ function Triagem() {
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
       const [resFila, resAnimais] = await Promise.all([
-        api.get("/triagem/fila-triagem", config),
+        api.get("/consultas/fila-triagem", config),
         api.get("/animais/", config),
       ]);
 
@@ -116,8 +115,12 @@ function Triagem() {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
+      setAtendimentosPendentes(prev => 
+        prev.map(item => item.id === consulta.id ? { ...item, status: "Chamando para Triagem" } : item)
+      );
+
       setMensagem({ tipo: "sucesso", texto: `📢 A chamar ${obterNomeAnimal(consulta.animal_id)} no painel!` });
-      carregarDados(false);
     } catch (err) {
       console.error("Erro ao chamar paciente:", err);
       setMensagem({ tipo: "erro", texto: "Erro ao emitir chamada para o paciente." });
@@ -138,6 +141,10 @@ function Triagem() {
         `/consultas/${consulta.id}`,
         { ...consulta, status: "Em Triagem" },
         { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setAtendimentosPendentes(prev => 
+        prev.map(item => item.id === consulta.id ? { ...item, status: "Em Triagem" } : item)
       );
     } catch (err) {
       console.warn("Aviso ao atualizar status para Em Triagem:", err);
@@ -441,7 +448,7 @@ function Triagem() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                 <label style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
                 <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
-                  <MdAutoAwesome /> Avaliar IA
+                  <MdAutoAwesome /> Avaliar com IA
                 </button>
               </div>
 
