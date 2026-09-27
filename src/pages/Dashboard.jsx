@@ -123,6 +123,11 @@ function Dashboard() {
     ? Math.max(...metricas.historico_7_dias.map((i) => i.atendimentos), 1)
     : 1;
 
+  // Filtra agendamentos do dia para remover cancelados da exibição
+  const agendamentosAtivosHoje = metricas?.lista_agendamentos_hoje
+    ? metricas.lista_agendamentos_hoje.filter(ag => ag.status !== "CANCELADO")
+    : [];
+
   return (
     <Layout>
       <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
@@ -254,16 +259,16 @@ function Dashboard() {
               <div style={{ backgroundColor: "#FFFFFF", borderRadius: "16px", border: "1px solid #E2E8F0", padding: "18px", display: "flex", flexDirection: "column", height: "290px", width: "50%", boxSizing: "border-box" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexShrink: 0 }}>
                   <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0F172A", display: "flex", alignItems: "center", gap: "8px" }}>
-                    📅 Agenda do dia ({metricas.totais?.total_agendamentos_hoje || 0})
+                    📅 Agenda do dia ({agendamentosAtivosHoje.length})
                   </h3>
                   <a href="/agenda" style={{ fontSize: "12px", color: "#0D9488", fontWeight: "600", textDecoration: "none" }}>Ver agenda completa →</a>
                 </div>
 
-                {(!metricas.lista_agendamentos_hoje || metricas.lista_agendamentos_hoje.length === 0) ? (
+                {agendamentosAtivosHoje.length === 0 ? (
                   <p style={{ fontSize: "13px", color: "#64748B", margin: 0, padding: "20px 0", textAlign: "center" }}>Nenhum agendamento registado para hoje.</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1, overflowY: "auto", minHeight: 0 }}>
-                    {metricas.lista_agendamentos_hoje.map((ag) => (
+                    {agendamentosAtivosHoje.map((ag) => (
                       <div key={ag.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "10px", backgroundColor: "#F8FAFC", border: "1px solid #F1F5F9", flexShrink: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1, minWidth: 0 }}>
                           <span style={{ backgroundColor: "#0F172A", color: "#FFFFFF", padding: "4px 8px", borderRadius: "6px", fontWeight: "700", fontSize: "12px", flexShrink: 0 }}>
