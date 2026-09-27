@@ -30,14 +30,6 @@ function Agenda() {
     carregarDados();
   }, [dataSelecionada]);
 
-  const tratarSessaoExpirada = () => {
-    setMensagemErro("❌ Sessão expirada ou não autenticado. Redirecionando...");
-    setTimeout(() => {
-      localStorage.removeItem("token");
-      navigate("/");
-    }, 2000);
-  };
-
   const carregarDados = async () => {
     setCarregando(true);
     const token = localStorage.getItem("token");
@@ -97,15 +89,16 @@ function Agenda() {
   const alterarStatus = async (id, novoStatus) => {
     try {
       const token = localStorage.getItem("token");
-      // Envia o status tanto por query param quanto no body para garantir compatibilidade com o backend
-      await api.put(`/agendamentos/${id}/status?novo_status=${novoStatus}`, { status: novoStatus }, {
+      // Envia corretamente apenas como query parameter conforme a rota padrão do FastAPI
+      await api.put(`/agendamentos/${id}/status?novo_status=${novoStatus}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMensagemSucesso("✅ Status do agendamento atualizado!");
       carregarDados();
     } catch (err) {
       console.error("Erro ao alterar status:", err);
-      alert("Erro ao atualizar o status do agendamento.");
+      const detalhe = err.response?.data?.detail || err.message;
+      alert(`Erro ao atualizar o status: ${detalhe}`);
     }
   };
 
@@ -262,7 +255,7 @@ function Agenda() {
                 </div>
                 <div>
                   <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "4px" }}>Tipo de Serviço</label>
-                  <select value={tipoServico} onChange={(e) => setTipoServico(e.target.value)} style={estiloItemInput => estiloInput}>
+                  <select value={tipoServico} onChange={(e) => setTipoServico(e.target.value)} style={estiloInput}>
                     <option value="Consulta">Consulta</option>
                     <option value="Vacina">Vacinação</option>
                     <option value="Retorno">Retorno Médico</option>
