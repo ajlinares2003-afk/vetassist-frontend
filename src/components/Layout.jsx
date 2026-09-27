@@ -39,8 +39,8 @@ function Layout({ children }) {
 
   const menuConfig = [
     { nome: "Dashboard", rota: "/dashboard", icone: <MdDashboard size={20} />, perfis: ["ADMIN", "RECEPCAO", "TRIAGEM", "VETERINARIO"] },
-    { nome: "Animais", rota: "/animais", icone: <MdPets size={20} />, perfis: ["ADMIN", "RECEPCAO", "VETERINARIO"] },
     { nome: "Tutores", rota: "/tutores", icone: <FaUserTie size={18} />, perfis: ["ADMIN", "RECEPCAO", "VETERINARIO"] },
+    { nome: "Animais", rota: "/animais", icone: <MdPets size={20} />, perfis: ["ADMIN", "RECEPCAO", "VETERINARIO"] },
     { nome: getNomeConsulta(), rota: "/consultas", icone: <MdEvent size={20} />, perfis: ["ADMIN", "RECEPCAO", "VETERINARIO"] },
     { nome: "Agenda", rota: "/agenda", icone: <MdCalendarToday size={20} />, perfis: ["ADMIN", "RECEPCAO", "VETERINARIO"] },
     { nome: "Triagem / Fila", rota: "/triagem", icone: <MdHealthAndSafety size={20} />, perfis: ["ADMIN", "TRIAGEM", "VETERINARIO"] },
