@@ -183,32 +183,14 @@ function Animais() {
         porte: porte || null,
       };
 
-      let url = "http://127.0.0.1:8000/animais/";
-      let metodo = "POST";
-
       if (animalEditando) {
-        url = `http://127.0.0.1:8000/animais/${animalEditando.id}`;
-        metodo = "PUT";
-      }
-
-      const response = await fetch(url, {
-        method: metodo,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(novoAnimal),
-      });
-
-      if (response.status === 401) {
-        tratarSessaoExpirada();
-        return;
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Erro ao salvar as alterações.");
+        await api.put(`/animais/${animalEditando.id}`, novoAnimal, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } else {
+        await api.post("/animais/", novoAnimal, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       }
 
       limparFormulario();
@@ -221,8 +203,12 @@ function Animais() {
           : "✅ Paciente cadastrado com sucesso!"
       );
     } catch (error) {
+      if (error.response?.status === 401) {
+        tratarSessaoExpirada();
+        return;
+      }
       console.error("ERRO SALVAR:", error);
-      setMensagemErro(`❌ ${error.message}`);
+      setMensagemErro(`❌ ${error.response?.data?.detail || error.message || "Erro ao salvar as alterações."}`);
     }
   };
 
@@ -237,34 +223,23 @@ function Animais() {
         return;
       }
 
-      const response = await fetch(
-        `http://127.0.0.1:8000/animais/${animalParaExcluir.id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.status === 401) {
-        setAnimalParaExcluir(null);
-        tratarSessaoExpirada();
-        return;
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Erro ao excluir o paciente.");
-      }
+      await api.delete(`/animais/${animalParaExcluir.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       setMensagemSucesso("✅ Paciente excluído com sucesso!");
       setAnimalParaExcluir(null);
       carregarAnimais();
     } catch (error) {
+      if (error.response?.status === 401) {
+        setAnimalParaExcluir(null);
+        tratarSessaoExpirada();
+        return;
+      }
       console.error("ERRO DELETE:", error);
-      setMensagemErro(`❌ Erro ao excluir: ${error.message}`);
+      setMensagemErro(`❌ Erro ao excluir: ${error.response?.data?.detail || error.message}`);
       setAnimalParaExcluir(null);
     }
   };
