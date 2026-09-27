@@ -112,8 +112,8 @@ function Triagem() {
     try {
       const token = localStorage.getItem("token");
       await api.put(
-        `/consultas/${consulta.id}`,
-        { ...consulta, status: "Chamando para Triagem" },
+        `/consultas/${consulta.id}/chamar`,
+        {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMensagem({ tipo: "sucesso", texto: `📢 A chamar ${obterNomeAnimal(consulta.animal_id)} no painel!` });
@@ -441,7 +441,7 @@ function Triagem() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                 <label style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
                 <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
-                  <MdAutoAwesome /> Avaliar com IA
+                  <MdAutoAwesome /> Avaliar IA
                 </button>
               </div>
 
