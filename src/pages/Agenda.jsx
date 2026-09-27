@@ -23,6 +23,7 @@ function Agenda() {
   const [tipoServico, setTipoServico] = useState("Consulta");
   const [observacoes, setObservacoes] = useState("");
   
+  const [agendamentoParaCancelar, setAgendamentoParaCancelar] = useState(null);
   const [mensagemErro, setMensagemErro] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
 
@@ -98,6 +99,24 @@ function Agenda() {
       console.error("Erro ao alterar status:", err);
       const detalhe = err.response?.data?.detail || err.message;
       alert(`Erro ao atualizar o status: ${detalhe}`);
+    }
+  };
+
+  const confirmarCancelamento = async () => {
+    if (!agendamentoParaCancelar) return;
+    try {
+      const token = localStorage.getItem("token");
+      await api.put(`/agendamentos/${agendamentoParaCancelar.id}/status`, { novo_status: "CANCELADO" }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMensagemSucesso("✅ Agendamento cancelado com sucesso!");
+      setAgendamentoParaCancelar(null);
+      carregarDados();
+    } catch (err) {
+      console.error("Erro ao cancelar agendamento:", err);
+      const detalhe = err.response?.data?.detail || err.message;
+      alert(`Erro ao cancelar agendamento: ${detalhe}`);
+      setAgendamentoParaCancelar(null);
     }
   };
 
@@ -213,11 +232,7 @@ function Agenda() {
 
                   <button 
                     title="Cancelar Agendamento"
-                    onClick={() => {
-                      if (window.confirm("Tem certeza que deseja cancelar este agendamento?")) {
-                        alterarStatus(item.id, "CANCELADO");
-                      }
-                    }} 
+                    onClick={() => setAgendamentoParaCancelar(item)} 
                     style={{ backgroundColor: "transparent", color: "#EF4444", border: "none", padding: "6px", cursor: "pointer" }}
                   >
                     <MdCancel size={20} />
@@ -228,6 +243,27 @@ function Agenda() {
           </div>
         )}
       </div>
+
+      {/* MODAL DE CONFIRMAÇÃO DE CANCELAMENTO */}
+      {agendamentoParaCancelar && (
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(2px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "14px", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)", textAlign: "center", maxWidth: "400px", width: "90%" }}>
+            <div style={{ fontSize: "42px", marginBottom: "8px" }}>⚠️</div>
+            <h3 style={{ marginTop: 0, color: "#111827", fontSize: "18px" }}>Confirmar Cancelamento</h3>
+            <p style={{ color: "#4b5563", fontSize: "14px", lineHeight: "1.5" }}>
+              Tem certeza que deseja cancelar o atendimento de <strong>{agendamentoParaCancelar.pet_nome || agendamentoParaCancelar.animal_nome}</strong> às <strong>{agendamentoParaCancelar.hora}</strong>?
+            </p>
+            <div style={{ display: "flex", justifyContent: "center", gap: "12px", marginTop: "22px" }}>
+              <button onClick={() => setAgendamentoParaCancelar(null)} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>
+                Voltar
+              </button>
+              <button onClick={confirmarCancelamento} style={{ backgroundColor: "#dc2626", color: "white", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", boxShadow: "0 2px 4px rgba(220, 38, 38, 0.2)" }}>
+                Sim, Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL NOVO AGENDAMENTO */}
       {mostrarModalNovo && (
