@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { MdVolumeUp, MdTv, MdVolumeOff } from "react-icons/md";
+import { MdTv, MdVolumeOff } from "react-icons/md";
 import api from "../api/api";
 
 function PainelChamadas() {
@@ -194,27 +194,6 @@ function PainelChamadas() {
             }}>
               🔔 {chamadas[0].status === "Chamando para Triagem" ? "A CHAMAR PARA TRIAGEM" : chamadas[0].etapa}
             </span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                tocarSinalSuave();
-              }}
-              style={{
-                backgroundColor: "#334155",
-                color: "white",
-                border: "none",
-                padding: "6px 14px",
-                borderRadius: "20px",
-                cursor: "pointer",
-                fontWeight: "bold",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                fontSize: "14px"
-              }}
-            >
-              <MdVolumeUp size={18} /> Repetir Sinal
-            </button>
           </div>
 
           <h2 style={{ fontSize: "52px", margin: "16px 0 8px 0", color: "#f8fafc" }}>
