@@ -89,8 +89,7 @@ function Agenda() {
   const alterarStatus = async (id, novoStatus) => {
     try {
       const token = localStorage.getItem("token");
-      // Envia corretamente apenas como query parameter conforme a rota padrão do FastAPI
-      await api.put(`/agendamentos/${id}/status?novo_status=${novoStatus}`, {}, {
+      await api.put(`/agendamentos/${id}/status`, { novo_status: novoStatus }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMensagemSucesso("✅ Status do agendamento atualizado!");
