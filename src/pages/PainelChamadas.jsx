@@ -1,20 +1,44 @@
 import { useEffect, useState, useRef } from "react";
-import { MdVolumeUp, MdTv } from "react-icons/md";
+import { MdVolumeUp, MdTv, MdVolumeOff } from "react-icons/md";
 import api from "../api/api";
 
 function PainelChamadas() {
   const [chamadas, setChamadas] = useState([]);
+  const [audioDesbloqueado, setAudioDesbloqueado] = useState(false);
   const ultimoStatusRef = useRef(null);
   const intervaloSomRef = useRef(null);
 
   useEffect(() => {
     carregarChamadas();
-    const intervalo = setInterval(carregarChamadas, 3000); // Atualiza a cada 3 segundos
+    const intervalo = setInterval(carregarChamadas, 3000);
     return () => {
       clearInterval(intervalo);
       if (intervaloSomRef.current) clearInterval(intervaloSomRef.current);
     };
   }, []);
+
+  const desbloquearAudio = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        const audioCtx = new AudioContext();
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+        // Toca um bipe silencioso para destravar o motor de áudio do browser
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      }
+      setAudioDesbloqueado(true);
+    } catch (e) {
+      console.error("Erro ao desbloquear áudio:", e);
+    }
+  };
 
   const carregarChamadas = async () => {
     try {
@@ -26,7 +50,6 @@ function PainelChamadas() {
         const topo = dados[0];
         const chaveChamada = `${topo.id}-${topo.status}`;
 
-        // Se o paciente estiver sendo chamado ativamente, dispara o alarme periódico a cada 10s
         if (topo.status === "Chamando para Triagem") {
           if (ultimoStatusRef.current !== chaveChamada) {
             ultimoStatusRef.current = chaveChamada;
@@ -35,10 +58,9 @@ function PainelChamadas() {
             if (intervaloSomRef.current) clearInterval(intervaloSomRef.current);
             intervaloSomRef.current = setInterval(() => {
               tocarSinalSuave();
-            }, 10000); // Repete o som a cada 10 segundos
+            }, 10000);
           }
         } else {
-          // Se mudou de status (ex: Iniciou Triagem), para o som periódico imediatamente
           if (ultimoStatusRef.current !== chaveChamada) {
             ultimoStatusRef.current = chaveChamada;
             if (intervaloSomRef.current) {
@@ -65,6 +87,9 @@ function PainelChamadas() {
       if (!AudioContext) return;
       
       const audioCtx = new AudioContext();
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
 
       const tocarNota = (frequencia, tempoInicio, duracao) => {
         const osc = audioCtx.createOscillator();
@@ -74,7 +99,7 @@ function PainelChamadas() {
         osc.frequency.setValueAtTime(frequencia, audioCtx.currentTime + tempoInicio);
 
         gain.gain.setValueAtTime(0, audioCtx.currentTime + tempoInicio);
-        gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + tempoInicio + 0.05);
+        gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + tempoInicio + 0.05);
         gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + tempoInicio + duracao);
 
         osc.connect(gain);
@@ -94,14 +119,44 @@ function PainelChamadas() {
   const chamadaAtiva = chamadas.length > 0 && ["Chamando para Triagem", "Em Triagem", "Em Atendimento"].includes(chamadas[0].status);
 
   return (
-    <div style={{
-      backgroundColor: "#0f172a",
-      color: "#ffffff",
-      minHeight: "100vh",
-      padding: "30px",
-      fontFamily: "'Segoe UI', Roboto, sans-serif",
-      boxSizing: "border-box"
-    }}>
+    <div 
+      onClick={!audioDesbloqueado ? desbloquearAudio : undefined}
+      style={{
+        backgroundColor: "#0f172a",
+        color: "#ffffff",
+        minHeight: "100vh",
+        padding: "30px",
+        fontFamily: "'Segoe UI', Roboto, sans-serif",
+        boxSizing: "border-box",
+        cursor: !audioDesbloqueado ? "pointer" : "default"
+      }}
+    >
+      {/* AVISO DE DESBLOQUEIO DE ÁUDIO SE NECESSÁRIO */}
+      {!audioDesbloqueado && (
+        <div style={{
+          backgroundColor: "#b45309",
+          color: "#fff",
+          padding: "12px 20px",
+          borderRadius: "10px",
+          marginBottom: "20px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          fontWeight: "bold",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
+        }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <MdVolumeOff size={24} /> O navegador bloqueou o som automático. Clique aqui ou em qualquer lugar da tela para ativar o aviso sonoro da TV!
+          </span>
+          <button 
+            onClick={desbloquearAudio}
+            style={{ backgroundColor: "#ffffff", color: "#b45309", border: "none", padding: "8px 16px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}
+          >
+            Ativar Som Agora
+          </button>
+        </div>
+      )}
+
       {/* CABEÇALHO DO PAINEL */}
       <div style={{
         display: "flex",
@@ -129,8 +184,7 @@ function PainelChamadas() {
           padding: "30px",
           marginBottom: "35px",
           boxShadow: "0 10px 25px -5px rgba(239, 68, 68, 0.3)",
-          textAlign: "center",
-          animation: chamadas[0].status === "Chamando para Triagem" ? "pulse 1.5s infinite" : "none"
+          textAlign: "center"
         }}>
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
             <span style={{
@@ -142,10 +196,13 @@ function PainelChamadas() {
               fontWeight: "bold",
               textTransform: "uppercase"
             }}>
-              🔔 {chamadas[0].status === "Chamando para Triagem" ? "CHAMANDO PARA TRIAGEM" : chamadas[0].etapa}
+              🔔 {chamadas[0].status === "Chamando para Triagem" ? "A CHAMAR PARA TRIAGEM" : chamadas[0].etapa}
             </span>
             <button
-              onClick={tocarSinalSuave}
+              onClick={(e) => {
+                e.stopPropagation();
+                tocarSinalSuave();
+              }}
               style={{
                 backgroundColor: "#334155",
                 color: "white",
@@ -175,7 +232,7 @@ function PainelChamadas() {
         </div>
       ) : (
         <div style={{ backgroundColor: "#1e293b", padding: "30px", borderRadius: "16px", textAlign: "center", marginBottom: "35px", color: "#94a3b8", fontSize: "22px" }}>
-          ☕ Nenhum paciente sendo chamado no momento. Por favor, aguarde na recepção.
+          ☕ Nenhum paciente a ser chamado no momento. Por favor, aguarde na receção.
         </div>
       )}
 
