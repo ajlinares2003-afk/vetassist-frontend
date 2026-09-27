@@ -349,7 +349,7 @@ function Dashboard() {
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#0D9488", fontWeight: "700", fontSize: "15px" }}>
-                    <MdAutoAwesome size={20} /> ✨ Assistente VetAssist AI
+                    <MdAutoAwesome size={20} /> Assistente VetAssist AI
                   </div>
                   <span style={{ fontSize: "11px", backgroundColor: "#CCFBF1", color: "#0F766E", padding: "3px 8px", borderRadius: "10px", fontWeight: "600" }}>
                     {perfilUsuario}
