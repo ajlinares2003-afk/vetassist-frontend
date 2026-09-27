@@ -22,22 +22,32 @@ function Agenda() {
   const [hora, setHora] = useState("08:00");
   const [tipoServico, setTipoServico] = useState("Consulta");
   const [observacoes, setObservacoes] = useState("");
+  
+  const [mensagemErro, setMensagemErro] = useState("");
+  const [mensagemSucesso, setMensagemSucesso] = useState("");
 
   useEffect(() => {
     carregarDados();
   }, [dataSelecionada]);
+
+  const tratarSessaoExpirada = () => {
+    setMensagemErro("❌ Sessão expirada ou não autenticado. Redirecionando...");
+    setTimeout(() => {
+      localStorage.removeItem("token");
+      navigate("/");
+    }, 2000);
+  };
 
   const carregarDados = async () => {
     setCarregando(true);
     const token = localStorage.getItem("token");
     const config = { headers: { Authorization: `Bearer ${token}` } };
 
-    // Carrega separadamente para evitar que uma falha bloqueie as outras
     try {
       const resAgendamentos = await api.get(`/agendamentos/?data_consulta=${dataSelecionada}`, config);
       setAgendamentos(resAgendamentos.data || []);
     } catch (err) {
-      console.error("Erro ao carregar agendamentos (rota pode não existir ainda):", err);
+      console.error("Erro ao carregar agendamentos:", err);
       setAgendamentos([]);
     }
 
@@ -76,8 +86,10 @@ function Agenda() {
       setMostrarModalNovo(false);
       setAnimalId("");
       setObservacoes("");
+      setMensagemSucesso("✅ Agendamento criado com sucesso!");
       carregarDados();
     } catch (err) {
+      console.error("Erro ao criar agendamento:", err);
       alert("Erro ao criar agendamento. Verifique os campos.");
     }
   };
@@ -85,12 +97,15 @@ function Agenda() {
   const alterarStatus = async (id, novoStatus) => {
     try {
       const token = localStorage.getItem("token");
-      await api.put(`/agendamentos/${id}/status?novo_status=${novoStatus}`, {}, {
+      // Envia o status tanto por query param quanto no body para garantir compatibilidade com o backend
+      await api.put(`/agendamentos/${id}/status?novo_status=${novoStatus}`, { status: novoStatus }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      setMensagemSucesso("✅ Status do agendamento atualizado!");
       carregarDados();
     } catch (err) {
       console.error("Erro ao alterar status:", err);
+      alert("Erro ao atualizar o status do agendamento.");
     }
   };
 
@@ -127,6 +142,12 @@ function Agenda() {
           <MdAdd size={20} /> Novo Agendamento
         </button>
       </div>
+
+      {mensagemSucesso && (
+        <div style={{ backgroundColor: "#dcfce7", color: "#166534", padding: "12px 16px", borderRadius: "8px", marginBottom: "15px", fontWeight: "500", border: "1px solid #bbf7d0" }}>
+          {mensagemSucesso}
+        </div>
+      )}
 
       {/* SELETOR DE DATA */}
       <div style={{ backgroundColor: "#FFFFFF", padding: "16px 20px", borderRadius: "16px", border: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
@@ -166,25 +187,28 @@ function Agenda() {
               <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", borderRadius: "12px", backgroundColor: "#F8FAFC", border: "1px solid #F1F5F9" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                   <div style={{ backgroundColor: "#0F172A", color: "#FFFFFF", padding: "8px 14px", borderRadius: "10px", fontWeight: "700", fontSize: "16px", minWidth: "60px", textAlign: "center" }}>
-                    {item.hora}
+                    {item.hora || (item.data_horario ? item.data_horario.split("T")[1]?.substring(0, 5) : "--:--")}
                   </div>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <strong style={{ fontSize: "15px", color: "#0F172A" }}>{item.pet_nome}</strong>
+                      <strong style={{ fontSize: "15px", color: "#0F172A" }}>{item.pet_nome || item.animal_nome}</strong>
                       <span style={{ fontSize: "12px", color: "#64748B" }}>({item.especie})</span>
                       <span style={{ backgroundColor: "#E0F2FE", color: "#0369A1", padding: "2px 8px", borderRadius: "12px", fontSize: "11px", fontWeight: "700" }}>
                         {item.tipo_servico}
                       </span>
                     </div>
                     <span style={{ fontSize: "13px", color: "#475569", display: "block", marginTop: "2px" }}>
-                      👤 Tutor: {item.tutor_nome} | 👨‍⚕️ {item.veterinario_nome}
+                      👤 Tutor: {item.tutor_nome} | 👨‍⚕️ {item.veterinario_nome || "Não atribuído"}
                     </span>
                   </div>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   {item.status === "AGENDADO" && (
-                    <button onClick={() => alterarStatus(item.id, "EM_ESPERA")} style={{ backgroundColor: "#10B981", color: "white", border: "none", padding: "8px 14px", borderRadius: "8px", fontWeight: "600", fontSize: "12px", cursor: "pointer" }}>
+                    <button 
+                      onClick={() => alterarStatus(item.id, "EM_ESPERA")} 
+                      style={{ backgroundColor: "#10B981", color: "white", border: "none", padding: "8px 14px", borderRadius: "8px", fontWeight: "600", fontSize: "12px", cursor: "pointer" }}
+                    >
                       🟢 Dar Entrada na Recepção
                     </button>
                   )}
@@ -195,7 +219,15 @@ function Agenda() {
                     </span>
                   )}
 
-                  <button onClick={() => alterarStatus(item.id, "CANCELADO")} style={{ backgroundColor: "transparent", color: "#EF4444", border: "none", padding: "6px", cursor: "pointer" }}>
+                  <button 
+                    title="Cancelar Agendamento"
+                    onClick={() => {
+                      if (window.confirm("Tem certeza que deseja cancelar este agendamento?")) {
+                        alterarStatus(item.id, "CANCELADO");
+                      }
+                    }} 
+                    style={{ backgroundColor: "transparent", color: "#EF4444", border: "none", padding: "6px", cursor: "pointer" }}
+                  >
                     <MdCancel size={20} />
                   </button>
                 </div>
@@ -230,7 +262,7 @@ function Agenda() {
                 </div>
                 <div>
                   <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "4px" }}>Tipo de Serviço</label>
-                  <select value={tipoServico} onChange={(e) => setTipoServico(e.target.value)} style={estiloInput}>
+                  <select value={tipoServico} onChange={(e) => setTipoServico(e.target.value)} style={estiloItemInput => estiloInput}>
                     <option value="Consulta">Consulta</option>
                     <option value="Vacina">Vacinação</option>
                     <option value="Retorno">Retorno Médico</option>
