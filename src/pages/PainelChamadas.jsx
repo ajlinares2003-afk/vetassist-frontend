@@ -5,11 +5,15 @@ import api from "../api/api";
 function PainelChamadas() {
   const [chamadas, setChamadas] = useState([]);
   const ultimoStatusRef = useRef(null);
+  const intervaloSomRef = useRef(null);
 
   useEffect(() => {
     carregarChamadas();
     const intervalo = setInterval(carregarChamadas, 3000); // Atualiza a cada 3 segundos
-    return () => clearInterval(intervalo);
+    return () => {
+      clearInterval(intervalo);
+      if (intervaloSomRef.current) clearInterval(intervaloSomRef.current);
+    };
   }, []);
 
   const carregarChamadas = async () => {
@@ -22,13 +26,31 @@ function PainelChamadas() {
         const topo = dados[0];
         const chaveChamada = `${topo.id}-${topo.status}`;
 
-        // Só toca o sinal sonoro quando o status de alguém mudar para "Em Triagem" ou "Em Atendimento"
-        if (
-          ["Em Triagem", "Em Atendimento"].includes(topo.status) &&
-          ultimoStatusRef.current !== chaveChamada
-        ) {
-          ultimoStatusRef.current = chaveChamada;
-          tocarSinalSuave();
+        // Se o paciente estiver sendo chamado ativamente, dispara o alarme periódico a cada 10s
+        if (topo.status === "Chamando para Triagem") {
+          if (ultimoStatusRef.current !== chaveChamada) {
+            ultimoStatusRef.current = chaveChamada;
+            tocarSinalSuave();
+
+            if (intervaloSomRef.current) clearInterval(intervaloSomRef.current);
+            intervaloSomRef.current = setInterval(() => {
+              tocarSinalSuave();
+            }, 10000); // Repete o som a cada 10 segundos
+          }
+        } else {
+          // Se mudou de status (ex: Iniciou Triagem), para o som periódico imediatamente
+          if (ultimoStatusRef.current !== chaveChamada) {
+            ultimoStatusRef.current = chaveChamada;
+            if (intervaloSomRef.current) {
+              clearInterval(intervaloSomRef.current);
+              intervaloSomRef.current = null;
+            }
+          }
+        }
+      } else {
+        if (intervaloSomRef.current) {
+          clearInterval(intervaloSomRef.current);
+          intervaloSomRef.current = null;
         }
       }
     } catch (error) {
@@ -52,7 +74,7 @@ function PainelChamadas() {
         osc.frequency.setValueAtTime(frequencia, audioCtx.currentTime + tempoInicio);
 
         gain.gain.setValueAtTime(0, audioCtx.currentTime + tempoInicio);
-        gain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + tempoInicio + 0.05);
+        gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + tempoInicio + 0.05);
         gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + tempoInicio + duracao);
 
         osc.connect(gain);
@@ -68,6 +90,8 @@ function PainelChamadas() {
       console.error("Erro ao reproduzir áudio:", e);
     }
   };
+
+  const chamadaAtiva = chamadas.length > 0 && ["Chamando para Triagem", "Em Triagem", "Em Atendimento"].includes(chamadas[0].status);
 
   return (
     <div style={{
@@ -97,19 +121,20 @@ function PainelChamadas() {
       </div>
 
       {/* CHAMADA EM DESTAQUE */}
-      {chamadas.length > 0 && ["Em Triagem", "Em Atendimento"].includes(chamadas[0].status) ? (
+      {chamadaAtiva ? (
         <div style={{
-          backgroundColor: chamadas[0].status === "Em Triagem" ? "#1e1b4b" : "#0f172a",
-          border: `3px solid ${chamadas[0].status === "Em Triagem" ? "#818cf8" : "#38bdf8"}`,
+          backgroundColor: chamadas[0].status === "Chamando para Triagem" ? "#311011" : "#1e1b4b",
+          border: `3px solid ${chamadas[0].status === "Chamando para Triagem" ? "#ef4444" : "#38bdf8"}`,
           borderRadius: "16px",
           padding: "30px",
           marginBottom: "35px",
-          boxShadow: "0 10px 25px -5px rgba(56, 189, 248, 0.3)",
-          textAlign: "center"
+          boxShadow: "0 10px 25px -5px rgba(239, 68, 68, 0.3)",
+          textAlign: "center",
+          animation: chamadas[0].status === "Chamando para Triagem" ? "pulse 1.5s infinite" : "none"
         }}>
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
             <span style={{
-              backgroundColor: chamadas[0].status === "Em Triagem" ? "#4f46e5" : "#0284c7",
+              backgroundColor: chamadas[0].status === "Chamando para Triagem" ? "#dc2626" : "#4f46e5",
               color: "white",
               padding: "6px 18px",
               borderRadius: "20px",
@@ -117,7 +142,7 @@ function PainelChamadas() {
               fontWeight: "bold",
               textTransform: "uppercase"
             }}>
-              🔔 CHUMANDO AGORA: {chamadas[0].etapa}
+              🔔 {chamadas[0].status === "Chamando para Triagem" ? "CHAMANDO PARA TRIAGEM" : chamadas[0].etapa}
             </span>
             <button
               onClick={tocarSinalSuave}
@@ -169,13 +194,13 @@ function PainelChamadas() {
             {chamadas.map((item, idx) => (
               <tr key={item.id} style={{
                 borderBottom: "1px solid #334155",
-                backgroundColor: idx === 0 && ["Em Triagem", "Em Atendimento"].includes(item.status) ? "rgba(56, 189, 248, 0.1)" : "transparent",
+                backgroundColor: idx === 0 && ["Chamando para Triagem", "Em Triagem", "Em Atendimento"].includes(item.status) ? "rgba(56, 189, 248, 0.1)" : "transparent",
                 fontSize: "22px"
               }}>
                 <td style={{ padding: "18px", fontWeight: "bold", color: "#38bdf8" }}>{item.pet}</td>
                 <td style={{ padding: "18px", color: "#f1f5f9" }}>{item.tutor !== "-" ? item.tutor : "-"}</td>
                 <td style={{ padding: "18px", color: "#cbd5e1" }}>{item.veterinario}</td>
-                <td style={{ padding: "18px", fontWeight: "600", color: item.status.includes("Em") ? "#4ade80" : "#f59e0b" }}>
+                <td style={{ padding: "18px", fontWeight: "600", color: item.status.includes("Em") || item.status.includes("Chamando") ? "#4ade80" : "#f59e0b" }}>
                   {item.status}
                 </td>
               </tr>

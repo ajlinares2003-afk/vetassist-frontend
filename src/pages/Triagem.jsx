@@ -6,7 +6,7 @@ import {
   MdRefresh,
   MdAddCircle,
   MdClose,
-  MdVaccines
+  MdCampaign
 } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
@@ -107,6 +107,23 @@ function Triagem() {
     setJustificativa("");
   };
 
+  const chamarPaciente = async (consulta, e) => {
+    e.stopPropagation();
+    try {
+      const token = localStorage.getItem("token");
+      await api.put(
+        `/consultas/${consulta.id}`,
+        { ...consulta, status: "Chamando para Triagem" },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMensagem({ tipo: "sucesso", texto: `📢 Chamando ${obterNomeAnimal(consulta.animal_id)} no painel!` });
+      carregarDados(false);
+    } catch (err) {
+      console.error("Erro ao chamar paciente:", err);
+      setMensagem({ tipo: "erro", texto: "Erro ao emitir chamada para o paciente." });
+    }
+  };
+
   const selecionarParaTriagem = async (consulta) => {
     setAtendimentoSelecionado(consulta);
     setQueixaPrincipal(consulta.queixa_principal || "");
@@ -115,7 +132,7 @@ function Triagem() {
     setFrequenciaCardiaca(consulta.frequencia_cardiaca || "");
     setFrequenciaRespiratoria(consulta.frequencia_respiratoria || "");
 
-    // Atualiza o status para "Em Triagem" para disparar a chamada no Painel da TV
+    // Atualiza o status para "Em Triagem" (para o som parar e mudar o painel)
     try {
       const token = localStorage.getItem("token");
       await api.put(
@@ -176,7 +193,7 @@ function Triagem() {
         return;
       }
     } catch (err) {
-      console.warn("Aviso ao consultar IA na Triagem, mantendo avaliação local:", err);
+      console.warn("Aviso ao consultar IA na Triagem:", err);
     }
     sugerirClassificacaoLocal();
   };
@@ -204,7 +221,7 @@ function Triagem() {
               config
             );
           } catch (errAnimal) {
-            console.warn("Aviso ao atualizar peso oficial do animal na triagem:", errAnimal);
+            console.warn("Aviso ao atualizar peso oficial:", errAnimal);
           }
         }
       }
@@ -225,7 +242,7 @@ function Triagem() {
 
       await api.post("/triagem/", payload, config);
 
-      setMensagem({ tipo: "sucesso", texto: "✅ Triagem concluída e cadastro atualizado com sucesso!" });
+      setMensagem({ tipo: "sucesso", texto: "✅ Triagem concluída com sucesso!" });
       setAtendimentoSelecionado(null);
       limparFormulario();
       carregarDados(true);
@@ -248,21 +265,6 @@ function Triagem() {
       const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      if (animalIdDireto && peso !== "" && peso !== null) {
-        const animalEncontrado = animais.find((a) => a.id === Number(animalIdDireto));
-        if (animalEncontrado) {
-          try {
-            await api.put(
-              `/animais/${animalIdDireto}`,
-              { ...animalEncontrado, peso: parseFloat(peso) },
-              config
-            );
-          } catch (errAnimal) {
-            console.warn("Aviso ao atualizar peso oficial do animal no check-in direto:", errAnimal);
-          }
-        }
-      }
-
       const payload = {
         animal_id: Number(animalIdDireto),
         queixa_principal: queixaPrincipal,
@@ -279,7 +281,7 @@ function Triagem() {
 
       await api.post("/triagem/checkin-direto", payload, config);
 
-      setMensagem({ tipo: "sucesso", texto: "✅ Check-in, Triagem e cadastro realizados com sucesso!" });
+      setMensagem({ tipo: "sucesso", texto: "✅ Check-in e Triagem realizados com sucesso!" });
       setMostrarModalNovoCheckin(false);
       limparFormulario();
       carregarDados(true);
@@ -346,16 +348,15 @@ function Triagem() {
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {atendimentosPendentes.map((item) => {
                 const ehVacina = item.status === "AGUARDANDO_VACINA" || item.status === "Aguardando Vacina";
+                const estaSendoChamado = item.status === "Chamando para Triagem";
                 return (
                   <div
                     key={item.id}
-                    onClick={() => selecionarParaTriagem(item)}
                     style={{
                       padding: "14px",
                       borderRadius: "8px",
-                      border: atendimentoSelecionado?.id === item.id ? "2px solid #4f46e5" : ehVacina ? "1px solid #ccfbf1" : "1px solid #e5e7eb",
-                      backgroundColor: atendimentoSelecionado?.id === item.id ? "#f5f3ff" : ehVacina ? "#f0fdf4" : "#f9fafb",
-                      cursor: "pointer",
+                      border: atendimentoSelecionado?.id === item.id ? "2px solid #4f46e5" : estaSendoChamado ? "2px solid #ef4444" : ehVacina ? "1px solid #ccfbf1" : "1px solid #e5e7eb",
+                      backgroundColor: atendimentoSelecionado?.id === item.id ? "#f5f3ff" : estaSendoChamado ? "#fef2f2" : ehVacina ? "#f0fdf4" : "#f9fafb",
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center"
@@ -364,15 +365,28 @@ function Triagem() {
                     <div>
                       <strong style={{ color: ehVacina ? "#0f766e" : "#1f2937", display: "block", fontSize: "15px" }}>
                         {ehVacina ? "💉 " : "🐾 "} {obterNomeAnimal(item.animal_id)}
-                        {ehVacina && <span style={{ fontSize: "11px", backgroundColor: "#ccfbf1", color: "#0f766e", padding: "2px 6px", borderRadius: "4px", marginLeft: "8px" }}>Vacinação</span>}
+                        {estaSendoChamado && <span style={{ fontSize: "11px", backgroundColor: "#fee2e2", color: "#991b1b", padding: "2px 6px", borderRadius: "4px", marginLeft: "8px", fontWeight: "bold" }}>📢 Chamando...</span>}
                       </strong>
                       <span style={{ fontSize: "12px", color: "#6b7280" }}>
                         Check-in: {item.codigo || `CNS-${item.id}`} {item.queixa_principal ? `| Motivo: ${item.queixa_principal}` : ""}
                       </span>
                     </div>
-                    <button style={{ backgroundColor: ehVacina ? "#0d9488" : "#4f46e5", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600" }}>
-                      Iniciar Triagem
-                    </button>
+
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button 
+                        onClick={(e) => chamarPaciente(item, e)}
+                        style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "8px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}
+                      >
+                        <MdCampaign size={16} /> Chamar
+                      </button>
+
+                      <button 
+                        onClick={() => selecionarParaTriagem(item)}
+                        style={{ backgroundColor: ehVacina ? "#0d9488" : "#4f46e5", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600" }}
+                      >
+                        Iniciar Triagem
+                      </button>
+                    </div>
                   </div>
                 );
               })}
