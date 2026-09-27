@@ -38,7 +38,9 @@ function Agenda() {
 
     try {
       const resAgendamentos = await api.get(`/agendamentos/?data_consulta=${dataSelecionada}`, config);
-      setAgendamentos(resAgendamentos.data || []);
+      // Filtra para esconder agendamentos cancelados da visualização principal
+      const ativosOuEspera = (resAgendamentos.data || []).filter(item => item.status !== "CANCELADO");
+      setAgendamentos(ativosOuEspera);
     } catch (err) {
       console.error("Erro ao carregar agendamentos:", err);
       setAgendamentos([]);
@@ -244,9 +246,9 @@ function Agenda() {
         )}
       </div>
 
-      {/* MODAL DE CONFIRMAÇÃO DE CANCELAMENTO */}
+      {/* MODAL DE CONFIRMAÇÃO DE CANCELAMENTO (Centralizado na tela inteira) */}
       {agendamentoParaCancelar && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(2px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(2px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 99999, margin: 0 }}>
           <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "14px", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)", textAlign: "center", maxWidth: "400px", width: "90%" }}>
             <div style={{ fontSize: "42px", marginBottom: "8px" }}>⚠️</div>
             <h3 style={{ marginTop: 0, color: "#111827", fontSize: "18px" }}>Confirmar Cancelamento</h3>
