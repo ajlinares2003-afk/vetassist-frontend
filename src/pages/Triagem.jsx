@@ -116,7 +116,7 @@ function Triagem() {
         { ...consulta, status: "Chamando para Triagem" },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setMensagem({ tipo: "sucesso", texto: `📢 Chamando ${obterNomeAnimal(consulta.animal_id)} no painel!` });
+      setMensagem({ tipo: "sucesso", texto: `📢 A chamar ${obterNomeAnimal(consulta.animal_id)} no painel!` });
       carregarDados(false);
     } catch (err) {
       console.error("Erro ao chamar paciente:", err);
@@ -132,7 +132,6 @@ function Triagem() {
     setFrequenciaCardiaca(consulta.frequencia_cardiaca || "");
     setFrequenciaRespiratoria(consulta.frequencia_respiratoria || "");
 
-    // Atualiza o status para "Em Triagem" (para o som parar e mudar o painel)
     try {
       const token = localStorage.getItem("token");
       await api.put(
@@ -307,7 +306,7 @@ function Triagem() {
 
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {atualizandoSilencioso && (
-            <span style={{ fontSize: "12px", color: "#6366f1", fontWeight: "500" }}>Syncing...</span>
+            <span style={{ fontSize: "12px", color: "#6366f1", fontWeight: "500" }}>A sincronizar...</span>
           )}
           <button
             onClick={() => carregarDados(true)}
@@ -342,7 +341,7 @@ function Triagem() {
 
           {atendimentosPendentes.length === 0 ? (
             <p style={{ color: "#9ca3af", fontSize: "14px", textAlign: "center", padding: "30px 0", fontStyle: "italic" }}>
-              Nenhum paciente aguardando triagem. Clique em <strong>"Novo Check-in & Triagem"</strong> para dar entrada direta num paciente!
+              Nenhum paciente a aguardar triagem. Clique em <strong>"Novo Check-in & Triagem"</strong> para dar entrada direta num paciente!
             </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -365,7 +364,7 @@ function Triagem() {
                     <div>
                       <strong style={{ color: ehVacina ? "#0f766e" : "#1f2937", display: "block", fontSize: "15px" }}>
                         {ehVacina ? "💉 " : "🐾 "} {obterNomeAnimal(item.animal_id)}
-                        {estaSendoChamado && <span style={{ fontSize: "11px", backgroundColor: "#fee2e2", color: "#991b1b", padding: "2px 6px", borderRadius: "4px", marginLeft: "8px", fontWeight: "bold" }}>📢 Chamando...</span>}
+                        {estaSendoChamado && <span style={{ fontSize: "11px", backgroundColor: "#fee2e2", color: "#991b1b", padding: "2px 6px", borderRadius: "4px", marginLeft: "8px", fontWeight: "bold" }}>📢 A chamar...</span>}
                       </strong>
                       <span style={{ fontSize: "12px", color: "#6b7280" }}>
                         Check-in: {item.codigo || `CNS-${item.id}`} {item.queixa_principal ? `| Motivo: ${item.queixa_principal}` : ""}
@@ -479,7 +478,7 @@ function Triagem() {
                 Cancelar
               </button>
               <button onClick={salvarTriagemExistente} disabled={carregando} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>
-                {carregando ? "Enviando..." : "Finalizar Triagem"}
+                {carregando ? "A enviar..." : "Finalizar Triagem"}
               </button>
             </div>
           </div>
@@ -588,7 +587,7 @@ function Triagem() {
                   Cancelar
                 </button>
                 <button type="submit" disabled={carregando} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>
-                  {carregando ? "Processando..." : "Confirmar Check-in & Triagem"}
+                  {carregando ? "A processar..." : "Confirmar Check-in & Triagem"}
                 </button>
               </div>
             </form>
