@@ -137,9 +137,10 @@ function Triagem() {
 
     try {
       const token = localStorage.getItem("token");
+      // Utiliza a rota dedicada para atualizar imediatamente o status e silenciar a TV
       await api.put(
-        `/consultas/${consulta.id}`,
-        { ...consulta, status: "Em Triagem" },
+        `/consultas/${consulta.id}/iniciar-triagem`,
+        {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -147,7 +148,7 @@ function Triagem() {
         prev.map(item => item.id === consulta.id ? { ...item, status: "Em Triagem" } : item)
       );
     } catch (err) {
-      console.warn("Aviso ao atualizar status para Em Triagem:", err);
+      console.warn("Aviso ao iniciar triagem:", err);
     }
   };
 
