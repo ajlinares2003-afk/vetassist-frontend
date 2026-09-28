@@ -8,14 +8,14 @@ function Checkin() {
   const navigate = useNavigate();
   const [animais, setAnimais] = useState([]);
   const [tutores, setTutores] = useState([]);
-  const [usuarios, setUsuarios] = useState([]); // <-- Estado para armazenar os utilizadores/enfermeiros
+  const [usuarios, setUsuarios] = useState([]);
   const [filaCheckin, setFilaCheckin] = useState([]);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [consultaParaExcluir, setConsultaParaExcluir] = useState(null);
 
   // Estados do Formulário de Check-in
   const [animalId, setAnimalId] = useState("");
-  const [usuarioId, setUsuarioId] = useState(""); // <-- ID do enfermeiro selecionado
+  const [usuarioId, setUsuarioId] = useState("");
   const [queixaPrincipal, setQueixaPrincipal] = useState("");
   const [peso, setPeso] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
@@ -45,10 +45,10 @@ function Checkin() {
       setAnimais(resAnimais.data || []);
       setTutores(resTutores.data || []);
       
-      // Filtra apenas utilizadores que sejam enfermeiros, equipe de triagem ou administradores
+      // Filtra estritamente apenas perfis de TRIAGEM ou ENFERMEIRO
       const listaUsuarios = resUsuarios.data || [];
       const apenasEnfermeiros = listaUsuarios.filter(
-        (u) => u.perfil === "TRIAGEM" || u.perfil === "ENFERMEIRO" || u.perfil === "ADMIN"
+        (u) => u.perfil === "TRIAGEM" || u.perfil === "ENFERMEIRO"
       );
       setUsuarios(apenasEnfermeiros);
 
@@ -82,7 +82,7 @@ function Checkin() {
 
       const payload = {
         animal_id: Number(animalId),
-        usuario_id: usuarioId ? Number(usuarioId) : null, // Envia o enfermeiro selecionado
+        usuario_id: usuarioId ? Number(usuarioId) : null,
         queixa_principal: queixaPrincipal,
         status: "AGUARDANDO_TRIAGEM",
         peso_atendimento: Number(peso)
@@ -266,14 +266,14 @@ function Checkin() {
                 </select>
               </div>
 
-              {/* SELEÇÃO DO ENFERMEIRO / RESPONSÁVEL PELA TRIAGEM */}
+              {/* SELEÇÃO APENAS DE ENFERMEIRO / TRIAGEM */}
               <div style={{ marginBottom: "14px" }}>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Enfermeiro(a) / Triagem (Opcional)</label>
                 <select value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)} style={{ width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }}>
                   <option value="">Selecione o enfermeiro responsável...</option>
                   {usuarios.map((u) => (
                     <option key={u.id} value={u.id}>
-                      {u.nome || u.email} ({u.perfil})
+                      {u.nome || u.email}
                     </option>
                   ))}
                 </select>
