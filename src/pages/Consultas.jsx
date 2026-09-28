@@ -162,7 +162,7 @@ function Consultas() {
         headers: { Authorization: `Bearer ${token}` },
       };
 
-      // Tenta buscar os dados da triagem atualizados para esta consulta
+      // 1. Busca primeiro os dados da triagem vinculada a esta consulta
       let dadosTriagem = {};
       try {
         const respTriagem = await api.get(`/triagem/consulta/${consulta.id}`, config);
@@ -173,14 +173,24 @@ function Consultas() {
         console.warn("Aviso: Nenhuma triagem vinculada encontrada.", errTriagem);
       }
 
+      // 2. Extrai os valores combinando a triagem, os dados da consulta e fallback seguro
       const tempVal = dadosTriagem?.temperatura ?? consulta.temperatura ?? "";
       const fcVal = dadosTriagem?.frequencia_cardiaca ?? consulta.frequencia_cardiaca ?? "";
       const frVal = dadosTriagem?.frequencia_respiratoria ?? consulta.frequencia_respiratoria ?? "";
       const pesoVal = dadosTriagem?.peso ?? dadosTriagem?.peso_atendimento ?? consulta.peso_atendimento ?? "";
-      const tpcVal = dadosTriagem?.tpc_segundos ?? "";
-      const mucosasVal = dadosTriagem?.mucosas ?? "Normocoradas";
+      const tpcVal = dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "";
+      const mucosasVal = dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas";
 
-      // Atualiza o status no backend para "Em Atendimento" enviando também os sinais vitais recolhidos
+      // 3. Popula imediatamente os estados locais do formulário
+      setTemperatura(tempVal !== null && tempVal !== undefined ? String(tempVal) : "");
+      setFrequenciaCardiaca(fcVal !== null && fcVal !== undefined ? String(fcVal) : "");
+      setFrequenciaRespiratoria(frVal !== null && frVal !== undefined ? String(frVal) : "");
+      setPesoAtendimento(pesoVal !== null && pesoVal !== undefined ? String(pesoVal) : "");
+      setTpcSegundos(tpcVal !== null && tpcVal !== undefined ? String(tpcVal) : "");
+      setMucosas(mucosasVal);
+      setStatusAtendimento("Em Atendimento");
+
+      // 4. Atualiza o status no backend garantindo o envio dos sinais vitais corretos
       await api.put(
         `/consultas/${consulta.id}`,
         {
@@ -197,6 +207,8 @@ function Consultas() {
           temperatura: tempVal !== "" ? Number(tempVal) : null,
           frequencia_cardiaca: fcVal !== "" ? Number(fcVal) : null,
           frequencia_respiratoria: frVal !== "" ? Number(frVal) : null,
+          tpc_segundos: tpcVal !== "" ? Number(tpcVal) : null,
+          mucosas: mucosasVal,
           parecer_copiloto: consulta.parecer_copiloto,
           observacoes: consulta.observacoes,
           indicacao_cirurgia: consulta.indicacao_cirurgia,
@@ -206,8 +218,11 @@ function Consultas() {
         config
       );
 
+      setConsultaEditando({ ...consulta, status: "Em Atendimento" });
+      setMostrarFormulario(true);
       carregarConsultas();
-      editarConsulta({ ...consulta, status: "Em Atendimento", temperatura: tempVal, frequencia_cardiaca: fcVal, frequencia_respiratoria: frVal, peso_atendimento: pesoVal });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+
     } catch (error) {
       console.error("Erro ao iniciar atendimento:", error);
       setMensagemErro(`❌ Erro ao iniciar atendimento: ${error.response?.data?.detail || error.message}`);
@@ -366,6 +381,8 @@ function Consultas() {
         temperatura: temperatura !== "" && temperatura !== null ? Number(temperatura) : null,
         frequencia_cardiaca: frequenciaCardiaca !== "" && frequenciaCardiaca !== null ? Number(frequenciaCardiaca) : null,
         frequencia_respiratoria: frequenciaRespiratoria !== "" && frequenciaRespiratoria !== null ? Number(frequenciaRespiratoria) : null,
+        tpc_segundos: tpcSegundos !== "" && tpcSegundos !== null ? Number(tpcSegundos) : null,
+        mucosas: mucosas || "Normocoradas",
         parecer_copiloto: sugestoesCopiloto || null,
         observacoes: observacoes || null,
         indicacao_cirurgia: Boolean(indicacaoCirurgia),
@@ -453,14 +470,14 @@ function Consultas() {
     const fcVal = dadosTriagem?.frequencia_cardiaca ?? consulta.frequencia_cardiaca ?? "";
     const frVal = dadosTriagem?.frequencia_respiratoria ?? consulta.frequencia_respiratoria ?? "";
     const pesoVal = dadosTriagem?.peso ?? dadosTriagem?.peso_atendimento ?? consulta.peso_atendimento ?? "";
-    const tpcVal = dadosTriagem?.tpc_segundos ?? "";
-    const mucosasVal = dadosTriagem?.mucosas ?? "Normocoradas";
+    const tpcVal = dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "";
+    const mucosasVal = dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas";
 
-    setTemperatura(tempVal !== null && tempVal !== undefined ? tempVal : "");
-    setFrequenciaCardiaca(fcVal !== null && fcVal !== undefined ? fcVal : "");
-    setFrequenciaRespiratoria(frVal !== null && frVal !== undefined ? frVal : "");
-    setPesoAtendimento(pesoVal !== null && pesoVal !== undefined ? pesoVal : "");
-    setTpcSegundos(tpcVal !== null && tpcVal !== undefined ? tpcVal : "");
+    setTemperatura(tempVal !== null && tempVal !== undefined ? String(tempVal) : "");
+    setFrequenciaCardiaca(fcVal !== null && fcVal !== undefined ? String(fcVal) : "");
+    setFrequenciaRespiratoria(frVal !== null && frVal !== undefined ? String(frVal) : "");
+    setPesoAtendimento(pesoVal !== null && pesoVal !== undefined ? String(pesoVal) : "");
+    setTpcSegundos(tpcVal !== null && tpcVal !== undefined ? String(tpcVal) : "");
     setMucosas(mucosasVal);
 
     const animalEncontrado = animais.find((a) => a.id === consulta.animal_id);
