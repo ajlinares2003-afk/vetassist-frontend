@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdEvent, MdTv } from "react-icons/md";
+import { MdEvent, MdTv, MdDelete } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
 function Checkin() {
   const navigate = useNavigate();
   const [animais, setAnimais] = useState([]);
-  const [tutores, setTutores] = useState([]); // <-- Estado para armazenar os tutores
+  const [tutores, setTutores] = useState([]);
   const [filaCheckin, setFilaCheckin] = useState([]);
   const [mostrarModal, setMostrarModal] = useState(false);
+  const [consultaParaExcluir, setConsultaParaExcluir] = useState(null);
 
   // Estados do Formulário de Check-in
   const [animalId, setAnimalId] = useState("");
@@ -32,7 +33,6 @@ function Checkin() {
 
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      // Carrega animais, tutores e a fila simultaneamente
       const [resAnimais, resTutores, resFila] = await Promise.all([
         api.get("/animais/", config),
         api.get("/tutores/", config),
@@ -51,7 +51,6 @@ function Checkin() {
     const a = animais.find((item) => item.id === Number(animalIdParam));
     if (!a) return "Paciente desconhecido";
     
-    // Procura o tutor pelo ID correspondente no animal
     const t = tutores.find((tutor) => tutor.id === a.tutor_id);
     const nomeTutor = t ? t.nome : "Tutor não vinculado";
 
@@ -89,6 +88,24 @@ function Checkin() {
       setMensagemErro(`❌ Erro ao realizar check-in: ${error.response?.data?.detail || error.message}`);
     } finally {
       setCarregando(false);
+    }
+  };
+
+  const deletarCheckin = async () => {
+    if (!consultaParaExcluir) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
+      await api.delete(`/consultas/${consultaParaExcluir.id}`, config);
+
+      setMensagemSucesso("✅ Check-in excluído com sucesso!");
+      setConsultaParaExcluir(null);
+      carregarDados();
+    } catch (error) {
+      setMensagemErro(`❌ Erro ao excluir check-in: ${error.response?.data?.detail || error.message}`);
+      setConsultaParaExcluir(null);
     }
   };
 
@@ -168,16 +185,50 @@ function Checkin() {
                     Código: <strong>{item.codigo}</strong> | Motivo: {item.queixa_principal} {item.peso_atendimento ? `| Peso: ${item.peso_atendimento}kg` : ""}
                   </p>
                 </div>
-                <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <span style={{ backgroundColor: "#fef3c7", color: "#b45309", padding: "6px 12px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>
                     Aguardando Triagem
                   </span>
+                  <button
+                    onClick={() => setConsultaParaExcluir(item)}
+                    title="Excluir Check-in"
+                    style={{
+                      backgroundColor: "#fee2e2",
+                      color: "#b91c1c",
+                      border: "none",
+                      padding: "8px 10px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}
+                  >
+                    <MdDelete size={18} />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Modal de Confirmação de Exclusão */}
+      {consultaParaExcluir && (
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "14px", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)", textAlign: "center", maxWidth: "400px", width: "90%" }}>
+            <div style={{ fontSize: "42px", marginBottom: "8px" }}>⚠️</div>
+            <h3 style={{ marginTop: 0, color: "#111827", fontSize: "18px" }}>Confirmar Exclusão</h3>
+            <p style={{ color: "#4b5563", fontSize: "14px", lineHeight: "1.5" }}>
+              Tem certeza que deseja remover o check-in do código <strong>{consultaParaExcluir.codigo}</strong>?
+            </p>
+            <div style={{ display: "flex", justifyContent: "center", gap: "12px", marginTop: "22px" }}>
+              <button onClick={() => setConsultaParaExcluir(null)} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Cancelar</button>
+              <button onClick={deletarCheckin} style={{ backgroundColor: "#dc2626", color: "white", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Sim, Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Novo Check-in */}
       {mostrarModal && (
