@@ -37,11 +37,14 @@ function Layout({ children }) {
     return "Atendimento";
   };
 
-  const menuConfig = [
+const menuConfig = [
     { nome: "Dashboard", rota: "/dashboard", icone: <MdDashboard size={20} />, perfis: ["ADMIN", "RECEPCAO", "TRIAGEM", "VETERINARIO"] },
     { nome: "Tutores", rota: "/tutores", icone: <FaUserTie size={18} />, perfis: ["ADMIN", "RECEPCAO", "VETERINARIO"] },
     { nome: "Animais", rota: "/animais", icone: <MdPets size={20} />, perfis: ["ADMIN", "RECEPCAO", "VETERINARIO"] },
-    { nome: getNomeConsulta(), rota: "/consultas", icone: <MdEvent size={20} />, perfis: ["ADMIN", "RECEPCAO", "VETERINARIO"] },
+    
+    { nome: "Check-in", rota: "/checkin", icone: <MdEvent size={20} />, perfis: ["ADMIN", "RECEPCAO"] },
+    { nome: "Atendimentos", rota: "/consultas", icone: <MdMedicalServices size={20} />, perfis: ["ADMIN", "VETERINARIO"] },
+
     { nome: "Agenda", rota: "/agenda", icone: <MdCalendarToday size={20} />, perfis: ["ADMIN", "RECEPCAO", "VETERINARIO"] },
     { nome: "Triagem / Fila", rota: "/triagem", icone: <MdHealthAndSafety size={20} />, perfis: ["ADMIN", "TRIAGEM", "VETERINARIO"] },
     { nome: "Internação / UTI", rota: "/internacao", icone: <MdHotel size={20} />, perfis: ["ADMIN", "VETERINARIO", "TRIAGEM", "RECEPCAO"] },

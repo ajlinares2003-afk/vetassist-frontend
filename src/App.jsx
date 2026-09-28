@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Animais from "./pages/Animais";
 import Tutores from "./pages/Tutores";
 import Agenda from "./pages/Agenda";
+import Checkin from "./pages/Checkin"; // <-- 1. Importe o novo módulo de Check-in
 import Consultas from "./pages/Consultas";
 import Vacinas from "./pages/Vacinas";
 import Prescricoes from "./pages/Prescricoes";
@@ -21,7 +22,7 @@ import Usuarios from "./pages/Usuarios";
 import Cirurgia from "./pages/Cirurgia"; 
 import Financeiro from "./pages/Financeiro";
 import PainelChamadas from "./pages/PainelChamadas";
-import ConfiguracoesIA from "./pages/ConfiguracoesIA"; // <-- 1. Importe a página aqui
+import ConfiguracoesIA from "./pages/ConfiguracoesIA";
 
 // Componente para validar e proteger as rotas dinamicamente
 function RotaProtegida({ children }) {
@@ -75,6 +76,16 @@ function App() {
           element={
             <RotaProtegida>
               <Agenda />
+            </RotaProtegida>
+          }
+        />
+
+        {/* 2. Adicione a rota protegida de Check-in / Recepção */}
+        <Route
+          path="/checkin"
+          element={
+            <RotaProtegida>
+              <Checkin />
             </RotaProtegida>
           }
         />
@@ -171,7 +182,6 @@ function App() {
           }
         />
 
-        {/* 2. Adicione a rota protegida para as Configurações de IA */}
         <Route
           path="/configuracoes-ia"
           element={
