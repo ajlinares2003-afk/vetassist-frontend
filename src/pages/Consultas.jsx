@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdEvent, MdVisibility, MdPrint, MdMedicalServices, MdVaccines, MdPsychology, MdAutoAwesome, MdScience, MdLocalHospital, MdTv } from "react-icons/md";
+import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdLocalHospital, MdTv, MdVolumeUp } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
@@ -33,7 +33,6 @@ function Consultas() {
   const [frequenciaCardiaca, setFrequenciaCardiaca] = useState("");
   const [frequenciaRespiratoria, setFrequenciaRespiratoria] = useState("");
   
-  // NOVOS CAMPOS: TPC e Mucosas
   const [tpcSegundos, setTpcSegundos] = useState("");
   const [mucosas, setMucosas] = useState("Normocoradas");
 
@@ -127,6 +126,35 @@ function Consultas() {
     }
   };
 
+  // 📢 FUNÇÃO PARA CHAMAR PACIENTE PARA CONSULTA (DISPARA O PAINEL DA TV)
+  const chamarParaConsulta = async (consulta) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return tratarSessaoExpirada();
+
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
+      await api.put(
+        `/consultas/${consulta.id}`,
+        {
+          codigo: consulta.codigo,
+          animal_id: consulta.animal_id,
+          usuario_id: consulta.usuario_id,
+          status: "Chamando para Consulta",
+          queixa_principal: consulta.queixa_principal
+        },
+        config
+      );
+
+      setMensagemSucesso(`📢 Paciente chamado para o consultório com sucesso!`);
+      carregarConsultas();
+    } catch (error) {
+      console.error("Erro ao chamar paciente:", error);
+      setMensagemErro(`❌ Erro ao chamar paciente: ${error.response?.data?.detail || error.message}`);
+    }
+  };
+
+  // 💉 FUNÇÃO PARA INICIAR ATENDIMENTO (MUDA PARA "Em Atendimento" E SILENCIA O PAINEL)
   const iniciarAtendimentoVeterinario = async (consulta) => {
     try {
       const token = localStorage.getItem("token");
@@ -533,6 +561,7 @@ function Consultas() {
     const configs = {
       AGUARDANDO_TRIAGEM: { bg: "#fef3c7", color: "#b45309", label: "📋 Aguardando Triagem" },
       "Aguardando Triagem (Recepção)": { bg: "#fef3c7", color: "#b45309", label: "📋 Aguardando Triagem" },
+      "Chamando para Consulta": { bg: "#fee2e2", color: "#991b1b", label: "📢 Chamando para Consulta" },
       AGUARDANDO_CONSULTA: { bg: "#e0f2fe", color: "#0369a1", label: "🩺 Aguardando Consulta" },
       "Aguardando Consulta (Fila Vet)": { bg: "#e0f2fe", color: "#0369a1", label: "🩺 Aguardando Consulta" },
       EM_ATENDIMENTO: { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
@@ -657,7 +686,6 @@ function Consultas() {
         </h1>
 
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          {/* BOTÃO DE ATALHO EXCLUSIVO PARA RECEPÇÃO E ADMIN */}
           {["RECEPCAO", "ADMIN"].includes(perfilUsuario) && (
             <button
               type="button"
@@ -677,7 +705,7 @@ function Consultas() {
                 boxShadow: "0 2px 4px rgba(2, 132, 199, 0.2)",
               }}
             >
-              <MdTv size={20} />
+              <MdTv size="{20}"/>
               Abrir Painel da Recepção (TV)
             </button>
           )}
@@ -840,6 +868,7 @@ function Consultas() {
               >
                 <option value="Aguardando Triagem (Recepção)">Aguardando Triagem (Recepção)</option>
                 <option value="Aguardando Consulta (Fila Vet)">Aguardando Consulta (Fila Vet)</option>
+                <option value="Chamando para Consulta">Chamando para Consulta</option>
                 <option value="Em Atendimento">Em Atendimento</option>
                 <option value="Aguardando Vacina">Aguardando Vacina</option>
                 <option value="Em Vacinação">Em Vacinação</option>
@@ -888,7 +917,6 @@ function Consultas() {
                   />
                 </div>
 
-                {/* NOVOS CAMPOS EXIBIDOS DE FORMA DINÂMICA */}
                 <div>
                   <label style={estiloLabel}>TPC (segundos)</label>
                   <input
@@ -1424,25 +1452,49 @@ function Consultas() {
                         }}
                       >
                         {!["FINALIZADO", "CONCLUIDA", "CANCELADO", "CANCELADA", "Finalizado", "Cancelado"].includes(c.status) && perfilUsuario !== "RECEPCAO" && (
-                          <button
-                            onClick={() => iniciarAtendimentoVeterinario(c)}
-                            title="Atender / Editar Atendimento"
-                            style={{
-                              backgroundColor: "#4f46e5",
-                              color: "white",
-                              border: "none",
-                              padding: "6px 12px",
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                              fontWeight: "600",
-                              fontSize: "13px",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px",
-                            }}
-                          >
-                            💉 Atender
-                          </button>
+                          <>
+                            {/* BOTÃO CHAMAR PACIENTE */}
+                            <button
+                              onClick={() => chamarParaConsulta(c)}
+                              title="Chamar paciente para consulta"
+                              style={{
+                                backgroundColor: "#d97706",
+                                color: "white",
+                                border: "none",
+                                padding: "6px 12px",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontWeight: "600",
+                                fontSize: "13px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              📢 Chamar
+                            </button>
+
+                            {/* BOTÃO ATENDER */}
+                            <button
+                              onClick={() => iniciarAtendimentoVeterinario(c)}
+                              title="Iniciar Atendimento"
+                              style={{
+                                backgroundColor: "#4f46e5",
+                                color: "white",
+                                border: "none",
+                                padding: "6px 12px",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontWeight: "600",
+                                fontSize: "13px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              💉 Atender
+                            </button>
+                          </>
                         )}
 
                         {perfilUsuario === "RECEPCAO" && (
