@@ -207,7 +207,7 @@ function PainelChamadas() {
         </div>
       ) : (
         <div style={{ backgroundColor: "#1e293b", padding: "30px", borderRadius: "16px", textAlign: "center", marginBottom: "35px", color: "#94a3b8", fontSize: "22px" }}>
-          ☕ Nenhum paciente a ser chamado no momento. Por favor, aguarde na receção.
+          ☕ Nenhum paciente em atendimento no momento. Por favor, aguarde.
         </div>
       )}
 
