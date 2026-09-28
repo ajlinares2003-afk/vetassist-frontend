@@ -8,12 +8,14 @@ function Checkin() {
   const navigate = useNavigate();
   const [animais, setAnimais] = useState([]);
   const [tutores, setTutores] = useState([]);
+  const [usuarios, setUsuarios] = useState([]); // <-- Estado para armazenar os utilizadores/enfermeiros
   const [filaCheckin, setFilaCheckin] = useState([]);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [consultaParaExcluir, setConsultaParaExcluir] = useState(null);
 
   // Estados do Formulário de Check-in
   const [animalId, setAnimalId] = useState("");
+  const [usuarioId, setUsuarioId] = useState(""); // <-- ID do enfermeiro selecionado
   const [queixaPrincipal, setQueixaPrincipal] = useState("");
   const [peso, setPeso] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
@@ -33,14 +35,23 @@ function Checkin() {
 
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      const [resAnimais, resTutores, resFila] = await Promise.all([
+      const [resAnimais, resTutores, resUsuarios, resFila] = await Promise.all([
         api.get("/animais/", config),
         api.get("/tutores/", config),
+        api.get("/usuarios/", config),
         api.get("/consultas/fila-triagem", config),
       ]);
 
       setAnimais(resAnimais.data || []);
       setTutores(resTutores.data || []);
+      
+      // Filtra apenas utilizadores que sejam enfermeiros, equipe de triagem ou administradores
+      const listaUsuarios = resUsuarios.data || [];
+      const apenasEnfermeiros = listaUsuarios.filter(
+        (u) => u.perfil === "TRIAGEM" || u.perfil === "ENFERMEIRO" || u.perfil === "ADMIN"
+      );
+      setUsuarios(apenasEnfermeiros);
+
       setFilaCheckin(resFila.data || []);
     } catch (error) {
       console.error("Erro ao carregar dados da recepção:", error);
@@ -71,6 +82,7 @@ function Checkin() {
 
       const payload = {
         animal_id: Number(animalId),
+        usuario_id: usuarioId ? Number(usuarioId) : null, // Envia o enfermeiro selecionado
         queixa_principal: queixaPrincipal,
         status: "AGUARDANDO_TRIAGEM",
         peso_atendimento: Number(peso)
@@ -81,6 +93,7 @@ function Checkin() {
       setMensagemSucesso("✅ Check-in realizado com sucesso! Paciente adicionado à fila.");
       setMostrarModal(false);
       setAnimalId("");
+      setUsuarioId("");
       setQueixaPrincipal("");
       setPeso("");
       carregarDados();
@@ -250,6 +263,19 @@ function Checkin() {
                       </option>
                     );
                   })}
+                </select>
+              </div>
+
+              {/* SELEÇÃO DO ENFERMEIRO / RESPONSÁVEL PELA TRIAGEM */}
+              <div style={{ marginBottom: "14px" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Enfermeiro(a) / Triagem (Opcional)</label>
+                <select value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)} style={{ width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }}>
+                  <option value="">Selecione o enfermeiro responsável...</option>
+                  {usuarios.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nome || u.email} ({u.perfil})
+                    </option>
+                  ))}
                 </select>
               </div>
 
