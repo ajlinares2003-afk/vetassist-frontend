@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdEvent, MdTv, MdAddCircle, MdCampaign, MdCheckCircle } from "react-icons/md";
+import { MdEvent, MdTv } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
 function Checkin() {
   const navigate = useNavigate();
   const [animais, setAnimais] = useState([]);
+  const [tutores, setTutores] = useState([]); // <-- Estado para armazenar os tutores
   const [filaCheckin, setFilaCheckin] = useState([]);
   const [mostrarModal, setMostrarModal] = useState(false);
 
@@ -20,51 +21,47 @@ function Checkin() {
 
   useEffect(() => {
     carregarDados();
-    const intervalo = setInterval(() => carregarDados(false), 5000);
+    const intervalo = setInterval(() => carregarDados(), 5000);
     return () => clearInterval(intervalo);
   }, []);
 
-  const carregarDados = async (loader = true) => {
+  const carregarDados = async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return navigate("/login");
 
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      const [resAnimais, resFila] = await Promise.all([
+      // Carrega animais, tutores e a fila simultaneamente
+      const [resAnimais, resTutores, resFila] = await Promise.all([
         api.get("/animais/", config),
+        api.get("/tutores/", config),
         api.get("/consultas/fila-triagem", config),
       ]);
 
       setAnimais(resAnimais.data || []);
+      setTutores(resTutores.data || []);
       setFilaCheckin(resFila.data || []);
     } catch (error) {
       console.error("Erro ao carregar dados da recepção:", error);
     }
   };
 
-  const obterNomeAnimal = (id) => {
-    const a = animais.find((item) => item.id === id);
-    return a ? `${a.nome} (${a.codigo || `PET-${a.id}`})` : "-";
-  };
+  const obterInfoAnimalETutor = (animalIdParam) => {
+    const a = animais.find((item) => item.id === Number(animalIdParam));
+    if (!a) return "Paciente desconhecido";
+    
+    // Procura o tutor pelo ID correspondente no animal
+    const t = tutores.find((tutor) => tutor.id === a.tutor_id);
+    const nomeTutor = t ? t.nome : "Tutor não vinculado";
 
-  const chamarPaciente = async (consultaId) => {
-    try {
-      const token = localStorage.getItem("token");
-      await api.put(`/consultas/${consultaId}/chamar`, {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMensagemSucesso("📢 Paciente chamado para o painel de TV com sucesso!");
-      carregarDados(false);
-    } catch (error) {
-      setMensagemErro("Erro ao emitir chamada para o paciente.");
-    }
+    return `${a.nome} (${a.especie || "Pet"}) — Tutor: ${nomeTutor}`;
   };
 
   const realizarCheckin = async (e) => {
     e.preventDefault();
-    if (!animalId || !queixaPrincipal) {
-      setMensagemErro("Selecione o paciente e informe o motivo da visita.");
+    if (!animalId || !queixaPrincipal || !peso) {
+      setMensagemErro("Preencha todos os campos obrigatórios (Paciente, Peso e Motivo).");
       return;
     }
 
@@ -77,7 +74,7 @@ function Checkin() {
         animal_id: Number(animalId),
         queixa_principal: queixaPrincipal,
         status: "AGUARDANDO_TRIAGEM",
-        peso_atendimento: peso ? Number(peso) : null
+        peso_atendimento: Number(peso)
       };
 
       await api.post("/consultas/", payload, config);
@@ -166,18 +163,15 @@ function Checkin() {
             {filaCheckin.map((item) => (
               <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px", backgroundColor: "#f9fafb", borderRadius: "8px", border: "1px solid #f3f4f6" }}>
                 <div>
-                  <strong style={{ color: "#1f2937", fontSize: "15px" }}>🐾 {obterNomeAnimal(item.animal_id)}</strong>
+                  <strong style={{ color: "#1f2937", fontSize: "15px" }}>🐾 {obterInfoAnimalETutor(item.animal_id)}</strong>
                   <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "#4b5563" }}>
-                    Código: <strong>{item.codigo}</strong> | Motivo: {item.queixa_principal}
+                    Código: <strong>{item.codigo}</strong> | Motivo: {item.queixa_principal} {item.peso_atendimento ? `| Peso: ${item.peso_atendimento}kg` : ""}
                   </p>
                 </div>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <button
-                    onClick={() => chamarPaciente(item.id)}
-                    style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}
-                  >
-                    <MdCampaign size={18} /> Chamar no Painel
-                  </button>
+                <div>
+                  <span style={{ backgroundColor: "#fef3c7", color: "#b45309", padding: "6px 12px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>
+                    Aguardando Triagem
+                  </span>
                 </div>
               </div>
             ))}
@@ -193,18 +187,24 @@ function Checkin() {
             
             <form onSubmit={realizarCheckin}>
               <div style={{ marginBottom: "14px" }}>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Paciente (Animal) *</label>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Paciente & Tutor *</label>
                 <select value={animalId} onChange={(e) => setAnimalId(e.target.value)} style={{ width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }} required>
                   <option value="">Selecione o paciente cadastrado...</option>
-                  {animais.map((a) => (
-                    <option key={a.id} value={a.id}>{a.nome} ({a.codigo || `PET-${a.id}`})</option>
-                  ))}
+                  {animais.map((a) => {
+                    const t = tutores.find((tutor) => tutor.id === a.tutor_id);
+                    const nomeTutor = t ? t.nome : "Sem Tutor";
+                    return (
+                      <option key={a.id} value={a.id}>
+                        {a.nome} ({a.especie || "Pet"}) — Tutor: {nomeTutor}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
               <div style={{ marginBottom: "14px" }}>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Peso Atual (Kg) - Opcional</label>
-                <input type="number" step="0.1" placeholder="Ex: 5.4" value={peso} onChange={(e) => setPeso(e.target.value)} style={{ width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", boxSizing: "border-box" }} />
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Peso Atual (Kg) *</label>
+                <input type="number" step="0.1" placeholder="Ex: 5.4" value={peso} onChange={(e) => setPeso(e.target.value)} style={{ width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", boxSizing: "border-box" }} required />
               </div>
 
               <div style={{ marginBottom: "20px" }}>
@@ -224,4 +224,4 @@ function Checkin() {
   );
 }
 
-export default Checkin; // (Nota: ajuste para export default Checkin no seu projeto)
+export default Checkin;
