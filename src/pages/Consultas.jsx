@@ -162,31 +162,7 @@ function Consultas() {
         headers: { Authorization: `Bearer ${token}` },
       };
 
-      let dadosTriagem = {};
-      try {
-        const respTriagem = await api.get(`/triagem/consulta/${consulta.id}`, config);
-        if (respTriagem.data) {
-          dadosTriagem = respTriagem.data;
-        }
-      } catch (errTriagem) {
-        console.warn("Nenhuma triagem encontrada para esta consulta:", errTriagem);
-      }
-
-      const tempVal = consulta.temperatura ?? dadosTriagem?.temperatura ?? "";
-      const fcVal = consulta.frequencia_cardiaca ?? dadosTriagem?.frequencia_cardiaca ?? "";
-      const frVal = consulta.frequencia_respiratoria ?? dadosTriagem?.frequencia_respiratoria ?? "";
-      const pesoVal = consulta.peso_atendimento ?? dadosTriagem?.peso ?? dadosTriagem?.peso_atendimento ?? "";
-      const tpcVal = dadosTriagem?.tpc_segundos ?? "";
-      const mucosasVal = dadosTriagem?.mucosas ?? "Normocoradas";
-
-      setTemperatura(tempVal);
-      setFrequenciaCardiaca(fcVal);
-      setFrequenciaRespiratoria(frVal);
-      setPesoAtendimento(pesoVal);
-      setTpcSegundos(tpcVal);
-      setMucosas(mucosasVal);
-      setStatusAtendimento("Em Atendimento");
-
+      // Atualiza o status no backend para "Em Atendimento" primeiro
       await api.put(
         `/consultas/${consulta.id}`,
         {
@@ -199,10 +175,6 @@ function Consultas() {
           sintomas: consulta.sintomas,
           exame_fisico: consulta.exame_fisico,
           suspeita_diagnostica: consulta.suspeita_diagnostica,
-          peso_atendimento: pesoVal !== "" ? Number(pesoVal) : null,
-          temperatura: tempVal !== "" ? Number(tempVal) : null,
-          frequencia_cardiaca: fcVal !== "" ? Number(fcVal) : null,
-          frequencia_respiratoria: frVal !== "" ? Number(frVal) : null,
           parecer_copiloto: consulta.parecer_copiloto,
           observacoes: consulta.observacoes,
           indicacao_cirurgia: consulta.indicacao_cirurgia,
@@ -212,8 +184,8 @@ function Consultas() {
         config
       );
 
-      editarConsulta({ ...consulta, status: "Em Atendimento" });
       carregarConsultas();
+      editarConsulta({ ...consulta, status: "Em Atendimento" });
     } catch (error) {
       console.error("Erro ao iniciar atendimento:", error);
       setMensagemErro(`❌ Erro ao iniciar atendimento: ${error.response?.data?.detail || error.message}`);
@@ -455,10 +427,11 @@ function Consultas() {
       console.warn("Nenhuma triagem encontrada para esta consulta:", errTriagem);
     }
 
-    const tempVal = consulta.temperatura ?? dadosTriagem?.temperatura ?? "";
-    const fcVal = consulta.frequencia_cardiaca ?? dadosTriagem?.frequencia_cardiaca ?? "";
-    const frVal = consulta.frequencia_respiratoria ?? dadosTriagem?.frequencia_respiratoria ?? "";
-    const pesoVal = consulta.peso_atendimento ?? dadosTriagem?.peso ?? dadosTriagem?.peso_atendimento ?? "";
+    // Prioriza os dados da tabela triagem, seguidos pelos da consulta
+    const tempVal = dadosTriagem?.temperatura ?? consulta.temperatura ?? "";
+    const fcVal = dadosTriagem?.frequencia_cardiaca ?? consulta.frequencia_cardiaca ?? "";
+    const frVal = dadosTriagem?.frequencia_respiratoria ?? consulta.frequencia_respiratoria ?? "";
+    const pesoVal = dadosTriagem?.peso ?? dadosTriagem?.peso_atendimento ?? consulta.peso_atendimento ?? "";
     const tpcVal = dadosTriagem?.tpc_segundos ?? "";
     const mucosasVal = dadosTriagem?.mucosas ?? "Normocoradas";
 
@@ -1738,7 +1711,7 @@ function Consultas() {
                   height: "40px"
                 }}
               >
-              <MdPrint size={18} style={{ flexShrink: 0 }} /> Imprimir / PDF
+                <MdPrint size={18} style={{ flexShrink: 0 }} /> Imprimir / PDF
               </button>
               <button
                 type="button"
