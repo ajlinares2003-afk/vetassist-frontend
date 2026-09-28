@@ -224,4 +224,4 @@ function Checkin() {
   );
 }
 
-export_default = Checkin; // (Nota: ajuste para export default Checkin no seu projeto)
+export default Checkin; // (Nota: ajuste para export default Checkin no seu projeto)
