@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdLocalHospital, MdTv, MdVolumeUp } from "react-icons/md";
+import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdLocalHospital, MdTv } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
@@ -126,7 +126,6 @@ function Consultas() {
     }
   };
 
-  // 📢 FUNÇÃO PARA CHAMAR PACIENTE PARA CONSULTA (DISPARA O PAINEL DA TV)
   const chamarParaConsulta = async (consulta) => {
     try {
       const token = localStorage.getItem("token");
@@ -154,7 +153,6 @@ function Consultas() {
     }
   };
 
-  // 💉 FUNÇÃO PARA INICIAR ATENDIMENTO (MUDA PARA "Em Atendimento" E SILENCIA O PAINEL)
   const iniciarAtendimentoVeterinario = async (consulta) => {
     try {
       const token = localStorage.getItem("token");
@@ -177,7 +175,7 @@ function Consultas() {
       const tempVal = consulta.temperatura ?? dadosTriagem?.temperatura ?? "";
       const fcVal = consulta.frequencia_cardiaca ?? dadosTriagem?.frequencia_cardiaca ?? "";
       const frVal = consulta.frequencia_respiratoria ?? dadosTriagem?.frequencia_respiratoria ?? "";
-      const pesoVal = consulta.peso_atendimento ?? dadosTriagem?.peso ?? "";
+      const pesoVal = consulta.peso_atendimento ?? dadosTriagem?.peso ?? dadosTriagem?.peso_atendimento ?? "";
       const tpcVal = dadosTriagem?.tpc_segundos ?? "";
       const mucosasVal = dadosTriagem?.mucosas ?? "Normocoradas";
 
@@ -460,7 +458,7 @@ function Consultas() {
     const tempVal = consulta.temperatura ?? dadosTriagem?.temperatura ?? "";
     const fcVal = consulta.frequencia_cardiaca ?? dadosTriagem?.frequencia_cardiaca ?? "";
     const frVal = consulta.frequencia_respiratoria ?? dadosTriagem?.frequencia_respiratoria ?? "";
-    const pesoVal = consulta.peso_atendimento ?? dadosTriagem?.peso ?? "";
+    const pesoVal = consulta.peso_atendimento ?? dadosTriagem?.peso ?? dadosTriagem?.peso_atendimento ?? "";
     const tpcVal = dadosTriagem?.tpc_segundos ?? "";
     const mucosasVal = dadosTriagem?.mucosas ?? "Normocoradas";
 
@@ -1740,7 +1738,7 @@ function Consultas() {
                   height: "40px"
                 }}
               >
-                <MdPrint size={18} style={{ flexShrink: 0 }} /> Imprimir / PDF
+              <MdPrint size={18} style={{ flexShrink: 0 }} /> Imprimir / PDF
               </button>
               <button
                 type="button"
