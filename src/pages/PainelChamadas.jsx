@@ -49,7 +49,7 @@ function PainelChamadas() {
         const topo = dados[0];
         const chaveChamada = `${topo.id}-${topo.status}`;
 
-        if (topo.status === "Chamando para Triagem") {
+        if (topo.status === "Chamando para Triagem" || topo.status === "Chamando para Consulta") {
           if (ultimoStatusRef.current !== chaveChamada) {
             ultimoStatusRef.current = chaveChamada;
             tocarSinalSuave();
@@ -115,7 +115,9 @@ function PainelChamadas() {
     }
   };
 
-  const chamadaAtiva = chamadas.length > 0 && ["Chamando para Triagem", "Em Triagem", "Em Atendimento"].includes(chamadas[0].status);
+  const statusAtual = chamadas.length > 0 ? chamadas[0].status : "";
+  const chamadaAtiva = chamadas.length > 0 && ["Chamando para Triagem", "Chamando para Consulta", "Em Triagem", "Em Atendimento"].includes(statusAtual);
+  const ehChamando = statusAtual === "Chamando para Triagem" || statusAtual === "Chamando para Consulta";
 
   return (
     <div 
@@ -174,8 +176,8 @@ function PainelChamadas() {
 
       {chamadaAtiva ? (
         <div style={{
-          backgroundColor: chamadas[0].status === "Chamando para Triagem" ? "#311011" : "#1e1b4b",
-          border: `3px solid ${chamadas[0].status === "Chamando para Triagem" ? "#ef4444" : "#38bdf8"}`,
+          backgroundColor: ehChamando ? "#311011" : "#1e1b4b",
+          border: `3px solid ${ehChamando ? "#ef4444" : "#38bdf8"}`,
           borderRadius: "16px",
           padding: "30px",
           marginBottom: "35px",
@@ -184,7 +186,7 @@ function PainelChamadas() {
         }}>
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
             <span style={{
-              backgroundColor: chamadas[0].status === "Chamando para Triagem" ? "#dc2626" : "#4f46e5",
+              backgroundColor: ehChamando ? "#dc2626" : "#4f46e5",
               color: "white",
               padding: "6px 18px",
               borderRadius: "20px",
@@ -192,7 +194,7 @@ function PainelChamadas() {
               fontWeight: "bold",
               textTransform: "uppercase"
             }}>
-              🔔 {chamadas[0].status === "Chamando para Triagem" ? "A CHAMAR PARA TRIAGEM" : chamadas[0].etapa}
+              🔔 {chamadas[0].etapa}
             </span>
           </div>
 
@@ -225,7 +227,7 @@ function PainelChamadas() {
             {chamadas.map((item, idx) => (
               <tr key={item.id} style={{
                 borderBottom: "1px solid #334155",
-                backgroundColor: idx === 0 && ["Chamando para Triagem", "Em Triagem", "Em Atendimento"].includes(item.status) ? "rgba(56, 189, 248, 0.1)" : "transparent",
+                backgroundColor: idx === 0 && ["Chamando para Triagem", "Chamando para Consulta", "Em Triagem", "Em Atendimento"].includes(item.status) ? "rgba(56, 189, 248, 0.1)" : "transparent",
                 fontSize: "22px"
               }}>
                 <td style={{ padding: "18px", fontWeight: "bold", color: "#38bdf8" }}>{item.pet}</td>
