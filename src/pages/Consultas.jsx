@@ -155,6 +155,9 @@ function Consultas() {
       if (!token) return tratarSessaoExpirada();
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
+      // ATUALIZA O STATUS IMEDIATAMENTE NO BANCO PARA PARAR O ALARME DO PAINEL DE CHAMADAS
+      await api.put(`/consultas/${consulta.id}`, { status: "Em Atendimento" }, config);
+
       let dadosTriagem = {};
       try {
         const respTriagem = await api.get(`/triagem/consulta/${consulta.id}`, config);
@@ -180,6 +183,7 @@ function Consultas() {
       setConsultaEditando({ ...consulta, status: "Em Atendimento" });
       setMostrarFormulario(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
+      carregarConsultas();
     } catch (error) {
       setMensagemErro(`❌ Erro ao iniciar atendimento: ${error.response?.data?.detail || error.message}`);
     }
@@ -369,7 +373,7 @@ function Consultas() {
     return <span style={{ backgroundColor: conf.bg, color: conf.color, padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>{conf.label}</span>;
   };
 
-  // FORMATADOR LIMPO, ALINHADO À ESQUERDA E ORGANIZADO POR TÓPICOS (CORRIGIDO PARA 13px)
+  // FORMATADOR LIMPO, ALINHADO À ESQUERDA E ORGANIZADO POR TÓPICOS
   const renderizarTextoFormatadoIA = (textoBruto) => {
     if (!textoBruto) return null;
 
