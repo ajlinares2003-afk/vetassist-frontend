@@ -165,7 +165,6 @@ function Consultas() {
       const tpcVal = dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "";
       const mucosasVal = dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas";
 
-      // Preenchimento seguro dos estados para o formulário
       setCodigo(consulta.codigo || `CNS-${consulta.id}`);
       setAnimalId(consulta.animal_id || "");
       setQueixaPrincipal(consulta.queixa_principal || dadosTriagem?.queixa_principal || "");
@@ -332,7 +331,7 @@ function Consultas() {
         queixa_principal: queixaPrincipal || "Consulta clínica",
         historico_clinico: historicoClinico || null,
         sintomas: sintomas || null,
-        exame_fisico: exameFisico || null, // Garante o envio do exame físico preenchido
+        exame_fisico: exameFisico || null,
         suspeita_diagnostica: suspeitaDiagnostica || null,
         peso_atendimento: pesoAtendimento !== "" ? Number(pesoAtendimento) : null,
         temperatura: temperatura !== "" ? Number(temperatura) : null,
