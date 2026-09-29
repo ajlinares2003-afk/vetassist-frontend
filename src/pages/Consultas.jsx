@@ -225,12 +225,10 @@ function Consultas() {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
       });
 
-      // GARANTE QUE APENAS O NOME DA HIPÓTESE VÁ PARA O CAMPO DE CIMA
       let suspeitaPura = response.data.suspeita_diagnostica || "";
       if (suspeitaPura.includes("SUGESTÕES:") || suspeitaPura.includes("SUGESTOES:")) {
         suspeitaPura = suspeitaPura.split(/SUGESTÕES:|SUGESTOES:/i)[0].trim();
       }
-      // Remove eventuais quebras de linha excessivas ou marcações indesejadas
       suspeitaPura = suspeitaPura.replace(/\*\*/g, "").trim();
 
       setSuspeitaDiagnostica(suspeitaPura);
@@ -446,6 +444,8 @@ function Consultas() {
   const estiloInput = { width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "14px", outline: "none", backgroundColor: "#ffffff", boxSizing: "border-box" };
   const estiloLabel = { display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" };
 
+  const temIndicacaoReal = indicacaoCirurgia || forcarCirurgia;
+
   return (
     <Layout>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -610,15 +610,16 @@ function Consultas() {
               </label>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", padding: "12px 14px", borderRadius: "8px", marginBottom: "14px" }}>
+            {/* CAIXA DE STATUS DE INDICAÇÃO CIRÚRGICA ATUALIZADA */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: temIndicacaoReal ? "#dcfce7" : "#f8fafc", border: `1px solid ${temIndicacaoReal ? "#86efac" : "#e2e8f0"}`, padding: "12px 14px", borderRadius: "8px", marginBottom: "14px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "16px" }}>➕</span>
+                <span style={{ fontSize: "18px" }}>{temIndicacaoReal ? "🔪" : "➕"}</span>
                 <div>
-                  <div style={{ fontSize: "13px", fontWeight: "600", color: "#334155" }}>
-                    {indicacaoCirurgia ? "Indicação cirúrgica detetada pela IA." : "Sem indicação cirúrgica automática detetada."}
+                  <div style={{ fontSize: "13px", fontWeight: "bold", color: temIndicacaoReal ? "#166534" : "#334155" }}>
+                    {temIndicacaoReal ? "Indicação Cirúrgica Detetada pela IA." : "Sem indicação cirúrgica automática detetada."}
                   </div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>
-                    {justificativaCirurgica || "Paciente sem indicação cirúrgica urgente no momento."}
+                  <div style={{ fontSize: "12px", color: temIndicacaoReal ? "#14532d" : "#64748b", marginTop: "2px" }}>
+                    {justificativaCirurgica || (temIndicacaoReal ? "Encaminhar para cirurgia de descompressão (hemilaminectomia ou corpectomia) se confirmada compressão significativa." : "Paciente sem indicação cirúrgica urgente no momento.")}
                   </div>
                 </div>
               </div>
