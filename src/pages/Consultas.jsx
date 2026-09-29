@@ -122,7 +122,7 @@ function Consultas() {
       const token = localStorage.getItem("token");
       await api.put(`/consultas/${consulta.id}/chamar`, {}, { headers: { Authorization: `Bearer ${token}` } });
       setConsultas(prev => prev.map(item => item.id === consulta.id ? { ...item, status: "Chamando para Consulta" } : item));
-      setMensagemSucesso(`📢 A chamar paciente no painel!`);
+      setMensagemSucesso(`📢 Chamando paciente no painel!`);
     } catch (err) {
       setMensagemErro("Erro ao emitir chamada para o paciente.");
     }
@@ -339,7 +339,7 @@ function Consultas() {
       EM_ATENDIMENTO: { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
       "Em Atendimento": { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
       "Aguardando Consulta (Fila Vet)": { bg: "#e0e7ff", color: "#3730a3", label: "🩺 Pronto para Consulta" },
-      "Chamando para Consulta": { bg: "#fee2e2", color: "#991b1b", label: "📢 A chamar..." },
+      "Chamando para Consulta": { bg: "#fee2e2", color: "#991b1b", label: "📢 Chamando..." },
       FINALIZADO: { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
       "Finalizado": { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
       CANCELADO: { bg: "#fee2e2", color: "#991b1b", label: "❌ Cancelado" }
@@ -348,11 +348,19 @@ function Consultas() {
     return <span style={{ backgroundColor: conf.bg, color: conf.color, padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>{conf.label}</span>;
   };
 
+  // FORMATADOR AMIGÁVEL PARA O PARECER DO COPILOTO (Evita blocos densos)
   const renderizarTextoFormatadoIA = (textoBruto) => {
     if (!textoBruto) return null;
-    return textoBruto.split("\n").map((linha, idx) => (
-      <p key={idx} style={{ margin: "4px 0", fontSize: "14px", color: "#334155" }}>{linha}</p>
-    ));
+    // Divide por frases/tópicos ou quebras lógicas para organizar em parágrafos limpos
+    const linhas = textoBruto.split(/\n|\. (?=[A-Z0-9])/);
+    return linhas.map((linha, idx) => {
+      if (!linha.trim()) return null;
+      return (
+        <p key={idx} style={{ margin: "8px 0", fontSize: "14px", color: "#1e293b", lineHeight: "1.6", textAlign: "justify" }}>
+          {linha.trim().endsWith(".") ? linha.trim() : `${linha.trim()}.`}
+        </p>
+      );
+    });
   };
 
   const consultasFiltradas = consultas.filter((c) => {
@@ -451,7 +459,7 @@ function Consultas() {
             </div>
           </div>
 
-          {/* 2. COPILOTO CLÍNICO & ANÁLISE DE EXAMES NA PARTE DE BAIXO */}
+          {/* 2. COPILOTO CLÍNICO & ANÁLISE DE EXAMES NA PARTE DE BAIXO (ALTURA DO CAMPO REDUZIDA E LARGURA MANTIDA) */}
           <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "16px", marginBottom: "24px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
               <h4 style={{ margin: 0, color: "#166534", display: "flex", alignItems: "center", gap: "6px", fontSize: "15px" }}>
@@ -463,7 +471,7 @@ function Consultas() {
                 disabled={carregandoCopiloto} 
                 style={{ backgroundColor: "#15803d", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}
               >
-                <MdAutoAwesome size={16} /> {carregandoCopiloto ? "A analisar..." : "Analisar Atendimento + Exame"}
+                <MdAutoAwesome size={16} /> {carregandoCopiloto ? "Analisando..." : "Analisar Atendimento + Exame"}
               </button>
             </div>
 
@@ -471,9 +479,10 @@ function Consultas() {
               📎 Anexar Raio-X, Ultrassom ou Laudo (Múltiplas Imagens ou PDFs) para a IA analisar:
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px", backgroundColor: "#ffffff", padding: "10px 12px", borderRadius: "6px", border: "1px dashed #15803d", width: "100%", boxSizing: "border-box" }}>
+            {/* CAMPO DE ANEXO COM ALTURA REDUZIDA E LARGURA TOTAL */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "14px", backgroundColor: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px dashed #15803d", width: "100%", boxSizing: "border-box" }}>
               <label style={{ fontSize: "13px", color: "#15803d", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
-                <MdAttachFile size={16} /> Selecionar Ficheiros de Exames / Laudos
+                <MdAttachFile size={16} /> Selecionar Arquivos de Exames / Laudos
                 <input 
                   type="file" 
                   multiple 
@@ -482,7 +491,7 @@ function Consultas() {
                 />
               </label>
               {arquivosExames.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "4px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "2px" }}>
                   {arquivosExames.map((arq, idx) => (
                     <span key={idx} style={{ fontSize: "12px", color: "#166534", fontWeight: "500" }}>📄 {arq.name}</span>
                   ))}
@@ -545,11 +554,15 @@ function Consultas() {
               </div>
             </div>
 
-            {/* SUGESTÕES DETALHADAS DA IA */}
+            {/* PARECER DETALHADO DA IA COM VISUAL MAIS AMIGÁVEL E LEGÍVEL */}
             {sugestoesCopiloto && (
-              <div style={{ padding: "14px", backgroundColor: "#ffffff", borderRadius: "8px", border: "1px solid #d1d5db" }}>
-                <div style={{ fontSize: "13px", fontWeight: "bold", color: "#166534", marginBottom: "6px" }}>🤖 Parecer Detalhado do Copiloto:</div>
-                {renderizarTextoFormatadoIA(sugestoesCopiloto)}
+              <div style={{ padding: "16px", backgroundColor: "#ffffff", borderRadius: "8px", border: "1px solid #d1d5db" }}>
+                <div style={{ fontSize: "14px", fontWeight: "bold", color: "#166534", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
+                  🤖 Parecer Detalhado do Copiloto:
+                </div>
+                <div style={{ backgroundColor: "#f8fafc", padding: "12px", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+                  {renderizarTextoFormatadoIA(sugestoesCopiloto)}
+                </div>
               </div>
             )}
           </div>
@@ -636,9 +649,15 @@ function Consultas() {
               <strong style={{ fontSize: "13px", color: "#4b5563" }}>Queixa Principal:</strong>
               <p style={{ margin: "4px 0 0 0", padding: "10px", backgroundColor: "#f9fafb", borderRadius: "6px", fontSize: "14px", color: "#1f2937" }}>{consultaDetalhes.queixa_principal || "Não informada"}</p>
             </div>
+            {consultaDetalhes.exames_anexados && (
+              <div style={{ marginBottom: "14px" }}>
+                <strong style={{ fontSize: "13px", color: "#166534" }}>📎 Exames Anexados:</strong>
+                <p style={{ margin: "4px 0 0 0", padding: "8px", backgroundColor: "#f0fdf4", borderRadius: "6px", fontSize: "14px", color: "#14532d" }}>{consultaDetalhes.exames_anexados}</p>
+              </div>
+            )}
             {consultaDetalhes.parecer_copiloto && (
               <div style={{ marginBottom: "20px" }}>
-                <strong style={{ fontSize: "13px", color: "#166534" }}>🤖 Parecer da IA & Exames Anexados:</strong>
+                <strong style={{ fontSize: "13px", color: "#166534" }}>🤖 Parecer do Copiloto:</strong>
                 <div style={{ margin: "4px 0 0 0", padding: "12px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "6px", fontSize: "14px", color: "#14532d", whiteSpace: "pre-line" }}>
                   {consultaDetalhes.parecer_copiloto}
                 </div>
@@ -659,7 +678,7 @@ function Consultas() {
         <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
           <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", maxWidth: "400px", width: "100%" }}>
             <h3 style={{ margin: "0 0 12px 0", color: "#111827" }}>Confirmar Exclusão</h3>
-            <p style={{ color: "#4b5563", fontSize: "14px", marginBottom: "20px" }}>Tem a certeza de que deseja apagar o atendimento <strong>{consultaParaExcluir?.codigo}</strong>?</p>
+            <p style={{ color: "#4b5563", fontSize: "14px", marginBottom: "20px" }}>Tem certeza de que deseja apagar o atendimento <strong>{consultaParaExcluir?.codigo}</strong>?</p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
               <button onClick={() => setModalExclusaoAberto(false)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}>Cancelar</button>
               <button onClick={deletarConsulta} style={{ backgroundColor: "#dc2626", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}>Sim, Excluir</button>
