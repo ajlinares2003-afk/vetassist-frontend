@@ -44,7 +44,7 @@ function Consultas() {
 
   const [sugestoesCopiloto, setSugestoesCopiloto] = useState("");
   const [carregandoCopiloto, setCarregandoCopiloto] = useState(false);
-  const [arquivoExame, setArquivoExame] = useState(null);
+  const [arquivosExames, setArquivosExames] = useState([]); // Alterado para suportar múltiplos arquivos
 
   const [busca, setBusca] = useState("");
   const [mensagemErro, setMensagemErro] = useState("");
@@ -134,7 +134,7 @@ function Consultas() {
         prev.map(item => item.id === consulta.id ? { ...item, status: "Chamando para Consulta" } : item)
       );
 
-      setMensagemSucesso(`📢 A chamar ${obterNomeAnimal(consulta.animal_id)} no painel!`);
+      setMensagemSucesso(`📢 Chamando ${obterNomeAnimal(consulta.animal_id)} no painel!`);
     } catch (err) {
       console.error("Erro ao chamar paciente:", err);
       setMensagemErro("Erro ao emitir chamada para o paciente.");
@@ -244,8 +244,11 @@ function Consultas() {
       if (mucosas) formData.append("mucosas", mucosas);
       formData.append("solicitar_exames_preventivos", solicitarExamesPreventivos ? "true" : "false");
 
-      if (arquivoExame) {
-        formData.append("file", arquivoExame);
+      // Adiciona múltiplos arquivos ao FormData
+      if (arquivosExames.length > 0) {
+        for (let i = 0; i < arquivosExames.length; i++) {
+          formData.append("files", arquivosExames[i]);
+        }
       }
 
       const response = await api.post("/consultas/sugestoes-copiloto-multimodal", formData, {
@@ -298,7 +301,7 @@ function Consultas() {
     setJustificativaCirurgica("");
     setSolicitarExamesPreventivos(false);
     setSugestoesCopiloto("");
-    setArquivoExame(null);
+    setArquivosExames([]);
     setMensagemErro("");
   };
 
@@ -425,7 +428,7 @@ function Consultas() {
       EM_ATENDIMENTO: { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
       "Em Atendimento": { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
       "Aguardando Consulta (Fila Vet)": { bg: "#e0e7ff", color: "#3730a3", label: "🩺 Pronto para Consulta" },
-      "Chamando para Consulta": { bg: "#fee2e2", color: "#991b1b", label: "📢 A chamar..." },
+      "Chamando para Consulta": { bg: "#fee2e2", color: "#991b1b", label: "📢 Chamando..." },
       FINALIZADO: { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
       "Finalizado": { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
       CANCELADO: { bg: "#fee2e2", color: "#991b1b", label: "❌ Cancelado" }
@@ -536,7 +539,7 @@ function Consultas() {
               <textarea rows={3} value={exameFisico} onChange={(e) => setExameFisico(e.target.value)} style={{ ...estiloInput, height: "auto", padding: "10px" }} />
             </div>
 
-            {/* COPILOTO CLÍNICO COM ANEXO DE EXAMES / LAUDOS */}
+            {/* COPILOTO CLÍNICO COM SUPORTE A MÚLTIPLOS ANEXOS */}
             <div style={{ backgroundColor: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "10px", padding: "16px", marginTop: "10px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                 <h4 style={{ margin: 0, color: "#0369a1", display: "flex", alignItems: "center", gap: "6px" }}>
@@ -547,25 +550,30 @@ function Consultas() {
                 </button>
               </div>
 
-              {/* CAMPO PARA ANEXAR EXAMES, LAUDOS OU IMAGENS */}
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px", backgroundColor: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px dashed #0284c7", width: "fit-content" }}>
+              {/* CAMPO DE SELEÇÃO MÚLTIPLA DE ARQUIVOS */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "12px", backgroundColor: "#ffffff", padding: "10px 12px", borderRadius: "6px", border: "1px dashed #0284c7", width: "fit-content" }}>
                 <label style={{ fontSize: "13px", color: "#0369a1", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
-                  <MdAttachFile size={16} /> Anexar Exame / Laudo / Imagem:
+                  <MdAttachFile size={16} /> Anexar Exames / Laudos / Imagens (Múltiplos):
                   <input 
                     type="file" 
-                    onChange={(e) => setArquivoExame(e.target.files[0])} 
+                    multiple 
+                    onChange={(e) => setArquivosExames(Array.from(e.target.files))} 
                     style={{ display: "none" }} 
                   />
                 </label>
-                {arquivoExame && <span style={{ fontSize: "12px", color: "#166534", fontWeight: "500" }}>📄 {arquivoExame.name}</span>}
-                {arquivoExame && (
-                  <button 
-                    type="button" 
-                    onClick={() => setArquivoExame(null)} 
-                    style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
-                  >
-                    Remover
-                  </button>
+                {arquivosExames.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                    {arquivosExames.map((arq, idx) => (
+                      <span key={idx} style={{ fontSize: "12px", color: "#166534", fontWeight: "500" }}>📄 {arq.name}</span>
+                    ))}
+                    <button 
+                      type="button" 
+                      onClick={() => setArquivosExames([])} 
+                      style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", fontWeight: "bold", textAlign: "left", marginTop: "4px" }}
+                    >
+                      Remover todos os anexos
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -726,7 +734,7 @@ function Consultas() {
           <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", maxWidth: "400px", width: "100%" }}>
             <h3 style={{ margin: "0 0 12px 0", color: "#111827" }}>Confirmar Exclusão</h3>
             <p style={{ color: "#4b5563", fontSize: "14px", marginBottom: "20px" }}>
-              Tem a certeza de que deseja apagar o atendimento <strong>{consultaParaExcluir?.codigo || `CNS-${consultaParaExcluir?.id}`}</strong> do paciente <strong>{obterNomeAnimal(consultaParaExcluir?.animal_id)}</strong>? Esta ação não pode ser desfeita.
+              Tem certeza de que deseja apagar o atendimento <strong>{consultaParaExcluir?.codigo || `CNS-${consultaParaExcluir?.id}`}</strong> do paciente <strong>{obterNomeAnimal(consultaParaExcluir?.animal_id)}</strong>? Esta ação não pode ser desfeita.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
               <button 
@@ -749,4 +757,4 @@ function Consultas() {
   );
 }
 
-export default Consultas;
+export_default = Consultas; // ou export default Consultas
