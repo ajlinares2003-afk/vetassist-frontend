@@ -172,6 +172,11 @@ function Consultas() {
       const tpcVal = dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "";
       const mucosasVal = dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas";
 
+      // Preenche os campos do formulário corretamente ao iniciar o atendimento
+      setCodigo(consulta.codigo || `CNS-${consulta.id}`);
+      setAnimalId(consulta.animal_id);
+      setQueixaPrincipal(consulta.queixa_principal || dadosTriagem?.queixa_principal || "");
+
       setTemperatura(tempVal !== null && tempVal !== undefined ? String(tempVal) : "");
       setFrequenciaCardiaca(fcVal !== null && fcVal !== undefined ? String(fcVal) : "");
       setFrequenciaRespiratoria(frVal !== null && frVal !== undefined ? String(frVal) : "");
@@ -183,7 +188,7 @@ function Consultas() {
       await api.put(
         `/consultas/${consulta.id}`,
         {
-          codigo: consulta.codigo,
+          codigo: consulta.codigo || `CNS-${consulta.id}`,
           animal_id: consulta.animal_id,
           usuario_id: consulta.usuario_id,
           status: "Em Atendimento",
@@ -211,65 +216,6 @@ function Consultas() {
     } catch (error) {
       console.error("Erro ao iniciar atendimento:", error);
       setMensagemErro(`❌ Erro ao iniciar atendimento: ${error.response?.data?.detail || error.message}`);
-    }
-  };
-
-  const consultarCopilotoComAnexo = async () => {
-    if (!queixaPrincipal || !queixaPrincipal.trim()) {
-      setMensagemErro("🩺 Por favor, preencha a Queixa Principal antes de analisar.");
-      return;
-    }
-
-    setCarregandoCopiloto(true);
-    setMensagemErro("");
-    try {
-      const token = localStorage.getItem("token");
-      const animalEncontrado = animais.find((a) => a.id === Number(animalId));
-
-      const formData = new FormData();
-      formData.append("queixa_principal", queixaPrincipal);
-      if (animalId) formData.append("animal_id", animalId);
-      formData.append("especie", animalEncontrado?.especie || "Não informada");
-      formData.append("raca", animalEncontrado?.raca || "SRD");
-      if (idadeAtendimento) formData.append("idade", `${idadeAtendimento} anos`);
-      if (pesoAtendimento) formData.append("peso", `${pesoAtendimento} kg`);
-      if (sintomas) formData.append("sintomas", sintomas);
-      if (exameFisico) formData.append("exame_fisico", exameFisico);
-      if (temperatura) formData.append("temperatura", temperatura);
-      if (frequenciaCardiaca) formData.append("frequencia_cardiaca", frequenciaCardiaca);
-      if (frequenciaRespiratoria) formData.append("frequencia_respiratoria", frequenciaRespiratoria);
-      if (tpcSegundos) formData.append("tpc_segundos", tpcSegundos);
-      if (mucosas) formData.append("mucosas", mucosas);
-      formData.append("solicitar_exames_preventivos", solicitarExamesPreventivos ? "true" : "false");
-
-      if (arquivoExame) {
-        formData.append("file", arquivoExame);
-      }
-
-      const response = await api.post("/consultas/sugestoes-copiloto-multimodal", formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      setSugestoesCopiloto(response.data.sugestoes || "");
-      if (response.data.suspeita_diagnostica) {
-        setSuspeitaDiagnostica(response.data.suspeita_diagnostica);
-      }
-      if (response.data.indicacao_cirurgia !== undefined) {
-        setIndicacaoCirurgia(response.data.indicacao_cirurgia);
-        setJustificativaCirurgica(response.data.justificativa_cirurgica || "");
-      }
-      if (response.data.exames_sugeridos) {
-        window.examesSugeridosIA = response.data.exames_sugeridos;
-      }
-
-    } catch (error) {
-      console.error("Erro ao consultar Copiloto Multimodal:", error);
-      setSugestoesCopiloto(`⚠️ ${error.response?.data?.detail || "Erro ao analisar dados."}`);
-    } finally {
-      setCarregandoCopiloto(false);
     }
   };
 
