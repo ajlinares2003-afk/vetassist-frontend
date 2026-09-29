@@ -165,9 +165,11 @@ function Consultas() {
       const tpcVal = dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "";
       const mucosasVal = dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas";
 
+      // Preenchimento seguro dos estados para o formulário
       setCodigo(consulta.codigo || `CNS-${consulta.id}`);
       setAnimalId(consulta.animal_id || "");
       setQueixaPrincipal(consulta.queixa_principal || dadosTriagem?.queixa_principal || "");
+      setExameFisico(consulta.exame_fisico || dadosTriagem?.exame_fisico || "");
       setSuspeitaDiagnostica(consulta.suspeita_diagnostica || "");
       setSugestoesCopiloto(consulta.parecer_copiloto || "");
 
@@ -187,6 +189,7 @@ function Consultas() {
           usuario_id: consulta.usuario_id || null,
           status: "Em Atendimento",
           queixa_principal: consulta.queixa_principal || dadosTriagem?.queixa_principal || "Consulta clínica",
+          exame_fisico: consulta.exame_fisico || dadosTriagem?.exame_fisico || null,
           peso_atendimento: pesoVal !== "" ? Number(pesoVal) : null,
           temperatura: tempVal !== "" ? Number(tempVal) : null,
           frequencia_cardiaca: fcVal !== "" ? Number(fcVal) : null,
@@ -329,7 +332,7 @@ function Consultas() {
         queixa_principal: queixaPrincipal || "Consulta clínica",
         historico_clinico: historicoClinico || null,
         sintomas: sintomas || null,
-        exame_fisico: exameFisico || null,
+        exame_fisico: exameFisico || null, // Garante o envio do exame físico preenchido
         suspeita_diagnostica: suspeitaDiagnostica || null,
         peso_atendimento: pesoAtendimento !== "" ? Number(pesoAtendimento) : null,
         temperatura: temperatura !== "" ? Number(temperatura) : null,
@@ -531,7 +534,7 @@ function Consultas() {
 
             <div>
               <label style={estiloLabel}>Exame Físico / Achados Clínicos</label>
-              <textarea rows={2} value={exameFisico} onChange={(e) => setExameFisico(e.target.value)} style={{ ...estiloInput, height: "auto", padding: "10px" }} />
+              <textarea rows={3} value={exameFisico} onChange={(e) => setExameFisico(e.target.value)} style={{ ...estiloInput, height: "auto", padding: "10px" }} />
             </div>
 
             {/* COPILOTO CLÍNICO */}
