@@ -372,7 +372,6 @@ function Consultas() {
     return <span style={{ backgroundColor: conf.bg, color: conf.color, padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>{conf.label}</span>;
   };
 
-  // FORMATADOR ROBUSTO PARA GARANTIR TÍTULOS EM NEGRITO E DIVISÃO POR TÓPICOS CORRETA
   const renderizarTextoFormatadoIA = (textoBruto) => {
     if (!textoBruto) return null;
 
@@ -386,7 +385,6 @@ function Consultas() {
     const linhasBrutas = textoLimpo.split("\n");
     let linhasProcessadas = [];
 
-    // Se o texto vier sem quebras de linha adequadas (texto contínuo), divide por pontos ou marcadores implícitos
     if (linhasBrutas.length <= 1 && textoLimpo.length > 80) {
       const fragmentos = textoLimpo.split(/(?=[A-Z][a-zà-ú\s]+:|-|\u2022)/);
       linhasProcessadas = fragmentos.length > 1 ? fragmentos : [textoLimpo];
@@ -510,7 +508,13 @@ function Consultas() {
           <div style={{ marginBottom: "25px", display: "grid", gap: "14px" }}>
             <div>
               <label style={estiloLabel}>Queixa Principal / Motivo</label>
-              <input type="text" value={queixaPrincipal} onChange={(e) => setQueixaPrincipal(e.target.value)} style={estiloInput} />
+              {/* ALTERADO PARA TEXTAREA COM ALTURA DE DUAS LINHAS (minHeight de aprox 65px) */}
+              <textarea 
+                rows={2} 
+                value={queixaPrincipal} 
+                onChange={(e) => setQueixaPrincipal(e.target.value)} 
+                style={{ ...estiloInput, height: "auto", minHeight: "68px", padding: "10px 12px", resize: "vertical" }} 
+              />
             </div>
 
             <div>
@@ -549,7 +553,6 @@ function Consultas() {
               📎 Anexar Raio-X, Ultrassom ou Laudo (Múltiplas Imagens ou PDFs) para a IA analisar:
             </div>
 
-            {/* CONTAINER DE ANEXOS CORRIGIDO PARA NÃO CORTAR OS NOMES E MANTER ALTURA ESTÁVEL */}
             <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px", marginBottom: "14px", backgroundColor: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px dashed #15803d", width: "100%", minHeight: "55px", maxHeight: "95px", overflowY: "auto", boxSizing: "border-box" }}>
               <label style={{ fontSize: "13px", color: "#15803d", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
                 <MdAttachFile size={16} /> Selecionar Arquivos de Exames / Laudos
