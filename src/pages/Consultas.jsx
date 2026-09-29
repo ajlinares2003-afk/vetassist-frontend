@@ -14,8 +14,6 @@ function Consultas() {
   const [consultaDetalhes, setConsultaDetalhes] = useState(null);
 
   const [abaAtiva, setAbaAtiva] = useState("ativos");
-
-  const perfilUsuario = localStorage.getItem("perfil") || "ADMIN";
   const tituloPagina = "Atendimentos Clínicos";
 
   const [codigo, setCodigo] = useState("");
@@ -35,16 +33,16 @@ function Consultas() {
   
   const [tpcSegundos, setTpcSegundos] = useState("");
   const [mucosas, setMucosas] = useState("Normocoradas");
-
   const [observacoes, setObservacoes] = useState("");
 
   const [indicacaoCirurgia, setIndicacaoCirurgia] = useState(false);
+  const [forcarCirurgia, setForcarCirurgia] = useState(false);
   const [justificativaCirurgica, setJustificativaCirurgica] = useState("");
   const [solicitarExamesPreventivos, setSolicitarExamesPreventivos] = useState(false);
 
   const [sugestoesCopiloto, setSugestoesCopiloto] = useState("");
   const [carregandoCopiloto, setCarregandoCopiloto] = useState(false);
-  const [arquivosExames, setArquivosExames] = useState([]); // Alterado para suportar múltiplos arquivos
+  const [arquivosExames, setArquivosExames] = useState([]);
 
   const [busca, setBusca] = useState("");
   const [mensagemErro, setMensagemErro] = useState("");
@@ -69,7 +67,6 @@ function Consultas() {
     try {
       const token = localStorage.getItem("token");
       if (!token) return tratarSessaoExpirada();
-
       const response = await api.get("/consultas/", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -110,7 +107,6 @@ function Consultas() {
   const handleAnimalChange = (e) => {
     const idSelecionado = e.target.value;
     setAnimalId(idSelecionado);
-
     if (idSelecionado && !consultaEditando) {
       const animalEncontrado = animais.find((a) => a.id === Number(idSelecionado));
       if (animalEncontrado) {
@@ -124,19 +120,10 @@ function Consultas() {
     e.stopPropagation();
     try {
       const token = localStorage.getItem("token");
-      await api.put(
-        `/consultas/${consulta.id}/chamar`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      setConsultas(prev => 
-        prev.map(item => item.id === consulta.id ? { ...item, status: "Chamando para Consulta" } : item)
-      );
-
-      setMensagemSucesso(`📢 Chamando ${obterNomeAnimal(consulta.animal_id)} no painel!`);
+      await api.put(`/consultas/${consulta.id}/chamar`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setConsultas(prev => prev.map(item => item.id === consulta.id ? { ...item, status: "Chamando para Consulta" } : item));
+      setMensagemSucesso(`📢 A chamar paciente no painel!`);
     } catch (err) {
-      console.error("Erro ao chamar paciente:", err);
       setMensagemErro("Erro ao emitir chamada para o paciente.");
     }
   };
@@ -145,25 +132,15 @@ function Consultas() {
     try {
       const token = localStorage.getItem("token");
       if (!token) return tratarSessaoExpirada();
-
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
       let dadosTriagem = {};
       try {
         const respTriagem = await api.get(`/triagem/consulta/${consulta.id}`, config);
-        if (respTriagem.data) {
-          dadosTriagem = respTriagem.data;
-        }
+        if (respTriagem.data) dadosTriagem = respTriagem.data;
       } catch (errTriagem) {
-        console.warn("Aviso: Nenhuma triagem vinculada encontrada.", errTriagem);
+        console.warn("Nenhuma triagem vinculada.", errTriagem);
       }
-
-      const tempVal = dadosTriagem?.temperatura ?? consulta.temperatura ?? "";
-      const fcVal = dadosTriagem?.frequencia_cardiaca ?? consulta.frequencia_cardiaca ?? "";
-      const frVal = dadosTriagem?.frequencia_respiratoria ?? consulta.frequencia_respiratoria ?? "";
-      const pesoVal = dadosTriagem?.peso ?? dadosTriagem?.peso_atendimento ?? consulta.peso_atendimento ?? "";
-      const tpcVal = dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "";
-      const mucosasVal = dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas";
 
       setCodigo(consulta.codigo || `CNS-${consulta.id}`);
       setAnimalId(consulta.animal_id || "");
@@ -171,47 +148,18 @@ function Consultas() {
       setExameFisico(consulta.exame_fisico || dadosTriagem?.exame_fisico || "");
       setSuspeitaDiagnostica(consulta.suspeita_diagnostica || "");
       setSugestoesCopiloto(consulta.parecer_copiloto || "");
-
-      setTemperatura(tempVal !== null && tempVal !== undefined ? String(tempVal) : "");
-      setFrequenciaCardiaca(fcVal !== null && fcVal !== undefined ? String(fcVal) : "");
-      setFrequenciaRespiratoria(frVal !== null && frVal !== undefined ? String(frVal) : "");
-      setPesoAtendimento(pesoVal !== null && pesoVal !== undefined ? String(pesoVal) : "");
-      setTpcSegundos(tpcVal !== null && tpcVal !== undefined ? String(tpcVal) : "");
-      setMucosas(mucosasVal);
+      setTemperatura(dadosTriagem?.temperatura ?? consulta.temperatura ?? "");
+      setFrequenciaCardiaca(dadosTriagem?.frequencia_cardiaca ?? consulta.frequencia_cardiaca ?? "");
+      setFrequenciaRespiratoria(dadosTriagem?.frequencia_respiratoria ?? consulta.frequencia_respiratoria ?? "");
+      setPesoAtendimento(dadosTriagem?.peso ?? consulta.peso_atendimento ?? "");
+      setTpcSegundos(dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "");
+      setMucosas(dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas");
       setStatusAtendimento("Em Atendimento");
-
-      await api.put(
-        `/consultas/${consulta.id}`,
-        {
-          codigo: consulta.codigo || `CNS-${consulta.id}`,
-          animal_id: consulta.animal_id,
-          usuario_id: consulta.usuario_id || null,
-          status: "Em Atendimento",
-          queixa_principal: consulta.queixa_principal || dadosTriagem?.queixa_principal || "Consulta clínica",
-          exame_fisico: consulta.exame_fisico || dadosTriagem?.exame_fisico || null,
-          peso_atendimento: pesoVal !== "" ? Number(pesoVal) : null,
-          temperatura: tempVal !== "" ? Number(tempVal) : null,
-          frequencia_cardiaca: fcVal !== "" ? Number(fcVal) : null,
-          frequencia_respiratoria: frVal !== "" ? Number(frVal) : null,
-          tpc_segundos: tpcVal !== "" ? Number(tpcVal) : null,
-          mucosas: mucosasVal,
-          parecer_copiloto: consulta.parecer_copiloto || null,
-          suspeita_diagnostica: consulta.suspeita_diagnostica || null,
-          observacoes: consulta.observacoes || null,
-          indicacao_cirurgia: Boolean(consulta.indicacao_cirurgia),
-          justificativa_cirurgica: consulta.justificativa_cirurgica || null,
-          solicitar_exames_preventivos: Boolean(consulta.solicitar_exames_preventivos)
-        },
-        config
-      );
 
       setConsultaEditando({ ...consulta, status: "Em Atendimento" });
       setMostrarFormulario(true);
-      carregarConsultas();
       window.scrollTo({ top: 0, behavior: "smooth" });
-
     } catch (error) {
-      console.error("Erro ao iniciar atendimento:", error);
       setMensagemErro(`❌ Erro ao iniciar atendimento: ${error.response?.data?.detail || error.message}`);
     }
   };
@@ -244,7 +192,6 @@ function Consultas() {
       if (mucosas) formData.append("mucosas", mucosas);
       formData.append("solicitar_exames_preventivos", solicitarExamesPreventivos ? "true" : "false");
 
-      // Adiciona múltiplos arquivos ao FormData
       if (arquivosExames.length > 0) {
         for (let i = 0; i < arquivosExames.length; i++) {
           formData.append("files", arquivosExames[i]);
@@ -252,26 +199,16 @@ function Consultas() {
       }
 
       const response = await api.post("/consultas/sugestoes-copiloto-multimodal", formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
       });
 
       setSugestoesCopiloto(response.data.sugestoes || "");
-      if (response.data.suspeita_diagnostica) {
-        setSuspeitaDiagnostica(response.data.suspeita_diagnostica);
-      }
+      if (response.data.suspeita_diagnostica) setSuspeitaDiagnostica(response.data.suspeita_diagnostica);
       if (response.data.indicacao_cirurgia !== undefined) {
         setIndicacaoCirurgia(response.data.indicacao_cirurgia);
         setJustificativaCirurgica(response.data.justificativa_cirurgica || "");
       }
-      if (response.data.exames_sugeridos) {
-        window.examesSugeridosIA = response.data.exames_sugeridos;
-      }
-
     } catch (error) {
-      console.error("Erro ao consultar Copiloto Multimodal:", error);
       setSugestoesCopiloto(`⚠️ ${error.response?.data?.detail || "Erro ao analisar dados."}`);
     } finally {
       setCarregandoCopiloto(false);
@@ -298,6 +235,7 @@ function Consultas() {
     setMucosas("Normocoradas");
     setObservacoes("");
     setIndicacaoCirurgia(false);
+    setForcarCirurgia(false);
     setJustificativaCirurgica("");
     setSolicitarExamesPreventivos(false);
     setSugestoesCopiloto("");
@@ -317,9 +255,10 @@ function Consultas() {
 
       const token = localStorage.getItem("token");
       if (!token) return tratarSessaoExpirada();
-
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      let statusFinal = indicacaoCirurgia ? "Aguardando Cirurgia" : statusAtendimento;
+      
+      const cirurgiaFinal = forcarCirurgia || indicacaoCirurgia;
+      let statusFinal = cirurgiaFinal ? "Aguardando Cirurgia" : statusAtendimento;
 
       const parecerCompletoIA = [
         suspeitaDiagnostica ? `Suspeita Diagnóstica: ${suspeitaDiagnostica}` : "",
@@ -343,9 +282,9 @@ function Consultas() {
         tpc_segundos: tpcSegundos !== "" ? Number(tpcSegundos) : null,
         mucosas: mucosas || "Normocoradas",
         parecer_copiloto: parecerCompletoIA || null,
-        exames_anexados: arquivosExames.length > 0 ? arquivosExames.map(f => f.name).join(", ") : null, // <-- Persiste os nomes no banco
+        exames_anexados: arquivosExames.length > 0 ? arquivosExames.map(f => f.name).join(", ") : null,
         observacoes: observacoes || null,
-        indicacao_cirurgia: Boolean(indicacaoCirurgia),
+        indicacao_cirurgia: Boolean(cirurgiaFinal),
         justificativa_cirurgica: justificativaCirurgica || null,
         solicitar_exames_preventivos: Boolean(solicitarExamesPreventivos)
       };
@@ -359,7 +298,6 @@ function Consultas() {
       limparFormulario();
       setMostrarFormulario(false);
       carregarConsultas();
-      carregarAnimais();
       setMensagemSucesso("✅ Atendimento clínico salvo com sucesso!");
     } catch (error) {
       setMensagemErro(`❌ ${error.response?.data?.detail || error.message}`);
@@ -370,9 +308,7 @@ function Consultas() {
     if (!consultaParaExcluir) return;
     try {
       const token = localStorage.getItem("token");
-      await api.delete(`/consultas/${consultaParaExcluir.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.delete(`/consultas/${consultaParaExcluir.id}`, { headers: { Authorization: `Bearer ${token}` } });
       setMensagemSucesso("✅ Atendimento excluído com sucesso!");
       setConsultaParaExcluir(null);
       setModalExclusaoAberto(false);
@@ -384,35 +320,9 @@ function Consultas() {
     }
   };
 
-  const obterAnimalCompleto = (id) => animais.find((item) => item.id === id);
   const obterNomeAnimal = (id) => {
-    const a = obterAnimalCompleto(id);
+    const a = animais.find((item) => item.id === id);
     return a ? `${a.nome} (${a.codigo || `PET-${a.id}`})` : `-`;
-  };
-
-  const irParaPrescricao = (consulta) => {
-    navigate("/prescricoes", {
-      state: {
-        consultaId: consulta.id,
-        animalId: consulta.animal_id,
-        codigoConsulta: consulta.codigo || `CNS-${consulta.id}`,
-        peso: consulta.peso_atendimento,
-        parecerCopiloto: consulta.parecer_copiloto || "",
-      },
-    });
-  };
-
-  const irParaExames = (consulta) => {
-    navigate("/exames", {
-      state: {
-        consultaId: consulta.id,
-        animalId: consulta.animal_id,
-        codigoConsulta: consulta.codigo || `CNS-${consulta.id}`,
-        peso: consulta.peso_atendimento,
-        parecer_copiloto: consulta.parecer_copiloto || "",
-        examesSugeridos: window.examesSugeridosIA || []
-      },
-    });
   };
 
   const renderBadgeTemperatura = (temp) => {
@@ -429,7 +339,7 @@ function Consultas() {
       EM_ATENDIMENTO: { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
       "Em Atendimento": { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
       "Aguardando Consulta (Fila Vet)": { bg: "#e0e7ff", color: "#3730a3", label: "🩺 Pronto para Consulta" },
-      "Chamando para Consulta": { bg: "#fee2e2", color: "#991b1b", label: "📢 Chamando..." },
+      "Chamando para Consulta": { bg: "#fee2e2", color: "#991b1b", label: "📢 A chamar..." },
       FINALIZADO: { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
       "Finalizado": { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
       CANCELADO: { bg: "#fee2e2", color: "#991b1b", label: "❌ Cancelado" }
@@ -457,9 +367,7 @@ function Consultas() {
     return cod.includes(termo) || nomeA.includes(termo);
   });
 
-  const estiloInput = {
-    width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "14px", outline: "none", backgroundColor: "#ffffff", boxSizing: "border-box"
-  };
+  const estiloInput = { width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "14px", outline: "none", backgroundColor: "#ffffff", boxSizing: "border-box" };
   const estiloLabel = { display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" };
 
   return (
@@ -475,8 +383,112 @@ function Consultas() {
 
       {mostrarFormulario && (
         <div style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", marginBottom: "25px", border: "1px solid #e5e7eb" }}>
-          <h3 style={{ margin: "0 0 20px 0", color: "#111827", fontSize: "18px" }}>
-            ✏️ Prontuário & Atendimento Clínico Veterinário
+          
+          {/* PAINEL SUPERIOR DO COPILOTO CLÍNICO & ANEXOS */}
+          <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "16px", marginBottom: "20px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <h4 style={{ margin: 0, color: "#166534", display: "flex", alignItems: "center", gap: "6px", fontSize: "15px" }}>
+                <MdPsychology size={20} /> Copiloto Clínico & Análise de Exames (VetAssist AI)
+              </h4>
+              <button 
+                type="button" 
+                onClick={consultarCopilotoComAnexo} 
+                disabled={carregandoCopiloto} 
+                style={{ backgroundColor: "#15803d", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <MdAutoAwesome size={16} /> {carregandoCopiloto ? "A analisar..." : "Analisar Atendimento + Exame"}
+              </button>
+            </div>
+
+            <div style={{ fontSize: "12px", color: "#374151", marginBottom: "6px", fontWeight: "500" }}>
+              📎 Anexar Raio-X, Ultrassom ou Laudo (Múltiplas Imagens ou PDFs) para a IA analisar:
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px", backgroundColor: "#ffffff", padding: "10px 12px", borderRadius: "6px", border: "1px dashed #15803d", width: "100%", boxSizing: "border-box" }}>
+              <label style={{ fontSize: "13px", color: "#15803d", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
+                <MdAttachFile size={16} /> Selecionar Ficheiros de Exames / Laudos
+                <input 
+                  type="file" 
+                  multiple 
+                  onChange={(e) => setArquivosExames(Array.from(e.target.files))} 
+                  style={{ display: "none" }} 
+                />
+              </label>
+              {arquivosExames.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "4px" }}>
+                  {arquivosExames.map((arq, idx) => (
+                    <span key={idx} style={{ fontSize: "12px", color: "#166534", fontWeight: "500" }}>📄 {arq.name}</span>
+                  ))}
+                  <button 
+                    type="button" 
+                    onClick={() => setArquivosExames([])} 
+                    style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", fontWeight: "bold", textAlign: "left", marginTop: "2px" }}
+                  >
+                    Remover todos os anexos
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div style={{ fontSize: "12px", color: "#374151", marginBottom: "4px", fontWeight: "500" }}>
+              🩺 Suspeita Diagnóstica (Preenchido pela IA ou Editável)
+            </div>
+            <textarea 
+              rows={2} 
+              value={suspeitaDiagnostica} 
+              onChange={(e) => setSuspeitaDiagnostica(e.target.value)} 
+              style={{ ...estiloInput, height: "auto", padding: "10px", borderColor: "#15803d", backgroundColor: "#ffffff", marginBottom: "14px" }} 
+              placeholder="A suspeita diagnóstica aparecerá aqui após a análise..."
+            />
+
+            {/* CHECKBOX DE EXAMES PREVENTIVOS */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", padding: "10px 14px", borderRadius: "8px", marginBottom: "14px" }}>
+              <input 
+                type="checkbox" 
+                checked={solicitarExamesPreventivos} 
+                onChange={(e) => setSolicitarExamesPreventivos(e.target.checked)} 
+                style={{ width: "16px", height: "16px", cursor: "pointer" }} 
+              />
+              <label style={{ fontSize: "13px", color: "#166534", fontWeight: "600", cursor: "pointer", margin: 0 }}>
+                💡 Tutor solicitou exames preventivos / Check-up de rotina nesta visita
+              </label>
+            </div>
+
+            {/* CAIXA DE INDICAÇÃO CIRÚRGICA */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", padding: "12px 14px", borderRadius: "8px", marginBottom: "14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "16px" }}>➕</span>
+                <div>
+                  <div style={{ fontSize: "13px", fontWeight: "600", color: "#334155" }}>
+                    {indicacaoCirurgia ? "Indicação cirúrgica detetada pela IA." : "Sem indicação cirúrgica automática detetada."}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>
+                    {justificativaCirurgica || "Paciente sem indicação cirúrgica urgente no momento."}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <input 
+                  type="checkbox" 
+                  checked={forcarCirurgia} 
+                  onChange={(e) => setForcarCirurgia(e.target.checked)} 
+                  style={{ width: "16px", height: "16px", cursor: "pointer" }} 
+                />
+                <label style={{ fontSize: "12px", fontWeight: "600", color: "#334155", cursor: "pointer" }}>Forçar Cirurgia</label>
+              </div>
+            </div>
+
+            {/* SUGESTÕES DETALHADAS DA IA */}
+            {sugestoesCopiloto && (
+              <div style={{ padding: "14px", backgroundColor: "#ffffff", borderRadius: "8px", border: "1px solid #d1d5db" }}>
+                <div style={{ fontSize: "13px", fontWeight: "bold", color: "#166534", marginBottom: "6px" }}>🤖 Parecer Detalhado do Copiloto:</div>
+                {renderizarTextoFormatadoIA(sugestoesCopiloto)}
+              </div>
+            )}
+          </div>
+
+          <h3 style={{ margin: "0 0 16px 0", color: "#111827", fontSize: "16px" }}>
+            📋 Dados do Paciente e Parâmetros Vitais
           </h3>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "18px" }}>
@@ -539,68 +551,16 @@ function Consultas() {
               <label style={estiloLabel}>Exame Físico / Achados Clínicos</label>
               <textarea rows={3} value={exameFisico} onChange={(e) => setExameFisico(e.target.value)} style={{ ...estiloInput, height: "auto", padding: "10px" }} />
             </div>
-
-            {/* COPILOTO CLÍNICO COM SUPORTE A MÚLTIPLOS ANEXOS */}
-            <div style={{ backgroundColor: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "10px", padding: "16px", marginTop: "10px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                <h4 style={{ margin: 0, color: "#0369a1", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <MdPsychology size={20} /> Copiloto Clínico (IA)
-                </h4>
-                <button type="button" onClick={consultarCopilotoComAnexo} disabled={carregandoCopiloto} style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <MdAutoAwesome size={16} /> {carregandoCopiloto ? "Analisando..." : "Analisar com IA"}
-                </button>
-              </div>
-
-              {/* CAMPO DE SELEÇÃO MÚLTIPLA DE ARQUIVOS */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "12px", backgroundColor: "#ffffff", padding: "10px 12px", borderRadius: "6px", border: "1px dashed #0284c7", width: "fit-content" }}>
-                <label style={{ fontSize: "13px", color: "#0369a1", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
-                  <MdAttachFile size={16} /> Anexar Exames / Laudos / Imagens (Múltiplos):
-                  <input 
-                    type="file" 
-                    multiple 
-                    onChange={(e) => setArquivosExames(Array.from(e.target.files))} 
-                    style={{ display: "none" }} 
-                  />
-                </label>
-                {arquivosExames.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                    {arquivosExames.map((arq, idx) => (
-                      <span key={idx} style={{ fontSize: "12px", color: "#166534", fontWeight: "500" }}>📄 {arq.name}</span>
-                    ))}
-                    <button 
-                      type="button" 
-                      onClick={() => setArquivosExames([])} 
-                      style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", fontWeight: "bold", textAlign: "left", marginTop: "4px" }}
-                    >
-                      Remover todos os anexos
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <textarea rows={2} placeholder="Suspeita diagnóstica sugerida..." value={suspeitaDiagnostica} onChange={(e) => setSuspeitaDiagnostica(e.target.value)} style={{ ...estiloInput, height: "auto", padding: "10px", borderColor: "#0284c7" }} />
-              {sugestoesCopiloto && <div style={{ marginTop: "10px", padding: "10px", backgroundColor: "#ffffff", borderRadius: "6px" }}>{renderizarTextoFormatadoIA(sugestoesCopiloto)}</div>}
-            </div>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px", paddingTop: "16px", borderTop: "1px solid #f3f4f6" }}>
-            <div style={{ display: "flex", gap: "8px" }}>
-              {consultaEditando && (
-                <>
-                  <button type="button" onClick={() => irParaPrescricao(consultaEditando)} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>💊 Receitar</button>
-                  <button type="button" onClick={() => irParaExames(consultaEditando)} style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>🧪 Exames</button>
-                </>
-              )}
-            </div>
-
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button type="button" onClick={() => { limparFormulario(); setMostrarFormulario(false); }} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Fechar</button>
-              <button type="button" onClick={salvarConsulta} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 22px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Salvar Atendimento</button>
-            </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "24px", paddingTop: "16px", borderTop: "1px solid #f3f4f6" }}>
+            <button type="button" onClick={() => { limparFormulario(); setMostrarFormulario(false); }} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Fechar</button>
+            <button type="button" onClick={salvarConsulta} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 22px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Salvar Atendimento</button>
           </div>
         </div>
       )}
 
+      {/* TABELA DE CONSULTAS */}
       {!mostrarFormulario && (
         <>
           <div style={{ display: "flex", gap: "8px", backgroundColor: "#e2e8f0", padding: "4px", borderRadius: "10px", marginBottom: "16px", width: "fit-content" }}>
@@ -633,11 +593,7 @@ function Consultas() {
                       <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeTemperatura(c.temperatura)}</td>
                       <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeStatus(c.status)}</td>
                       <td style={{ padding: "14px", display: "flex", justifyContent: "center", gap: "6px", whiteSpace: "nowrap" }}>
-                        <button 
-                          onClick={(e) => chamarPaciente(c, e)} 
-                          style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}
-                          title="Chamar paciente para o consultório"
-                        >
+                        <button onClick={(e) => chamarPaciente(c, e)} style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}>
                           <MdCampaign size={16} /> Chamar
                         </button>
                         <button onClick={() => iniciarAtendimentoVeterinario(c)} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
@@ -646,14 +602,7 @@ function Consultas() {
                         <button onClick={() => setConsultaDetalhes(c)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
                           <MdVisibility size={16} /> Ver
                         </button>
-                        <button 
-                          onClick={() => {
-                            setConsultaParaExcluir(c);
-                            setModalExclusaoAberto(true);
-                          }}
-                          style={{ backgroundColor: "#fee2e2", color: "#991b1b", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}
-                          title="Excluir atendimento"
-                        >
+                        <button onClick={() => { setConsultaParaExcluir(c); setModalExclusaoAberto(true); }} style={{ backgroundColor: "#fee2e2", color: "#991b1b", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}>
                           <MdDelete size={16} /> Excluir
                         </button>
                       </td>
@@ -668,88 +617,51 @@ function Consultas() {
         </>
       )}
 
-      {/* MODAL DE DETALHES DO ATENDIMENTO */}
+      {/* MODAL DE DETALHES */}
       {consultaDetalhes && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "20px" }}>
           <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "12px", maxWidth: "650px", width: "100%", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" }}>
-            
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: "12px", marginBottom: "16px" }}>
               <h2 style={{ margin: 0, color: "#1e1b4b", fontSize: "20px" }}>📋 Detalhes do Atendimento ({consultaDetalhes.codigo || `CNS-${consultaDetalhes.id}`})</h2>
               <button onClick={() => setConsultaDetalhes(null)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", fontWeight: "bold", color: "#6b7280" }}>✕</button>
             </div>
-
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "16px", fontSize: "14px", color: "#374151" }}>
               <div><strong>Paciente:</strong> {obterNomeAnimal(consultaDetalhes.animal_id)}</div>
               <div><strong>Status:</strong> {consultaDetalhes.status}</div>
               <div><strong>Peso:</strong> {consultaDetalhes.peso_atendimento ? `${consultaDetalhes.peso_atendimento} kg` : "-"}</div>
               <div><strong>Temperatura:</strong> {consultaDetalhes.temperatura ? `${consultaDetalhes.temperatura} °C` : "-"}</div>
-              <div><strong>Freq. Cardíaca:</strong> {consultaDetalhes.frequencia_cardiaca ? `${consultaDetalhes.frequencia_cardiaca} bpm` : "-"}</div>
-              <div><strong>Freq. Respiratória:</strong> {consultaDetalhes.frequencia_respiratoria ? `${consultaDetalhes.frequencia_respiratoria} mpm` : "-"}</div>
-              <div><strong>TPC:</strong> {consultaDetalhes.tpc_segundos ? `${consultaDetalhes.tpc_segundos} s` : "-"}</div>
-              <div><strong>Mucosas:</strong> {consultaDetalhes.mucosas || "Normocoradas"}</div>
             </div>
-
             <div style={{ marginBottom: "14px" }}>
-              <strong style={{ fontSize: "13px", color: "#4b5563" }}>Queixa Principal / Motivo:</strong>
+              <strong style={{ fontSize: "13px", color: "#4b5563" }}>Queixa Principal:</strong>
               <p style={{ margin: "4px 0 0 0", padding: "10px", backgroundColor: "#f9fafb", borderRadius: "6px", fontSize: "14px", color: "#1f2937" }}>{consultaDetalhes.queixa_principal || "Não informada"}</p>
             </div>
-
-            {consultaDetalhes.exame_fisico && (
-              <div style={{ marginBottom: "14px" }}>
-                <strong style={{ fontSize: "13px", color: "#4b5563" }}>Exame Físico / Achados Clínicos:</strong>
-                <p style={{ margin: "4px 0 0 0", padding: "10px", backgroundColor: "#f9fafb", borderRadius: "6px", fontSize: "14px", color: "#1f2937", whiteSpace: "pre-line" }}>{consultaDetalhes.exame_fisico}</p>
-              </div>
-            )}
-
             {consultaDetalhes.parecer_copiloto && (
               <div style={{ marginBottom: "20px" }}>
-                <strong style={{ fontSize: "13px", color: "#0369a1" }}>🤖 Parecer do Copiloto Clínico (IA):</strong>
-                <div style={{ margin: "4px 0 0 0", padding: "12px", backgroundColor: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "6px", fontSize: "14px", color: "#0c4a6e", whiteSpace: "pre-line" }}>
+                <strong style={{ fontSize: "13px", color: "#166534" }}>🤖 Parecer da IA & Exames Anexados:</strong>
+                <div style={{ margin: "4px 0 0 0", padding: "12px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "6px", fontSize: "14px", color: "#14532d", whiteSpace: "pre-line" }}>
                   {consultaDetalhes.parecer_copiloto}
                 </div>
               </div>
             )}
-
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", borderTop: "1px solid #e5e7eb", paddingTop: "16px" }}>
-              <button 
-                onClick={() => window.print()} 
-                style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}
-              >
-                <MdPrint size={16} /> Imprimir Ficha
+              <button onClick={() => window.print()} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}>
+                <MdPrint size={16} /> Imprimir
               </button>
-              <button 
-                onClick={() => setConsultaDetalhes(null)} 
-                style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}
-              >
-                Fechar
-              </button>
+              <button onClick={() => setConsultaDetalhes(null)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}>Fechar</button>
             </div>
-
           </div>
         </div>
       )}
 
-      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      {/* MODAL DE EXCLUSÃO */}
       {modalExclusaoAberto && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
           <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", maxWidth: "400px", width: "100%" }}>
             <h3 style={{ margin: "0 0 12px 0", color: "#111827" }}>Confirmar Exclusão</h3>
-            <p style={{ color: "#4b5563", fontSize: "14px", marginBottom: "20px" }}>
-              Tem certeza de que deseja apagar o atendimento <strong>{consultaParaExcluir?.codigo || `CNS-${consultaParaExcluir?.id}`}</strong> do paciente <strong>{obterNomeAnimal(consultaParaExcluir?.animal_id)}</strong>? Esta ação não pode ser desfeita.
-            </p>
+            <p style={{ color: "#4b5563", fontSize: "14px", marginBottom: "20px" }}>Tem a certeza de que deseja apagar o atendimento <strong>{consultaParaExcluir?.codigo}</strong>?</p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-              <button 
-                onClick={() => setModalExclusaoAberto(false)}
-                style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={deletarConsulta}
-                style={{ backgroundColor: "#dc2626", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}
-              >
-                Sim, Excluir
-              </button>
+              <button onClick={() => setModalExclusaoAberto(false)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}>Cancelar</button>
+              <button onClick={deletarConsulta} style={{ backgroundColor: "#dc2626", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}>Sim, Excluir</button>
             </div>
           </div>
         </div>
