@@ -16,12 +16,10 @@ function Animais() {
   const [raca, setRaca] = useState("");
   const [sexo, setSexo] = useState("");
   const [idade, setIdade] = useState("");
-  const [peso, setPeso] = useState("");
   const [tutorId, setTutorId] = useState("");
   const [tutores, setTutores] = useState([]);
   const [status, setStatus] = useState("ATIVO");
   
-  // Novos estados para Castrado, Cor e Porte
   const [castrado, setCastrado] = useState("");
   const [cor, setCor] = useState("");
   const [porte, setPorte] = useState("");
@@ -92,7 +90,6 @@ function Animais() {
     setRaca("");
     setSexo("");
     setIdade("");
-    setPeso("");
     setTutorId("");
     setStatus("ATIVO");
     setCastrado("");
@@ -146,16 +143,6 @@ function Animais() {
         return;
       }
 
-      if (peso === "") {
-        setMensagemErro("🐾 Informe o peso.");
-        return;
-      }
-
-      if (Number(peso) < 0) {
-        setMensagemErro("🐾 O peso não pode ser negativo.");
-        return;
-      }
-
       if (!tutorId) {
         setMensagemErro("🐾 Selecione um tutor.");
         return;
@@ -175,7 +162,6 @@ function Animais() {
         raca,
         sexo,
         idade: parseFloat(idade),
-        peso: Number(peso),
         tutor_id: Number(tutorId),
         status,
         castrado: castrado || null,
@@ -257,7 +243,6 @@ function Animais() {
     setRaca(animal.raca);
     setSexo(animal.sexo);
     setIdade(animal.idade);
-    setPeso(animal.peso);
     setTutorId(animal.tutor_id);
     setStatus(animal.status);
     setCastrado(animal.castrado || "");
@@ -539,19 +524,6 @@ function Animais() {
             </div>
 
             <div>
-              <label style={estiloLabel}>Peso (Kg) *</label>
-              <input
-                type="number"
-                min="0"
-                step="0.1"
-                placeholder="Ex: 12.5"
-                value={peso}
-                onChange={(e) => setPeso(e.target.value)}
-                style={estiloInput}
-              />
-            </div>
-
-            <div>
               <label style={estiloLabel}>Tutor Responsável *</label>
               <select
                 value={tutorId}
@@ -681,7 +653,7 @@ function Animais() {
               <th style={{ padding: "14px" }}>Espécie / Raça</th>
               <th style={{ padding: "14px" }}>Porte / Cor</th>
               <th style={{ padding: "14px" }}>Castrado</th>
-              <th style={{ padding: "14px" }}>Idade / Peso</th>
+              <th style={{ padding: "14px" }}>Idade</th>
               <th style={{ padding: "14px" }}>Status</th>
               <th style={{ padding: "14px" }}>Ações</th>
             </tr>
@@ -730,7 +702,7 @@ function Animais() {
                     {animal.castrado || "-"}
                   </td>
                   <td style={{ padding: "14px", color: "#4b5563" }}>
-                    {animal.idade} anos / {animal.peso} kg
+                    {animal.idade} anos
                   </td>
                   <td style={{ padding: "14px" }}>
                     <span
