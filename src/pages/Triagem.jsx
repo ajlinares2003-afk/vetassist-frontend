@@ -106,27 +106,32 @@ function Triagem() {
     setJustificativa("");
   };
 
+  // ACIONA A CHAMADA DA TV COM STATUS ESPECÍFICO PARA TRIAGEM
   const chamarPaciente = async (consulta, e) => {
     e.stopPropagation();
     try {
       const token = localStorage.getItem("token");
       await api.put(
-        `/consultas/${consulta.id}/chamar`,
+        `/consultas/${consulta.id}/chamar-triagem`, // Rota específica ou a mesma ajustada no back
         {},
         { headers: { Authorization: `Bearer ${token}` } }
-      );
+      ).catch(async () => {
+        // Fallback caso a rota específica não exista, atualiza via PUT comum
+        await api.put(`/consultas/${consulta.id}`, { status: "Chamando para Triagem" }, { headers: { Authorization: `Bearer ${token}` } });
+      });
       
       setAtendimentosPendentes(prev => 
         prev.map(item => item.id === consulta.id ? { ...item, status: "Chamando para Triagem" } : item)
       );
 
-      setMensagem({ tipo: "sucesso", texto: `📢 A chamar ${obterNomeAnimal(consulta.animal_id)} no painel!` });
+      setMensagem({ tipo: "sucesso", texto: `📢 A chamar ${obterNomeAnimal(consulta.animal_id)} no painel para Triagem!` });
     } catch (err) {
       console.error("Erro ao chamar paciente:", err);
       setMensagem({ tipo: "erro", texto: "Erro ao emitir chamada para o paciente." });
     }
   };
 
+  // INicia A TRIAGEM, PARA O ALARME DA TV E MUDA O STATUS PARA "Em Triagem"
   const selecionarParaTriagem = async (consulta) => {
     setAtendimentoSelecionado(consulta);
     setQueixaPrincipal(consulta.queixa_principal || "");
@@ -137,12 +142,12 @@ function Triagem() {
 
     try {
       const token = localStorage.getItem("token");
-      // Utiliza a rota dedicada para atualizar imediatamente o status e silenciar a TV
-      await api.put(
-        `/consultas/${consulta.id}/iniciar-triagem`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      
+      // Atualiza imediatamente o status no banco para parar o alarme sonoro da TV
+      await api.put(`/consultas/${consulta.id}/iniciar-triagem`, {}, config).catch(async () => {
+        await api.put(`/consultas/${consulta.id}`, { status: "Em Triagem" }, config);
+      });
       
       setAtendimentosPendentes(prev => 
         prev.map(item => item.id === consulta.id ? { ...item, status: "Em Triagem" } : item)
