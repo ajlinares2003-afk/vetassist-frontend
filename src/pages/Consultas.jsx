@@ -42,6 +42,7 @@ function Consultas() {
 
   const [sugestoesCopiloto, setSugestoesCopiloto] = useState("");
   const [carregandoCopiloto, setCarregandoCopiloto] = useState(false);
+  const [etapaProgressoIA, setEtapaProgressoIA] = useState("");
   const [arquivosExames, setArquivosExames] = useState([]);
 
   const [busca, setBusca] = useState("");
@@ -56,6 +57,26 @@ function Consultas() {
     carregarAnimais();
     carregarUsuarios();
   }, []);
+
+  // EFEITO DE PROGRESSO DINÂMICO DURANTE A ANÁLISE DA IA
+  useEffect(() => {
+    let timer1, timer2;
+    if (carregandoCopiloto) {
+      setEtapaProgressoIA("Iniciando upload e leitura dos arquivos anexados...");
+      timer1 = setTimeout(() => {
+        setEtapaProgressoIA("Processando parâmetros vitais e laudos com o Copiloto Multimodal...");
+      }, 2000);
+      timer2 = setTimeout(() => {
+        setEtapaProgressoIA("Sintetizando parecer clínico e hipótese diagnóstica...");
+      }, 5000);
+    } else {
+      setEtapaProgressoIA("");
+    }
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [carregandoCopiloto]);
 
   const tratarSessaoExpirada = () => {
     localStorage.removeItem("token");
@@ -348,11 +369,10 @@ function Consultas() {
     return <span style={{ backgroundColor: conf.bg, color: conf.color, padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>{conf.label}</span>;
   };
 
-  // FORMATADOR LIMPO, ALINHADO À ESQUERDA E ORGANIZADO POR TÓPICOS
+  // FORMATADOR LIMPO, ALINHADO À ESQUERDA E ORGANIZADO POR TÓPICOS (CORRIGIDO PARA 13px)
   const renderizarTextoFormatadoIA = (textoBruto) => {
     if (!textoBruto) return null;
 
-    // Limpa cabeçalhos repetidos e separa o texto em linhas úteis
     let textoLimpo = textoBruto
       .replace(/SUSPEITA:.*/gi, "")
       .replace(/SUGESTOES:.*/gi, "")
@@ -366,7 +386,7 @@ function Consultas() {
       <div style={{ display: "flex", flexDirection: "column", gap: "6px", textAlign: "left" }}>
         {linhas.map((linha, idx) => {
           const linhaTrim = linha.replace(/\*\*/g, "").trim();
-          const ehTituloSecao = linhaTrim.endsWith(":") || linhaTrim.match(/^[A-ZÀ-Ú][a-za-zà-ú\s]+$/) && linhaTrim.length < 35;
+          const ehTituloSecao = linhaTrim.endsWith(":") || (linhaTrim.match(/^[A-ZÀ-Ú][a-za-zà-ú\s]+$/) && linhaTrim.length < 35);
 
           if (ehTituloSecao && !linhaTrim.startsWith("•") && !linhaTrim.match(/^\d+\./)) {
             return (
@@ -377,7 +397,7 @@ function Consultas() {
           }
 
           return (
-            <div key={idx} style={{ display: "flex", gap: "8px", fontSize: "135px", color: "#334155", lineHeight: "1.5", textAlign: "left" }}>
+            <div key={idx} style={{ display: "flex", gap: "8px", fontSize: "13px", color: "#334155", lineHeight: "1.5", textAlign: "left" }}>
               <span style={{ color: "#166534", fontWeight: "bold" }}>•</span>
               <span style={{ flex: 1, textAlign: "left" }}>{linhaTrim.replace(/^- /, "").replace(/^\d+\.\s*/, "")}</span>
             </div>
@@ -483,7 +503,7 @@ function Consultas() {
             </div>
           </div>
 
-          {/* 2. COPILOTO CLÍNICO & ANÁLISE DE EXAMES NA PARTE DE BAIXO (ALTURA DO CAMPO REDUZIDA E LARGURA MANTIDA) */}
+          {/* 2. COPILOTO CLÍNICO & ANÁLISE DE EXAMES NA PARTE DE BAIXO */}
           <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "16px", marginBottom: "24px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
               <h4 style={{ margin: 0, color: "#166534", display: "flex", alignItems: "center", gap: "6px", fontSize: "15px" }}>
@@ -493,17 +513,28 @@ function Consultas() {
                 type="button" 
                 onClick={consultarCopilotoComAnexo} 
                 disabled={carregandoCopiloto} 
-                style={{ backgroundColor: "#15803d", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}
+                style={{ backgroundColor: carregandoCopiloto ? "#9ca3af" : "#15803d", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: carregandoCopiloto ? "not-allowed" : "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}
               >
                 <MdAutoAwesome size={16} /> {carregandoCopiloto ? "Analisando..." : "Analisar Atendimento + Exame"}
               </button>
             </div>
 
+            {/* FEEDBACK VISUAL EM TEMPO REAL PARA O PROCESSAMENTO DE IA */}
+            {carregandoCopiloto && (
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", backgroundColor: "#ecfdf5", border: "1px solid #6ee7b7", padding: "12px 16px", borderRadius: "8px", marginBottom: "14px" }}>
+                <div style={{ width: "20px", height: "20px", border: "3px solid #10b981", borderTop: "3px solid transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                <div>
+                  <div style={{ fontSize: "13px", fontWeight: "bold", color: "#065f46" }}>O Copiloto Clínico está analisando o caso...</div>
+                  <div style={{ fontSize: "12px", color: "#047857" }}>{etapaProgressoIA}</div>
+                </div>
+              </div>
+            )}
+
             <div style={{ fontSize: "12px", color: "#374151", marginBottom: "6px", fontWeight: "500" }}>
               📎 Anexar Raio-X, Ultrassom ou Laudo (Múltiplas Imagens ou PDFs) para a IA analisar:
             </div>
 
-            {/* CAMPO DE ANEXO COM ALTURA TRAVADA E SCROLL INTERNO SE NECESSÁRIO */}
+            {/* CAMPO DE ANEXO COM ALTURA TRAVADA E SCROLL INTERNO */}
             <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "14px", backgroundColor: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px dashed #15803d", width: "100%", height: "75px", maxHeight: "75px", overflowY: "auto", boxSizing: "border-box" }}>
               <label style={{ fontSize: "13px", color: "#15803d", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
                 <MdAttachFile size={16} /> Selecionar Arquivos de Exames / Laudos
@@ -578,7 +609,7 @@ function Consultas() {
               </div>
             </div>
 
-            {/* PARECER DETALHADO DA IA COM VISUAL MAIS AMIGÁVEL E LEGÍVEL */}
+            {/* PARECER DETALHADO DA IA */}
             {sugestoesCopiloto && (
               <div style={{ padding: "16px", backgroundColor: "#ffffff", borderRadius: "8px", border: "1px solid #d1d5db" }}>
                 <div style={{ fontSize: "14px", fontWeight: "bold", color: "#166534", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
