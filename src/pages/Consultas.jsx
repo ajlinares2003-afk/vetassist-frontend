@@ -343,6 +343,7 @@ function Consultas() {
         tpc_segundos: tpcSegundos !== "" ? Number(tpcSegundos) : null,
         mucosas: mucosas || "Normocoradas",
         parecer_copiloto: parecerCompletoIA || null,
+        exames_anexados: arquivosExames.length > 0 ? arquivosExames.map(f => f.name).join(", ") : null, // <-- Persiste os nomes no banco
         observacoes: observacoes || null,
         indicacao_cirurgia: Boolean(indicacaoCirurgia),
         justificativa_cirurgica: justificativaCirurgica || null,
