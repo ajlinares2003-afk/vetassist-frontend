@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdLocalHospital, MdDelete, MdCampaign } from "react-icons/md";
+import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdLocalHospital, MdDelete, MdCampaign, MdAttachFile } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
@@ -536,16 +536,39 @@ function Consultas() {
               <textarea rows={3} value={exameFisico} onChange={(e) => setExameFisico(e.target.value)} style={{ ...estiloInput, height: "auto", padding: "10px" }} />
             </div>
 
-            {/* COPILOTO CLÍNICO */}
+            {/* COPILOTO CLÍNICO COM ANEXO DE EXAMES / LAUDOS */}
             <div style={{ backgroundColor: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "10px", padding: "16px", marginTop: "10px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                 <h4 style={{ margin: 0, color: "#0369a1", display: "flex", alignItems: "center", gap: "6px" }}>
                   <MdPsychology size={20} /> Copiloto Clínico (IA)
                 </h4>
-                <button type="button" onClick={consultarCopilotoComAnexo} disabled={carregandoCopiloto} style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
+                <button type="button" onClick={consultarCopilotoComAnexo} disabled={carregandoCopiloto} style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
                   <MdAutoAwesome size={16} /> {carregandoCopiloto ? "Analisando..." : "Analisar com IA"}
                 </button>
               </div>
+
+              {/* CAMPO PARA ANEXAR EXAMES, LAUDOS OU IMAGENS */}
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px", backgroundColor: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px dashed #0284c7", width: "fit-content" }}>
+                <label style={{ fontSize: "13px", color: "#0369a1", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
+                  <MdAttachFile size={16} /> Anexar Exame / Laudo / Imagem:
+                  <input 
+                    type="file" 
+                    onChange={(e) => setArquivoExame(e.target.files[0])} 
+                    style={{ display: "none" }} 
+                  />
+                </label>
+                {arquivoExame && <span style={{ fontSize: "12px", color: "#166534", fontWeight: "500" }}>📄 {arquivoExame.name}</span>}
+                {arquivoExame && (
+                  <button 
+                    type="button" 
+                    onClick={() => setArquivoExame(null)} 
+                    style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
+                  >
+                    Remover
+                  </button>
+                )}
+              </div>
+
               <textarea rows={2} placeholder="Suspeita diagnóstica sugerida..." value={suspeitaDiagnostica} onChange={(e) => setSuspeitaDiagnostica(e.target.value)} style={{ ...estiloInput, height: "auto", padding: "10px", borderColor: "#0284c7" }} />
               {sugestoesCopiloto && <div style={{ marginTop: "10px", padding: "10px", backgroundColor: "#ffffff", borderRadius: "6px" }}>{renderizarTextoFormatadoIA(sugestoesCopiloto)}</div>}
             </div>
