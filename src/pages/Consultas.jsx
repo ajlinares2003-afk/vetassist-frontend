@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdLocalHospital } from "react-icons/md";
+import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdLocalHospital, MdDelete } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
@@ -49,7 +49,10 @@ function Consultas() {
   const [busca, setBusca] = useState("");
   const [mensagemErro, setMensagemErro] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
+  
+  // Estado para controlar o modal de exclusão
   const [consultaParaExcluir, setConsultaParaExcluir] = useState(null);
+  const [modalExclusaoAberto, setModalExclusaoAberto] = useState(false);
 
   useEffect(() => {
     carregarConsultas();
@@ -367,10 +370,12 @@ function Consultas() {
       });
       setMensagemSucesso("✅ Atendimento excluído com sucesso!");
       setConsultaParaExcluir(null);
+      setModalExclusaoAberto(false);
       carregarConsultas();
     } catch (error) {
       setMensagemErro(`❌ Erro ao excluir: ${error.response?.data?.detail || error.message}`);
       setConsultaParaExcluir(null);
+      setModalExclusaoAberto(false);
     }
   };
 
@@ -655,6 +660,16 @@ function Consultas() {
                         <button onClick={() => setConsultaDetalhes(c)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
                           <MdVisibility size={16} /> Ver
                         </button>
+                        <button 
+                          onClick={() => {
+                            setConsultaParaExcluir(c);
+                            setModalExclusaoAberto(true);
+                          }}
+                          style={{ backgroundColor: "#fee2e2", color: "#991b1b", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}
+                          title="Excluir atendimento"
+                        >
+                          <MdDelete size={16} /> Excluir
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -665,6 +680,32 @@ function Consultas() {
             </table>
           </div>
         </>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      {modalExclusaoAberto && (
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+          <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", maxWidth: "400px", width: "100%" }}>
+            <h3 style={{ margin: "0 0 12px 0", color: "#111827" }}>Confirmar Exclusão</h3>
+            <p style={{ color: "#4b5563", fontSize: "14px", marginBottom: "20px" }}>
+              Tem a certeza de que deseja apagar o atendimento <strong>{consultaParaExcluir?.codigo || `CNS-${consultaParaExcluir?.id}`}</strong> do paciente <strong>{obterNomeAnimal(consultaParaExcluir?.animal_id)}</strong>? Esta ação não pode ser desfeita.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button 
+                onClick={() => setModalExclusaoAberto(false)}
+                style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={deletarConsulta}
+                style={{ backgroundColor: "#dc2626", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}
+              >
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </Layout>
   );
