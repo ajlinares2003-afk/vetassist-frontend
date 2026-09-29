@@ -165,10 +165,11 @@ function Consultas() {
       const tpcVal = dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "";
       const mucosasVal = dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas";
 
-      // Preenchimento seguro dos estados para evitar ecrã branco
       setCodigo(consulta.codigo || `CNS-${consulta.id}`);
       setAnimalId(consulta.animal_id || "");
       setQueixaPrincipal(consulta.queixa_principal || dadosTriagem?.queixa_principal || "");
+      setSuspeitaDiagnostica(consulta.suspeita_diagnostica || "");
+      setSugestoesCopiloto(consulta.parecer_copiloto || "");
 
       setTemperatura(tempVal !== null && tempVal !== undefined ? String(tempVal) : "");
       setFrequenciaCardiaca(fcVal !== null && fcVal !== undefined ? String(fcVal) : "");
@@ -193,6 +194,7 @@ function Consultas() {
           tpc_segundos: tpcVal !== "" ? Number(tpcVal) : null,
           mucosas: mucosasVal,
           parecer_copiloto: consulta.parecer_copiloto || null,
+          suspeita_diagnostica: consulta.suspeita_diagnostica || null,
           observacoes: consulta.observacoes || null,
           indicacao_cirurgia: Boolean(consulta.indicacao_cirurgia),
           justificativa_cirurgica: consulta.justificativa_cirurgica || null,
@@ -314,6 +316,12 @@ function Consultas() {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       let statusFinal = indicacaoCirurgia ? "Aguardando Cirurgia" : statusAtendimento;
 
+      // Consolida o parecer da IA juntando a suspeita e as sugestões detalhadas
+      const parecerCompletoIA = [
+        suspeitaDiagnostica ? `Suspeita Diagnóstica: ${suspeitaDiagnostica}` : "",
+        sugestoesCopiloto ? `Sugestões Clínicas:\n${sugestoesCopiloto}` : ""
+      ].filter(Boolean).join("\n\n");
+
       const novaConsulta = {
         codigo: codigo || null,
         animal_id: Number(animalId),
@@ -330,7 +338,7 @@ function Consultas() {
         frequencia_respiratoria: frequenciaRespiratoria !== "" ? Number(frequenciaRespiratoria) : null,
         tpc_segundos: tpcSegundos !== "" ? Number(tpcSegundos) : null,
         mucosas: mucosas || "Normocoradas",
-        parecer_copiloto: sugestoesCopiloto || null,
+        parecer_copiloto: parecerCompletoIA || null,
         observacoes: observacoes || null,
         indicacao_cirurgia: Boolean(indicacaoCirurgia),
         justificativa_cirurgica: justificativaCirurgica || null,
