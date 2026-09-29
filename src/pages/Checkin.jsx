@@ -122,6 +122,26 @@ function Checkin() {
     }
   };
 
+  const estiloInput = {
+    width: "100%",
+    height: "42px",
+    padding: "0 12px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
+    fontSize: "14px",
+    outline: "none",
+    backgroundColor: "#ffffff",
+    boxSizing: "border-box"
+  };
+
+  const estiloLabel = {
+    display: "block",
+    fontSize: "13px",
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: "6px"
+  };
+
   return (
     <Layout>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
@@ -247,12 +267,12 @@ function Checkin() {
       {mostrarModal && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "20px" }}>
           <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "14px", maxWidth: "500px", width: "100%" }}>
-            <h3 style={{ marginTop: 0, color: "#1e1b4b", fontSize: "20px" }}>Novo Check-in de Paciente</h3>
+            <h3 style={{ marginTop: 0, color: "#1e1b4b", fontSize: "20px", marginBottom: "16px" }}>Novo Check-in de Paciente</h3>
             
             <form onSubmit={realizarCheckin}>
               <div style={{ marginBottom: "14px" }}>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Paciente & Tutor *</label>
-                <select value={animalId} onChange={(e) => setAnimalId(e.target.value)} style={{ width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }} required>
+                <label style={estiloLabel}>Paciente & Tutor *</label>
+                <select value={animalId} onChange={(e) => setAnimalId(e.target.value)} style={estiloInput} required>
                   <option value="">Selecione o paciente cadastrado...</option>
                   {animais.map((a) => {
                     const t = tutores.find((tutor) => tutor.id === a.tutor_id);
@@ -268,8 +288,8 @@ function Checkin() {
 
               {/* SELEÇÃO APENAS DE ENFERMEIRO / TRIAGEM */}
               <div style={{ marginBottom: "14px" }}>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Enfermeiro(a) / Triagem (Opcional)</label>
-                <select value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)} style={{ width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }}>
+                <label style={estiloLabel}>Enfermeiro(a) / Triagem (Opcional)</label>
+                <select value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)} style={estiloInput}>
                   <option value="">Selecione o enfermeiro responsável...</option>
                   {usuarios.map((u) => (
                     <option key={u.id} value={u.id}>
@@ -280,13 +300,26 @@ function Checkin() {
               </div>
 
               <div style={{ marginBottom: "14px" }}>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Peso Atual (Kg) *</label>
-                <input type="number" step="0.1" placeholder="Ex: 5.4" value={peso} onChange={(e) => setPeso(e.target.value)} style={{ width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", boxSizing: "border-box" }} required />
+                <label style={estiloLabel}>Peso Atual (Kg) *</label>
+                <input type="number" step="0.1" placeholder="Ex: 5.4" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} required />
               </div>
 
               <div style={{ marginBottom: "20px" }}>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Motivo da Visita / Queixa Principal *</label>
-                <input type="text" placeholder="Ex: Vacinação anual, apatia, check-up..." value={queixaPrincipal} onChange={(e) => setQueixaPrincipal(e.target.value)} style={{ width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", boxSizing: "border-box" }} required />
+                <label style={estiloLabel}>Motivo da Visita / Queixa Principal *</label>
+                <textarea
+                  rows={5}
+                  placeholder="Descreva o motivo da visita ou queixa principal..."
+                  value={queixaPrincipal}
+                  onChange={(e) => setQueixaPrincipal(e.target.value)}
+                  style={{
+                    ...estiloInput,
+                    height: "auto",
+                    minHeight: "110px",
+                    padding: "10px 12px",
+                    resize: "vertical"
+                  }}
+                  required
+                />
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
