@@ -631,29 +631,29 @@ function Consultas() {
           </div>
 
           <div style={{ overflowX: "auto", backgroundColor: "white", borderRadius: "12px", border: "1px solid #e5e7eb" }}>
-            <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", textAlign: "center" }}>
+            <table style={{ width: "100%", minWidth: "1000px", borderCollapse: "collapse", textAlign: "center" }}>
               <thead>
                 <tr style={{ backgroundColor: "#4f46e5", color: "white", fontSize: "14px" }}>
-                  <th style={{ padding: "14px" }}>Código</th>
-                  <th style={{ padding: "14px" }}>Paciente</th>
+                  <th style={{ padding: "14px", whiteSpace: "nowrap" }}>Código</th>
+                  <th style={{ padding: "14px", whiteSpace: "nowrap" }}>Paciente</th>
                   <th style={{ padding: "14px" }}>Queixa Principal</th>
-                  <th style={{ padding: "14px" }}>Peso</th>
-                  <th style={{ padding: "14px" }}>Temperatura</th>
-                  <th style={{ padding: "14px" }}>Status</th>
-                  <th style={{ padding: "14px" }}>Ações</th>
+                  <th style={{ padding: "14px", whiteSpace: "nowrap" }}>Peso</th>
+                  <th style={{ padding: "14px", whiteSpace: "nowrap" }}>Temperatura</th>
+                  <th style={{ padding: "14px", whiteSpace: "nowrap" }}>Status</th>
+                  <th style={{ padding: "14px", whiteSpace: "nowrap" }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {consultasFiltradas.length > 0 ? (
                   consultasFiltradas.map((c) => (
                     <tr key={c.id} style={{ borderBottom: "1px solid #f3f4f6", fontSize: "14px" }}>
-                      <td style={{ padding: "14px", fontWeight: "bold", color: "#4f46e5" }}>{c.codigo || `CNS-${c.id}`}</td>
-                      <td style={{ padding: "14px", fontWeight: "600" }}>{obterNomeAnimal(c.animal_id)}</td>
-                      <td style={{ padding: "14px", color: "#4b5563" }}>{c.queixa_principal}</td>
-                      <td style={{ padding: "14px" }}>{c.peso_atendimento ? `${c.peso_atendimento} kg` : "-"}</td>
-                      <td style={{ padding: "14px" }}>{renderBadgeTemperatura(c.temperatura)}</td>
-                      <td style={{ padding: "14px" }}>{renderBadgeStatus(c.status)}</td>
-                      <td style={{ padding: "14px", display: "flex", justifyContent: "center", gap: "6px" }}>
+                      <td style={{ padding: "14px", fontWeight: "bold", color: "#4f46e5", whiteSpace: "nowrap" }}>{c.codigo || `CNS-${c.id}`}</td>
+                      <td style={{ padding: "14px", fontWeight: "600", whiteSpace: "nowrap" }}>{obterNomeAnimal(c.animal_id)}</td>
+                      <td style={{ padding: "14px", color: "#4b5563", textAlign: "left" }}>{c.queixa_principal}</td>
+                      <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{c.peso_atendimento ? `${c.peso_atendimento} kg` : "-"}</td>
+                      <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeTemperatura(c.temperatura)}</td>
+                      <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeStatus(c.status)}</td>
+                      <td style={{ padding: "14px", display: "flex", justifyContent: "center", gap: "6px", whiteSpace: "nowrap" }}>
                         <button onClick={() => iniciarAtendimentoVeterinario(c)} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
                           💉 Atender
                         </button>
