@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdLocalHospital, MdDelete, MdCampaign, MdAttachFile } from "react-icons/md";
+import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdDelete, MdCampaign, MdAttachFile } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
@@ -384,8 +384,75 @@ function Consultas() {
       {mostrarFormulario && (
         <div style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", marginBottom: "25px", border: "1px solid #e5e7eb" }}>
           
-          {/* PAINEL SUPERIOR DO COPILOTO CLÍNICO & ANEXOS */}
-          <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "16px", marginBottom: "20px" }}>
+          {/* 1. DADOS DO PACIENTE E PARÂMETROS VITAIS NO TOPO */}
+          <h3 style={{ margin: "0 0 16px 0", color: "#111827", fontSize: "16px" }}>
+            📋 Dados do Paciente e Parâmetros Vitais
+          </h3>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "18px", marginBottom: "18px" }}>
+            <div>
+              <label style={estiloLabel}>Código</label>
+              <input type="text" value={codigo} onChange={(e) => setCodigo(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f9fafb" }} />
+            </div>
+
+            <div>
+              <label style={estiloLabel}>Paciente *</label>
+              <select value={animalId} onChange={handleAnimalChange} style={estiloInput}>
+                <option value="">Selecione o Paciente</option>
+                {animais.map((a) => (<option key={a.id} value={a.id}>{a.nome} ({a.codigo || `PET-${a.id}`})</option>))}
+              </select>
+            </div>
+
+            <div>
+              <label style={estiloLabel}>Peso Atual (Kg)</label>
+              <input type="number" step="0.1" value={pesoAtendimento} onChange={(e) => setPesoAtendimento(e.target.value)} style={estiloInput} />
+            </div>
+
+            <div>
+              <label style={estiloLabel}>Temperatura (°C)</label>
+              <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloInput} />
+            </div>
+
+            <div>
+              <label style={estiloLabel}>Freq. Cardíaca (bpm)</label>
+              <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloInput} />
+            </div>
+
+            <div>
+              <label style={estiloLabel}>Freq. Respiratória (mpm)</label>
+              <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloInput} />
+            </div>
+
+            <div>
+              <label style={estiloLabel}>TPC (segundos)</label>
+              <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} />
+            </div>
+
+            <div>
+              <label style={estiloLabel}>Mucosas</label>
+              <select value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInput}>
+                <option value="Normocoradas">Normocoradas (Rosadas)</option>
+                <option value="Hipocoradas / Pálidas">Hipocoradas / Pálidas</option>
+                <option value="Cianóticas">Cianóticas</option>
+                <option value="Ictéricas">Ictéricas</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: "25px", display: "grid", gap: "14px" }}>
+            <div>
+              <label style={estiloLabel}>Queixa Principal / Motivo</label>
+              <input type="text" value={queixaPrincipal} onChange={(e) => setQueixaPrincipal(e.target.value)} style={estiloInput} />
+            </div>
+
+            <div>
+              <label style={estiloLabel}>Exame Físico / Achados Clínicos</label>
+              <textarea rows={3} value={exameFisico} onChange={(e) => setExameFisico(e.target.value)} style={{ ...estiloInput, height: "auto", padding: "10px" }} />
+            </div>
+          </div>
+
+          {/* 2. COPILOTO CLÍNICO & ANÁLISE DE EXAMES NA PARTE DE BAIXO */}
+          <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "16px", marginBottom: "24px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
               <h4 style={{ margin: 0, color: "#166534", display: "flex", alignItems: "center", gap: "6px", fontSize: "15px" }}>
                 <MdPsychology size={20} /> Copiloto Clínico & Análise de Exames (VetAssist AI)
@@ -485,72 +552,6 @@ function Consultas() {
                 {renderizarTextoFormatadoIA(sugestoesCopiloto)}
               </div>
             )}
-          </div>
-
-          <h3 style={{ margin: "0 0 16px 0", color: "#111827", fontSize: "16px" }}>
-            📋 Dados do Paciente e Parâmetros Vitais
-          </h3>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "18px" }}>
-            <div>
-              <label style={estiloLabel}>Código</label>
-              <input type="text" value={codigo} onChange={(e) => setCodigo(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f9fafb" }} />
-            </div>
-
-            <div>
-              <label style={estiloLabel}>Paciente *</label>
-              <select value={animalId} onChange={handleAnimalChange} style={estiloInput}>
-                <option value="">Selecione o Paciente</option>
-                {animais.map((a) => (<option key={a.id} value={a.id}>{a.nome} ({a.codigo || `PET-${a.id}`})</option>))}
-              </select>
-            </div>
-
-            <div>
-              <label style={estiloLabel}>Peso Atual (Kg)</label>
-              <input type="number" step="0.1" value={pesoAtendimento} onChange={(e) => setPesoAtendimento(e.target.value)} style={estiloInput} />
-            </div>
-
-            <div>
-              <label style={estiloLabel}>Temperatura (°C)</label>
-              <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloInput} />
-            </div>
-
-            <div>
-              <label style={estiloLabel}>Freq. Cardíaca (bpm)</label>
-              <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloInput} />
-            </div>
-
-            <div>
-              <label style={estiloLabel}>Freq. Respiratória (mpm)</label>
-              <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloInput} />
-            </div>
-
-            <div>
-              <label style={estiloLabel}>TPC (segundos)</label>
-              <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} />
-            </div>
-
-            <div>
-              <label style={estiloLabel}>Mucosas</label>
-              <select value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInput}>
-                <option value="Normocoradas">Normocoradas (Rosadas)</option>
-                <option value="Hipocoradas / Pálidas">Hipocoradas / Pálidas</option>
-                <option value="Cianóticas">Cianóticas</option>
-                <option value="Ictéricas">Ictéricas</option>
-              </select>
-            </div>
-          </div>
-
-          <div style={{ marginTop: "18px", display: "grid", gap: "14px" }}>
-            <div>
-              <label style={estiloLabel}>Queixa Principal / Motivo</label>
-              <input type="text" value={queixaPrincipal} onChange={(e) => setQueixaPrincipal(e.target.value)} style={estiloInput} />
-            </div>
-
-            <div>
-              <label style={estiloLabel}>Exame Físico / Achados Clínicos</label>
-              <textarea rows={3} value={exameFisico} onChange={(e) => setExameFisico(e.target.value)} style={{ ...estiloInput, height: "auto", padding: "10px" }} />
-            </div>
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "24px", paddingTop: "16px", borderTop: "1px solid #f3f4f6" }}>
