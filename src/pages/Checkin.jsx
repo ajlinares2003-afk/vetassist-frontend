@@ -219,7 +219,8 @@ function Checkin() {
                   </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span style={{ backgroundColor: "#fef3c7", color: "#b45309", padding: "6px 12px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>
+                  {/* ALTERADO PARA RETÂNGULO COM BORDAS SUAVES (6px) */}
+                  <span style={{ backgroundColor: "#fef3c7", color: "#b45309", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "600" }}>
                     Aguardando Triagem
                   </span>
                   <button
