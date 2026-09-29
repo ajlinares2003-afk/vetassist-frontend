@@ -504,8 +504,8 @@ function Consultas() {
               📎 Anexar Raio-X, Ultrassom ou Laudo (Múltiplas Imagens ou PDFs) para a IA analisar:
             </div>
 
-            {/* CAMPO DE ANEXO COM ALTURA REDUZIDA E LARGURA TOTAL */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "14px", backgroundColor: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px dashed #15803d", width: "100%", boxSizing: "border-box" }}>
+            {/* CAMPO DE ANEXO COM ALTURA FIXA E TRAVADA */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "14px", backgroundColor: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px dashed #15803d", width: "100%", maxHeight: "110px", overflowY: "auto", boxSizing: "border-box" }}>
               <label style={{ fontSize: "13px", color: "#15803d", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
                 <MdAttachFile size={16} /> Selecionar Arquivos de Exames / Laudos
                 <input 
