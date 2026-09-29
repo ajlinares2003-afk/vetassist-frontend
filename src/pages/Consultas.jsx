@@ -316,7 +316,6 @@ function Consultas() {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       let statusFinal = indicacaoCirurgia ? "Aguardando Cirurgia" : statusAtendimento;
 
-      // Consolida o parecer da IA juntando a suspeita e as sugestões detalhadas
       const parecerCompletoIA = [
         suspeitaDiagnostica ? `Suspeita Diagnóstica: ${suspeitaDiagnostica}` : "",
         sugestoesCopiloto ? `Sugestões Clínicas:\n${sugestoesCopiloto}` : ""
@@ -633,6 +632,67 @@ function Consultas() {
             </table>
           </div>
         </>
+      )}
+
+      {/* MODAL DE DETALHES DO ATENDIMENTO */}
+      {consultaDetalhes && (
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "20px" }}>
+          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "12px", maxWidth: "650px", width: "100%", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" }}>
+            
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: "12px", marginBottom: "16px" }}>
+              <h2 style={{ margin: 0, color: "#1e1b4b", fontSize: "20px" }}>📋 Detalhes do Atendimento ({consultaDetalhes.codigo || `CNS-${consultaDetalhes.id}`})</h2>
+              <button onClick={() => setConsultaDetalhes(null)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", fontWeight: "bold", color: "#6b7280" }}>✕</button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "16px", fontSize: "14px", color: "#374151" }}>
+              <div><strong>Paciente:</strong> {obterNomeAnimal(consultaDetalhes.animal_id)}</div>
+              <div><strong>Status:</strong> {consultaDetalhes.status}</div>
+              <div><strong>Peso:</strong> {consultaDetalhes.peso_atendimento ? `${consultaDetalhes.peso_atendimento} kg` : "-"}</div>
+              <div><strong>Temperatura:</strong> {consultaDetalhes.temperatura ? `${consultaDetalhes.temperatura} °C` : "-"}</div>
+              <div><strong>Freq. Cardíaca:</strong> {consultaDetalhes.frequencia_cardiaca ? `${consultaDetalhes.frequencia_cardiaca} bpm` : "-"}</div>
+              <div><strong>Freq. Respiratória:</strong> {consultaDetalhes.frequencia_respiratoria ? `${consultaDetalhes.frequencia_respiratoria} mpm` : "-"}</div>
+              <div><strong>TPC:</strong> {consultaDetalhes.tpc_segundos ? `${consultaDetalhes.tpc_segundos} s` : "-"}</div>
+              <div><strong>Mucosas:</strong> {consultaDetalhes.mucosas || "Normocoradas"}</div>
+            </div>
+
+            <div style={{ marginBottom: "14px" }}>
+              <strong style={{ fontSize: "13px", color: "#4b5563" }}>Queixa Principal / Motivo:</strong>
+              <p style={{ margin: "4px 0 0 0", padding: "10px", backgroundColor: "#f9fafb", borderRadius: "6px", fontSize: "14px", color: "#1f2937" }}>{consultaDetalhes.queixa_principal || "Não informada"}</p>
+            </div>
+
+            {consultaDetalhes.exame_fisico && (
+              <div style={{ marginBottom: "14px" }}>
+                <strong style={{ fontSize: "13px", color: "#4b5563" }}>Exame Físico / Achados Clínicos:</strong>
+                <p style={{ margin: "4px 0 0 0", padding: "10px", backgroundColor: "#f9fafb", borderRadius: "6px", fontSize: "14px", color: "#1f2937", whiteSpace: "pre-line" }}>{consultaDetalhes.exame_fisico}</p>
+              </div>
+            )}
+
+            {consultaDetalhes.parecer_copiloto && (
+              <div style={{ marginBottom: "20px" }}>
+                <strong style={{ fontSize: "13px", color: "#0369a1" }}>🤖 Parecer do Copiloto Clínico (IA):</strong>
+                <div style={{ margin: "4px 0 0 0", padding: "12px", backgroundColor: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "6px", fontSize: "14px", color: "#0c4a6e", whiteSpace: "pre-line" }}>
+                  {consultaDetalhes.parecer_copiloto}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", borderTop: "1px solid #e5e7eb", paddingTop: "16px" }}>
+              <button 
+                onClick={() => window.print()} 
+                style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <MdPrint size={16} /> Imprimir Ficha
+              </button>
+              <button 
+                onClick={() => setConsultaDetalhes(null)} 
+                style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}
+              >
+                Fechar
+              </button>
+            </div>
+
+          </div>
+        </div>
       )}
 
       {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
