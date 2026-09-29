@@ -225,8 +225,17 @@ function Consultas() {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
       });
 
+      // GARANTE QUE APENAS O NOME DA HIPÓTESE VÁ PARA O CAMPO DE CIMA
+      let suspeitaPura = response.data.suspeita_diagnostica || "";
+      if (suspeitaPura.includes("SUGESTÕES:") || suspeitaPura.includes("SUGESTOES:")) {
+        suspeitaPura = suspeitaPura.split(/SUGESTÕES:|SUGESTOES:/i)[0].trim();
+      }
+      // Remove eventuais quebras de linha excessivas ou marcações indesejadas
+      suspeitaPura = suspeitaPura.replace(/\*\*/g, "").trim();
+
+      setSuspeitaDiagnostica(suspeitaPura);
       setSugestoesCopiloto(response.data.sugestoes || "");
-      if (response.data.suspeita_diagnostica) setSuspeitaDiagnostica(response.data.suspeita_diagnostica);
+
       if (response.data.indicacao_cirurgia !== undefined) {
         setIndicacaoCirurgia(response.data.indicacao_cirurgia);
         setJustificativaCirurgica(response.data.justificativa_cirurgica || "");
@@ -508,7 +517,6 @@ function Consultas() {
           <div style={{ marginBottom: "25px", display: "grid", gap: "14px" }}>
             <div>
               <label style={estiloLabel}>Queixa Principal / Motivo</label>
-              {/* ALTERADO PARA TEXTAREA COM ALTURA DE DUAS LINHAS (minHeight de aprox 65px) */}
               <textarea 
                 rows={2} 
                 value={queixaPrincipal} 
