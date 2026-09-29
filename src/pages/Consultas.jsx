@@ -58,7 +58,6 @@ function Consultas() {
     carregarUsuarios();
   }, []);
 
-  // EFEITO DE PROGRESSO DINÂMICO DURANTE A ANÁLISE DA IA
   useEffect(() => {
     let timer1, timer2;
     if (carregandoCopiloto) {
@@ -155,7 +154,6 @@ function Consultas() {
       if (!token) return tratarSessaoExpirada();
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      // ATUALIZA O STATUS IMEDIATAMENTE NO BANCO PARA PARAR O ALARME DO PAINEL DE CHAMADAS
       await api.put(`/consultas/${consulta.id}`, { status: "Em Atendimento" }, config);
 
       let dadosTriagem = {};
@@ -351,8 +349,9 @@ function Consultas() {
   };
 
   const renderBadgeTemperatura = (temp) => {
-    if (!temp) return "-";
+    if (!temp && temp !== 0) return "-";
     const valor = Number(temp);
+    if (isNaN(valor)) return "-";
     if (valor >= 39.3) return <span style={{ color: "#991b1b", fontWeight: "bold" }}>🔥 {valor} °C (Febre)</span>;
     if (valor < 37.5) return <span style={{ color: "#0369a1", fontWeight: "bold" }}>❄️ {valor} °C (Baixa)</span>;
     return <span style={{ color: "#166534", fontWeight: "600" }}>{valor} °C</span>;
@@ -373,7 +372,7 @@ function Consultas() {
     return <span style={{ backgroundColor: conf.bg, color: conf.color, padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>{conf.label}</span>;
   };
 
-  // FORMATADOR LIMPO, ALINHADO À ESQUERDA E ORGANIZADO POR TÓPICOS
+  // FORMATADOR ROBUSTO PARA GARANTIR TÍTULOS EM NEGRITO E DIVISÃO POR TÓPICOS CORRETA
   const renderizarTextoFormatadoIA = (textoBruto) => {
     if (!textoBruto) return null;
 
@@ -384,26 +383,40 @@ function Consultas() {
       .replace(/Sugestões Clínicas:.*/gi, "")
       .trim();
 
-    const linhas = textoLimpo.split("\n").filter(l => l.trim() !== "");
+    const linhasBrutas = textoLimpo.split("\n");
+    let linhasProcessadas = [];
+
+    // Se o texto vier sem quebras de linha adequadas (texto contínuo), divide por pontos ou marcadores implícitos
+    if (linhasBrutas.length <= 1 && textoLimpo.length > 80) {
+      const fragmentos = textoLimpo.split(/(?=[A-Z][a-zà-ú\s]+:|-|\u2022)/);
+      linhasProcessadas = fragmentos.length > 1 ? fragmentos : [textoLimpo];
+    } else {
+      linhasProcessadas = linhasBrutas.filter(l => l.trim() !== "");
+    }
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "6px", textAlign: "left" }}>
-        {linhas.map((linha, idx) => {
-          const linhaTrim = linha.replace(/\*\*/g, "").trim();
-          const ehTituloSecao = linhaTrim.endsWith(":") || (linhaTrim.match(/^[A-ZÀ-Ú][a-za-zà-ú\s]+$/) && linhaTrim.length < 35);
+        {linhasProcessadas.map((linha, idx) => {
+          let linhaTrim = linha.replace(/\*\*/g, "").trim();
+          if (!linhaTrim) return null;
 
-          if (ehTituloSecao && !linhaTrim.startsWith("•") && !linhaTrim.match(/^\d+\./)) {
+          const ehTituloSecao = linhaTrim.endsWith(":") || (linhaTrim.startsWith("-") && linhaTrim.length < 40 && !linhaTrim.includes(".")) || (linhaTrim.match(/^[A-ZÀ-Ú][a-za-zà-ú\s]+$/) && linhaTrim.length < 35);
+
+          if (ehTituloSecao) {
+            const tituloLimpo = linhaTrim.replace(/^- /, "").replace(/:$/, "").trim();
             return (
               <div key={idx} style={{ fontWeight: "bold", color: "#166534", fontSize: "14px", marginTop: "12px", marginBottom: "4px", textAlign: "left" }}>
-                {linhaTrim}
+                {tituloLimpo}:
               </div>
             );
           }
 
+          const textoLimpoItem = linhaTrim.replace(/^- /, "").replace(/^[•\-\*]\s*/, "").trim();
+
           return (
-            <div key={idx} style={{ display: "flex", gap: "8px", fontSize: "13px", color: "#334155", lineHeight: "1.5", textAlign: "left" }}>
+            <div key={idx} style={{ display: "flex", gap: "8px", fontSize: "13px", color: "#334155", lineHeight: "1.5", textAlign: "left", paddingLeft: "8px" }}>
               <span style={{ color: "#166534", fontWeight: "bold" }}>•</span>
-              <span style={{ flex: 1, textAlign: "left" }}>{linhaTrim.replace(/^- /, "").replace(/^\d+\.\s*/, "")}</span>
+              <span style={{ flex: 1, textAlign: "left" }}>{textoLimpoItem}</span>
             </div>
           );
         })}
@@ -440,7 +453,6 @@ function Consultas() {
       {mostrarFormulario && (
         <div style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", marginBottom: "25px", border: "1px solid #e5e7eb" }}>
           
-          {/* 1. DADOS DO PACIENTE E PARÂMETROS VITAIS NO TOPO */}
           <h3 style={{ margin: "0 0 16px 0", color: "#111827", fontSize: "16px" }}>
             📋 Dados do Paciente e Parâmetros Vitais
           </h3>
@@ -507,7 +519,7 @@ function Consultas() {
             </div>
           </div>
 
-          {/* 2. COPILOTO CLÍNICO & ANÁLISE DE EXAMES NA PARTE DE BAIXO */}
+          {/* COPILOTO CLÍNICO & ANÁLISE DE EXAMES */}
           <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "16px", marginBottom: "24px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
               <h4 style={{ margin: 0, color: "#166534", display: "flex", alignItems: "center", gap: "6px", fontSize: "15px" }}>
@@ -523,7 +535,6 @@ function Consultas() {
               </button>
             </div>
 
-            {/* FEEDBACK VISUAL EM TEMPO REAL PARA O PROCESSAMENTO DE IA */}
             {carregandoCopiloto && (
               <div style={{ display: "flex", alignItems: "center", gap: "12px", backgroundColor: "#ecfdf5", border: "1px solid #6ee7b7", padding: "12px 16px", borderRadius: "8px", marginBottom: "14px" }}>
                 <div style={{ width: "20px", height: "20px", border: "3px solid #10b981", borderTop: "3px solid transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
@@ -538,8 +549,8 @@ function Consultas() {
               📎 Anexar Raio-X, Ultrassom ou Laudo (Múltiplas Imagens ou PDFs) para a IA analisar:
             </div>
 
-            {/* CAMPO DE ANEXO COMPACTO (ALTURA REDUZIDA, LARGURA 100% E SCROLL INTERNO) */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "14px", backgroundColor: "#ffffff", padding: "6px 12px", borderRadius: "6px", border: "1px dashed #15803d", width: "100%", height: "55px", maxHeight: "55px", overflowY: "auto", boxSizing: "border-box" }}>
+            {/* CONTAINER DE ANEXOS CORRIGIDO PARA NÃO CORTAR OS NOMES E MANTER ALTURA ESTÁVEL */}
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px", marginBottom: "14px", backgroundColor: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px dashed #15803d", width: "100%", minHeight: "55px", maxHeight: "95px", overflowY: "auto", boxSizing: "border-box" }}>
               <label style={{ fontSize: "13px", color: "#15803d", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
                 <MdAttachFile size={16} /> Selecionar Arquivos de Exames / Laudos
                 <input 
@@ -550,14 +561,14 @@ function Consultas() {
                 />
               </label>
               {arquivosExames.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "4px" }}>
                   {arquivosExames.map((arq, idx) => (
                     <span key={idx} style={{ fontSize: "11px", color: "#166534", fontWeight: "500" }}>📄 {arq.name}</span>
                   ))}
                   <button 
                     type="button" 
                     onClick={() => setArquivosExames([])} 
-                    style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "11px", fontWeight: "bold", textAlign: "left" }}
+                    style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "11px", fontWeight: "bold", textAlign: "left", padding: 0 }}
                   >
                     Remover todos
                   </button>
@@ -576,7 +587,6 @@ function Consultas() {
               placeholder="A suspeita diagnóstica aparecerá aqui após a análise..."
             />
 
-            {/* CHECKBOX DE EXAMES PREVENTIVOS */}
             <div style={{ display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", padding: "10px 14px", borderRadius: "8px", marginBottom: "14px" }}>
               <input 
                 type="checkbox" 
@@ -589,7 +599,6 @@ function Consultas() {
               </label>
             </div>
 
-            {/* CAIXA DE INDICAÇÃO CIRÚRGICA */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", padding: "12px 14px", borderRadius: "8px", marginBottom: "14px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <span style={{ fontSize: "16px" }}>➕</span>
@@ -613,7 +622,6 @@ function Consultas() {
               </div>
             </div>
 
-            {/* PARECER DETALHADO DA IA */}
             {sugestoesCopiloto && (
               <div style={{ padding: "16px", backgroundColor: "#ffffff", borderRadius: "8px", border: "1px solid #d1d5db" }}>
                 <div style={{ fontSize: "14px", fontWeight: "bold", color: "#166534", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
@@ -662,7 +670,7 @@ function Consultas() {
                       <td style={{ padding: "14px", fontWeight: "bold", color: "#4f46e5", whiteSpace: "nowrap" }}>{c.codigo || `CNS-${c.id}`}</td>
                       <td style={{ padding: "14px", fontWeight: "600", whiteSpace: "nowrap" }}>{obterNomeAnimal(c.animal_id)}</td>
                       <td style={{ padding: "14px", color: "#4b5563", textAlign: "left" }}>{c.queixa_principal}</td>
-                      <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{c.peso_atendimento ? `${c.peso_atendimento} kg` : "-"}</td>
+                      <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{c.peso_atendimento ?? c.peso ? `${c.peso_atendimento ?? c.peso} kg` : "-"}</td>
                       <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeTemperatura(c.temperatura)}</td>
                       <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeStatus(c.status)}</td>
                       <td style={{ padding: "14px", display: "flex", justifyContent: "center", gap: "6px", whiteSpace: "nowrap" }}>
@@ -701,7 +709,7 @@ function Consultas() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "16px", fontSize: "14px", color: "#374151" }}>
               <div><strong>Paciente:</strong> {obterNomeAnimal(consultaDetalhes.animal_id)}</div>
               <div><strong>Status:</strong> {consultaDetalhes.status}</div>
-              <div><strong>Peso:</strong> {consultaDetalhes.peso_atendimento ? `${consultaDetalhes.peso_atendimento} kg` : "-"}</div>
+              <div><strong>Peso:</strong> {consultaDetalhes.peso_atendimento ?? consultaDetalhes.peso ? `${consultaDetalhes.peso_atendimento ?? consultaDetalhes.peso} kg` : "-"}</div>
               <div><strong>Temperatura:</strong> {consultaDetalhes.temperatura ? `${consultaDetalhes.temperatura} °C` : "-"}</div>
             </div>
             <div style={{ marginBottom: "14px" }}>
