@@ -757,4 +757,4 @@ function Consultas() {
   );
 }
 
-export_default = Consultas; // ou export default Consultas
+export default Consultas;
