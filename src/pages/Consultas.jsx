@@ -50,7 +50,6 @@ function Consultas() {
   const [mensagemErro, setMensagemErro] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
   
-  // Estado para controlar o modal de exclusão
   const [consultaParaExcluir, setConsultaParaExcluir] = useState(null);
   const [modalExclusaoAberto, setModalExclusaoAberto] = useState(false);
 
@@ -74,11 +73,10 @@ function Consultas() {
       const response = await api.get("/consultas/", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setConsultas(response.data);
-      return response.data;
+      setConsultas(response.data || []);
     } catch (error) {
       if (error.response?.status === 401) tratarSessaoExpirada();
-      return [];
+      setConsultas([]);
     }
   };
 
@@ -89,7 +87,7 @@ function Consultas() {
       const response = await api.get("/animais/", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setAnimais(response.data);
+      setAnimais(response.data || []);
     } catch (error) {
       console.error("Erro ao carregar animais:", error);
     }
@@ -102,8 +100,7 @@ function Consultas() {
       const response = await api.get("/usuarios/", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
-      const apenasVets = response.data.filter((u) => u.perfil === "VETERINARIO");
+      const apenasVets = (response.data || []).filter((u) => u.perfil === "VETERINARIO");
       setUsuarios(apenasVets);
     } catch (error) {
       console.error("Erro ao carregar usuários:", error);
@@ -118,11 +115,7 @@ function Consultas() {
       const animalEncontrado = animais.find((a) => a.id === Number(idSelecionado));
       if (animalEncontrado) {
         if (animalEncontrado.peso) setPesoAtendimento(animalEncontrado.peso);
-        if (animalEncontrado.idade !== undefined && animalEncontrado.idade !== null) {
-          setIdadeAtendimento(animalEncontrado.idade);
-        } else {
-          setIdadeAtendimento("");
-        }
+        setIdadeAtendimento(animalEncontrado.idade ?? "");
       }
     }
   };
@@ -172,9 +165,9 @@ function Consultas() {
       const tpcVal = dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "";
       const mucosasVal = dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas";
 
-      // Preenche os campos do formulário corretamente ao iniciar o atendimento
+      // Preenchimento seguro dos estados para evitar ecrã branco
       setCodigo(consulta.codigo || `CNS-${consulta.id}`);
-      setAnimalId(consulta.animal_id);
+      setAnimalId(consulta.animal_id || "");
       setQueixaPrincipal(consulta.queixa_principal || dadosTriagem?.queixa_principal || "");
 
       setTemperatura(tempVal !== null && tempVal !== undefined ? String(tempVal) : "");
@@ -190,20 +183,20 @@ function Consultas() {
         {
           codigo: consulta.codigo || `CNS-${consulta.id}`,
           animal_id: consulta.animal_id,
-          usuario_id: consulta.usuario_id,
+          usuario_id: consulta.usuario_id || null,
           status: "Em Atendimento",
-          queixa_principal: consulta.queixa_principal || dadosTriagem?.queixa_principal,
+          queixa_principal: consulta.queixa_principal || dadosTriagem?.queixa_principal || "Consulta clínica",
           peso_atendimento: pesoVal !== "" ? Number(pesoVal) : null,
           temperatura: tempVal !== "" ? Number(tempVal) : null,
           frequencia_cardiaca: fcVal !== "" ? Number(fcVal) : null,
           frequencia_respiratoria: frVal !== "" ? Number(frVal) : null,
           tpc_segundos: tpcVal !== "" ? Number(tpcVal) : null,
           mucosas: mucosasVal,
-          parecer_copiloto: consulta.parecer_copiloto,
-          observacoes: consulta.observacoes,
-          indicacao_cirurgia: consulta.indicacao_cirurgia,
-          justificativa_cirurgica: consulta.justificativa_cirurgica,
-          solicitar_exames_preventivos: consulta.solicitar_exames_preventivos
+          parecer_copiloto: consulta.parecer_copiloto || null,
+          observacoes: consulta.observacoes || null,
+          indicacao_cirurgia: Boolean(consulta.indicacao_cirurgia),
+          justificativa_cirurgica: consulta.justificativa_cirurgica || null,
+          solicitar_exames_preventivos: Boolean(consulta.solicitar_exames_preventivos)
         },
         config
       );
@@ -216,6 +209,65 @@ function Consultas() {
     } catch (error) {
       console.error("Erro ao iniciar atendimento:", error);
       setMensagemErro(`❌ Erro ao iniciar atendimento: ${error.response?.data?.detail || error.message}`);
+    }
+  };
+
+  const consultarCopilotoComAnexo = async () => {
+    if (!queixaPrincipal || !queixaPrincipal.trim()) {
+      setMensagemErro("🩺 Por favor, preencha a Queixa Principal antes de analisar.");
+      return;
+    }
+
+    setCarregandoCopiloto(true);
+    setMensagemErro("");
+    try {
+      const token = localStorage.getItem("token");
+      const animalEncontrado = animais.find((a) => a.id === Number(animalId));
+
+      const formData = new FormData();
+      formData.append("queixa_principal", queixaPrincipal);
+      if (animalId) formData.append("animal_id", animalId);
+      formData.append("especie", animalEncontrado?.especie || "Não informada");
+      formData.append("raca", animalEncontrado?.raca || "SRD");
+      if (idadeAtendimento) formData.append("idade", `${idadeAtendimento} anos`);
+      if (pesoAtendimento) formData.append("peso", `${pesoAtendimento} kg`);
+      if (sintomas) formData.append("sintomas", sintomas);
+      if (exameFisico) formData.append("exame_fisico", exameFisico);
+      if (temperatura) formData.append("temperatura", temperatura);
+      if (frequenciaCardiaca) formData.append("frequencia_cardiaca", frequenciaCardiaca);
+      if (frequenciaRespiratoria) formData.append("frequencia_respiratoria", frequenciaRespiratoria);
+      if (tpcSegundos) formData.append("tpc_segundos", tpcSegundos);
+      if (mucosas) formData.append("mucosas", mucosas);
+      formData.append("solicitar_exames_preventivos", solicitarExamesPreventivos ? "true" : "false");
+
+      if (arquivoExame) {
+        formData.append("file", arquivoExame);
+      }
+
+      const response = await api.post("/consultas/sugestoes-copiloto-multimodal", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setSugestoesCopiloto(response.data.sugestoes || "");
+      if (response.data.suspeita_diagnostica) {
+        setSuspeitaDiagnostica(response.data.suspeita_diagnostica);
+      }
+      if (response.data.indicacao_cirurgia !== undefined) {
+        setIndicacaoCirurgia(response.data.indicacao_cirurgia);
+        setJustificativaCirurgica(response.data.justificativa_cirurgica || "");
+      }
+      if (response.data.exames_sugeridos) {
+        window.examesSugeridosIA = response.data.exames_sugeridos;
+      }
+
+    } catch (error) {
+      console.error("Erro ao consultar Copiloto Multimodal:", error);
+      setSugestoesCopiloto(`⚠️ ${error.response?.data?.detail || "Erro ao analisar dados."}`);
+    } finally {
+      setCarregandoCopiloto(false);
     }
   };
 
@@ -319,56 +371,6 @@ function Consultas() {
     }
   };
 
-  const editarConsulta = async (consulta) => {
-    setConsultaEditando(consulta);
-    setCodigo(consulta.codigo || "");
-    setAnimalId(consulta.animal_id);
-    setUsuarioId(consulta.usuario_id || "");
-    setStatusAtendimento(consulta.status || "Em Atendimento");
-    setQueixaPrincipal(consulta.queixa_principal || "");
-    setHistoricoClinico(consulta.historico_clinico || "");
-    setSintomas(consulta.sintomas || "");
-    setExameFisico(consulta.exame_fisico || "");
-    setSuspeitaDiagnostica(consulta.suspeita_diagnostica || "");
-
-    let dadosTriagem = {};
-    try {
-      const token = localStorage.getItem("token");
-      const respTriagem = await api.get(`/triagem/consulta/${consulta.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (respTriagem.data) dadosTriagem = respTriagem.data;
-    } catch (errTriagem) {
-      console.warn("Aviso: Triagem não encontrada.", errTriagem);
-    }
-
-    const tempVal = dadosTriagem?.temperatura ?? consulta.temperatura ?? "";
-    const fcVal = dadosTriagem?.frequencia_cardiaca ?? consulta.frequencia_cardiaca ?? "";
-    const frVal = dadosTriagem?.frequencia_respiratoria ?? consulta.frequencia_respiratoria ?? "";
-    const pesoVal = dadosTriagem?.peso ?? consulta.peso_atendimento ?? "";
-    const tpcVal = dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "";
-    const mucosasVal = dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas";
-
-    setTemperatura(tempVal !== "" ? String(tempVal) : "");
-    setFrequenciaCardiaca(fcVal !== "" ? String(fcVal) : "");
-    setFrequenciaRespiratoria(frVal !== "" ? String(frVal) : "");
-    setPesoAtendimento(pesoVal !== "" ? String(pesoVal) : "");
-    setTpcSegundos(tpcVal !== "" ? String(tpcVal) : "");
-    setMucosas(mucosasVal);
-
-    const animalEncontrado = animais.find((a) => a.id === consulta.animal_id);
-    setIdadeAtendimento(animalEncontrado?.idade ?? "");
-
-    setObservacoes(consulta.observacoes || dadosTriagem?.observacoes || "");
-    setIndicacaoCirurgia(consulta.indicacao_cirurgia || false);
-    setJustificativaCirurgica(consulta.justificativa_cirurgica || "");
-    setSolicitarExamesPreventivos(consulta.solicitar_exames_preventivos || false);
-    setSugestoesCopiloto(consulta.parecer_copiloto || "");
-    setArquivoExame(null);
-    setMostrarFormulario(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
   const obterAnimalCompleto = (id) => animais.find((item) => item.id === id);
   const obterNomeAnimal = (id) => {
     const a = obterAnimalCompleto(id);
@@ -398,11 +400,6 @@ function Consultas() {
         examesSugeridos: window.examesSugeridosIA || []
       },
     });
-  };
-
-  const imprimirFichaAtendimento = () => {
-    if (!consultaDetalhes) return;
-    window.print();
   };
 
   const renderBadgeTemperatura = (temp) => {
