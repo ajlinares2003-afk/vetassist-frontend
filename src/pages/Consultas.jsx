@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdLocalHospital, MdDelete } from "react-icons/md";
+import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdLocalHospital, MdDelete, MdCampaign } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
@@ -127,30 +127,24 @@ function Consultas() {
     }
   };
 
-  const chamarParaConsulta = async (consulta) => {
+  const chamarPaciente = async (consulta, e) => {
+    e.stopPropagation();
     try {
       const token = localStorage.getItem("token");
-      if (!token) return tratarSessaoExpirada();
-
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-
       await api.put(
-        `/consultas/${consulta.id}`,
-        {
-          codigo: consulta.codigo,
-          animal_id: consulta.animal_id,
-          usuario_id: consulta.usuario_id,
-          status: "Chamando para Consulta",
-          queixa_principal: consulta.queixa_principal
-        },
-        config
+        `/consultas/${consulta.id}/chamar`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setConsultas(prev => 
+        prev.map(item => item.id === consulta.id ? { ...item, status: "Chamando para Consulta" } : item)
       );
 
-      setMensagemSucesso(`📢 Paciente chamado para o consultório com sucesso!`);
-      carregarConsultas();
-    } catch (error) {
-      console.error("Erro ao chamar paciente:", error);
-      setMensagemErro(`❌ Erro ao chamar paciente: ${error.response?.data?.detail || error.message}`);
+      setMensagemSucesso(`📢 A chamar ${obterNomeAnimal(consulta.animal_id)} no painel!`);
+    } catch (err) {
+      console.error("Erro ao chamar paciente:", err);
+      setMensagemErro("Erro ao emitir chamada para o paciente.");
     }
   };
 
@@ -479,6 +473,7 @@ function Consultas() {
       EM_ATENDIMENTO: { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
       "Em Atendimento": { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
       "Aguardando Consulta (Fila Vet)": { bg: "#e0e7ff", color: "#3730a3", label: "🩺 Pronto para Consulta" },
+      "Chamando para Consulta": { bg: "#fee2e2", color: "#991b1b", label: "📢 A chamar..." },
       FINALIZADO: { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
       "Finalizado": { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
       CANCELADO: { bg: "#fee2e2", color: "#991b1b", label: "❌ Cancelado" }
@@ -654,6 +649,13 @@ function Consultas() {
                       <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeTemperatura(c.temperatura)}</td>
                       <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeStatus(c.status)}</td>
                       <td style={{ padding: "14px", display: "flex", justifyContent: "center", gap: "6px", whiteSpace: "nowrap" }}>
+                        <button 
+                          onClick={(e) => chamarPaciente(c, e)} 
+                          style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}
+                          title="Chamar paciente para o consultório"
+                        >
+                          <MdCampaign size={16} /> Chamar
+                        </button>
                         <button onClick={() => iniciarAtendimentoVeterinario(c)} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
                           💉 Atender
                         </button>
