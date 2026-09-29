@@ -348,11 +348,11 @@ function Consultas() {
     return <span style={{ backgroundColor: conf.bg, color: conf.color, padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>{conf.label}</span>;
   };
 
-  // FORMATADOR LIMPO E POR TÓPICOS PARA O PARECER DO COPILOTO
+  // FORMATADOR LIMPO, ALINHADO À ESQUERDA E ORGANIZADO POR TÓPICOS
   const renderizarTextoFormatadoIA = (textoBruto) => {
     if (!textoBruto) return null;
 
-    // Remove repetições indesejadas e cabeçalhos duplicados que a IA possa trazer
+    // Limpa cabeçalhos repetidos e separa o texto em linhas úteis
     let textoLimpo = textoBruto
       .replace(/SUSPEITA:.*/gi, "")
       .replace(/SUGESTOES:.*/gi, "")
@@ -360,27 +360,26 @@ function Consultas() {
       .replace(/Sugestões Clínicas:.*/gi, "")
       .trim();
 
-    // Divide o texto em blocos ou tópicos com base em quebras de linha ou marcações
     const linhas = textoLimpo.split("\n").filter(l => l.trim() !== "");
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px", textAlign: "left" }}>
         {linhas.map((linha, idx) => {
-          const linhaTrim = linha.trim();
-          const ehTituloSecao = linhaTrim.startsWith("**") || linhaTrim.endsWith(":") || linhaTrim.match(/^\d+\./);
+          const linhaTrim = linha.replace(/\*\*/g, "").trim();
+          const ehTituloSecao = linhaTrim.endsWith(":") || linhaTrim.match(/^[A-ZÀ-Ú][a-za-zà-ú\s]+$/) && linhaTrim.length < 35;
 
-          if (ehTituloSecao) {
+          if (ehTituloSecao && !linhaTrim.startsWith("•") && !linhaTrim.match(/^\d+\./)) {
             return (
-              <div key={idx} style={{ fontWeight: "bold", color: "#166534", fontSize: "14px", marginTop: "8px" }}>
-                {linhaTrim.replace(/\*\*/g, "")}
+              <div key={idx} style={{ fontWeight: "bold", color: "#166534", fontSize: "14px", marginTop: "12px", marginBottom: "4px", textAlign: "left" }}>
+                {linhaTrim}
               </div>
             );
           }
 
           return (
-            <div key={idx} style={{ display: "flex", gap: "8px", fontSize: "14px", color: "#334155", lineHeight: "1.5", textAlign: "justify" }}>
+            <div key={idx} style={{ display: "flex", gap: "8px", fontSize: "135px", color: "#334155", lineHeight: "1.5", textAlign: "left" }}>
               <span style={{ color: "#166534", fontWeight: "bold" }}>•</span>
-              <span style={{ flex: 1 }}>{linhaTrim.replace(/^- /, "").replace(/^\d+\.\s*/, "").replace(/\*\*/g, "")}</span>
+              <span style={{ flex: 1, textAlign: "left" }}>{linhaTrim.replace(/^- /, "").replace(/^\d+\.\s*/, "")}</span>
             </div>
           );
         })}
@@ -504,8 +503,8 @@ function Consultas() {
               📎 Anexar Raio-X, Ultrassom ou Laudo (Múltiplas Imagens ou PDFs) para a IA analisar:
             </div>
 
-            {/* CAMPO DE ANEXO COM ALTURA FIXA E TRAVADA */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "14px", backgroundColor: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px dashed #15803d", width: "100%", maxHeight: "110px", overflowY: "auto", boxSizing: "border-box" }}>
+            {/* CAMPO DE ANEXO COM ALTURA TRAVADA E SCROLL INTERNO SE NECESSÁRIO */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "14px", backgroundColor: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px dashed #15803d", width: "100%", height: "75px", maxHeight: "75px", overflowY: "auto", boxSizing: "border-box" }}>
               <label style={{ fontSize: "13px", color: "#15803d", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
                 <MdAttachFile size={16} /> Selecionar Arquivos de Exames / Laudos
                 <input 
@@ -516,16 +515,16 @@ function Consultas() {
                 />
               </label>
               {arquivosExames.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "2px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                   {arquivosExames.map((arq, idx) => (
-                    <span key={idx} style={{ fontSize: "12px", color: "#166534", fontWeight: "500" }}>📄 {arq.name}</span>
+                    <span key={idx} style={{ fontSize: "11px", color: "#166534", fontWeight: "500" }}>📄 {arq.name}</span>
                   ))}
                   <button 
                     type="button" 
                     onClick={() => setArquivosExames([])} 
-                    style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", fontWeight: "bold", textAlign: "left", marginTop: "2px" }}
+                    style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "11px", fontWeight: "bold", textAlign: "left" }}
                   >
-                    Remover todos os anexos
+                    Remover todos
                   </button>
                 </div>
               )}
