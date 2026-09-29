@@ -348,19 +348,44 @@ function Consultas() {
     return <span style={{ backgroundColor: conf.bg, color: conf.color, padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>{conf.label}</span>;
   };
 
-  // FORMATADOR AMIGÁVEL PARA O PARECER DO COPILOTO (Evita blocos densos)
+  // FORMATADOR LIMPO E POR TÓPICOS PARA O PARECER DO COPILOTO
   const renderizarTextoFormatadoIA = (textoBruto) => {
     if (!textoBruto) return null;
-    // Divide por frases/tópicos ou quebras lógicas para organizar em parágrafos limpos
-    const linhas = textoBruto.split(/\n|\. (?=[A-Z0-9])/);
-    return linhas.map((linha, idx) => {
-      if (!linha.trim()) return null;
-      return (
-        <p key={idx} style={{ margin: "8px 0", fontSize: "14px", color: "#1e293b", lineHeight: "1.6", textAlign: "justify" }}>
-          {linha.trim().endsWith(".") ? linha.trim() : `${linha.trim()}.`}
-        </p>
-      );
-    });
+
+    // Remove repetições indesejadas e cabeçalhos duplicados que a IA possa trazer
+    let textoLimpo = textoBruto
+      .replace(/SUSPEITA:.*/gi, "")
+      .replace(/SUGESTOES:.*/gi, "")
+      .replace(/Suspeita Diagnóstica:.*/gi, "")
+      .replace(/Sugestões Clínicas:.*/gi, "")
+      .trim();
+
+    // Divide o texto em blocos ou tópicos com base em quebras de linha ou marcações
+    const linhas = textoLimpo.split("\n").filter(l => l.trim() !== "");
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        {linhas.map((linha, idx) => {
+          const linhaTrim = linha.trim();
+          const ehTituloSecao = linhaTrim.startsWith("**") || linhaTrim.endsWith(":") || linhaTrim.match(/^\d+\./);
+
+          if (ehTituloSecao) {
+            return (
+              <div key={idx} style={{ fontWeight: "bold", color: "#166534", fontSize: "14px", marginTop: "8px" }}>
+                {linhaTrim.replace(/\*\*/g, "")}
+              </div>
+            );
+          }
+
+          return (
+            <div key={idx} style={{ display: "flex", gap: "8px", fontSize: "14px", color: "#334155", lineHeight: "1.5", textAlign: "justify" }}>
+              <span style={{ color: "#166534", fontWeight: "bold" }}>•</span>
+              <span style={{ flex: 1 }}>{linhaTrim.replace(/^- /, "").replace(/^\d+\.\s*/, "").replace(/\*\*/g, "")}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   const consultasFiltradas = consultas.filter((c) => {
