@@ -61,7 +61,7 @@ function Triagem() {
       const timer = setTimeout(() => {
         setMensagem({ tipo: "", texto: "" });
       }, 4000);
-      return () => clearInterval(timer);
+      return () => clearTimeout(timer);
     }
   }, [mensagem]);
 
@@ -113,7 +113,7 @@ function Triagem() {
     return a ? `${a.nome} (${a.codigo || `PET-${a.id}`})` : `-`;
   };
 
-  // Análise inteligente e dinâmica das referências (Temperatura, FC e FR) com base na espécie e temperatura aferida
+  // Análise inteligente e dinâmica das referências (Peso, Temperatura, FC, FR e Mucosas) com base na espécie e idade do animal
   const obterReferenciasEspecie = () => {
     const animalAlvo = atendimentoSelecionado 
       ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
@@ -121,6 +121,12 @@ function Triagem() {
     
     const esp = (animalAlvo?.especie || "").toLowerCase();
     const tempNum = parseFloat(temperatura);
+
+    // Tenta estimar a idade com base nos dados do animal (se houver campo de idade ou data de nascimento)
+    let idadeTexto = "";
+    if (animalAlvo?.idade) {
+      idadeTexto = ` (${animalAlvo.idade})`;
+    }
 
     if (esp.includes("réptil") || esp.includes("reptil") || esp.includes("iguana") || esp.includes("tartaruga")) {
       let fcEstimada = "60 - 100 bpm (Repouso)";
@@ -137,24 +143,30 @@ function Triagem() {
       }
 
       return { 
+        pesoRef: "💡 Ref. Peso: 1.0 - 4.0 kg (Adulto/Subadulto)",
         temp: "Normal: 28°C - 37°C", 
         fc: fcEstimada, 
         fr: frEstimada,
-        tpc: "Até 3s" 
+        tpc: "Até 3s",
+        mucosasRef: "💡 Oral: Rosadas e úmidas (sem cianose)"
       };
     } else if (esp.includes("felino") || esp.includes("gato")) {
       return { 
+        pesoRef: "💡 Ref. Peso: 3.0 - 5.0 kg (Adulto padrão)",
         temp: "Normal: 38.1°C - 39.2°C", 
         fc: "120 - 220 bpm", 
         fr: "20 - 42 mpm",
-        tpc: "Até 2s" 
+        tpc: "Até 2s",
+        mucosasRef: "💡 Normocoradas (Rosadas e úmidas)"
       };
     } else {
       return { 
+        pesoRef: "💡 Ref. Peso: Variável por raça/idade",
         temp: "Normal: 38.3°C - 39.2°C", 
         fc: "70 - 160 bpm", 
         fr: "15 - 30 mpm",
-        tpc: "Até 2s" 
+        tpc: "Até 2s",
+        mucosasRef: "💡 Normocoradas (Rosadas e úmidas)"
       };
     }
   };
@@ -509,6 +521,7 @@ function Triagem() {
               <div>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
                 <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
+                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refs.pesoRef}</span>
               </div>
               <div>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Temperatura (°C)</label>
@@ -539,6 +552,7 @@ function Triagem() {
                   <option value="Ictéricas">Ictéricas (Amareladas)</option>
                   <option value="Congestas / Hiperêmicas">Congestas / Vermelhas</option>
                 </select>
+                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refs.mucosasRef}</span>
               </div>
             </div>
 
@@ -652,6 +666,7 @@ function Triagem() {
                 <div>
                   <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
                   <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
+                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refs.pesoRef}</span>
                 </div>
                 <div>
                   <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Temperatura (°C)</label>
@@ -682,6 +697,7 @@ function Triagem() {
                     <option value="Ictéricas">Ictéricas (Amareladas)</option>
                     <option value="Congestas / Hiperêmicas">Congestas / Vermelhas</option>
                   </select>
+                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refs.mucosasRef}</span>
                 </div>
               </div>
 
