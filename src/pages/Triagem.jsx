@@ -56,6 +56,16 @@ function Triagem() {
     return () => clearInterval(intervalo);
   }, []);
 
+  // Faz com que a mensagem de alerta desapareça sozinha após 4 segundos para economizar espaço
+  useEffect(() => {
+    if (mensagem.texto) {
+      const timer = setTimeout(() => {
+        setMensagem({ tipo: "", texto: "" });
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [mensagem]);
+
   useEffect(() => {
     if ((atendimentoSelecionado || animalIdDireto) && (temperatura || queixaPrincipal)) {
       const timer = setTimeout(() => {
@@ -557,7 +567,6 @@ function Triagem() {
 
       {mostrarModalNovoCheckin && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(3px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "10px" }}>
-          {/* LARGURA AMPLIADA PARA 900px E ALTURA OTIMIZADA PARA CABER TUDO NA TELA */}
           <div style={{ backgroundColor: "white", padding: "20px 24px", borderRadius: "14px", maxWidth: "900px", width: "100%", maxHeight: "96vh", overflowY: "auto", boxSizing: "border-box" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: "10px", marginBottom: "12px" }}>
               <h3 style={{ margin: 0, color: "#111827", fontSize: "17px" }}>
@@ -582,7 +591,7 @@ function Triagem() {
 
                 <div>
                   <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>
-                    👨‍⚕️ Veterinário Responsável *
+                    👨‍⚕️️ Veterinário Responsável *
                   </label>
                   <select value={usuarioIdVet} onChange={handleVeterinarioChange} style={estiloInput} required>
                     <option value="">Selecione o médico...</option>
