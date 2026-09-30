@@ -491,6 +491,7 @@ function Animais() {
                 style={estiloInput}
               >
                 <option value="">Selecione o Porte</option>
+                <option value="Miniatura">Miniatura</option>
                 <option value="Pequeno">Pequeno</option>
                 <option value="Médio">Médio</option>
                 <option value="Grande">Grande</option>
