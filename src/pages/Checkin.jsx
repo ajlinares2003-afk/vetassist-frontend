@@ -13,12 +13,11 @@ function Checkin() {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [consultaParaExcluir, setConsultaParaExcluir] = useState(null);
 
-  // Estados do Formulário de Check-in
+  // Estados do Formulário de Check-in (Peso removido)
   const [animalId, setAnimalId] = useState("");
   const [buscaPaciente, setBuscaPaciente] = useState(""); // Campo de busca rápida
   const [usuarioId, setUsuarioId] = useState("");
   const [queixaPrincipal, setQueixaPrincipal] = useState("");
-  const [peso, setPeso] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
   const [mensagemErro, setMensagemErro] = useState("");
   const [carregando, setCarregando] = useState(false);
@@ -80,8 +79,8 @@ function Checkin() {
 
   const realizarCheckin = async (e) => {
     e.preventDefault();
-    if (!animalId || !queixaPrincipal || !peso) {
-      setMensagemErro("Preencha todos os campos obrigatórios (Paciente, Peso e Motivo).");
+    if (!animalId || !queixaPrincipal) {
+      setMensagemErro("Preencha todos os campos obrigatórios (Paciente e Motivo).");
       return;
     }
 
@@ -94,8 +93,7 @@ function Checkin() {
         animal_id: Number(animalId),
         usuario_id: usuarioId ? Number(usuarioId) : null,
         queixa_principal: queixaPrincipal,
-        status: "AGUARDANDO_TRIAGEM",
-        peso_atendimento: Number(peso)
+        status: "AGUARDANDO_TRIAGEM"
       };
 
       await api.post("/consultas/", payload, config);
@@ -106,7 +104,6 @@ function Checkin() {
       setBuscaPaciente("");
       setUsuarioId("");
       setQueixaPrincipal("");
-      setPeso("");
       carregarDados();
     } catch (error) {
       setMensagemErro(`❌ Erro ao realizar check-in: ${error.response?.data?.detail || error.message}`);
@@ -226,7 +223,7 @@ function Checkin() {
                 <div>
                   <strong style={{ color: "#1f2937", fontSize: "15px" }}>🐾 {obterInfoAnimalETutor(item.animal_id)}</strong>
                   <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "#4b5563" }}>
-                    Código: <strong>{item.codigo}</strong> | Motivo: {item.queixa_principal} {item.peso_atendimento ? `| Peso: ${item.peso_atendimento}kg` : ""}
+                    Código: <strong>{item.codigo}</strong> | Motivo: {item.queixa_principal}
                   </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -324,11 +321,6 @@ function Checkin() {
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div style={{ marginBottom: "14px" }}>
-                <label style={estiloLabel}>Peso Atual (Kg) *</label>
-                <input type="number" step="0.1" placeholder="Ex: 5.4" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} required />
               </div>
 
               <div style={{ marginBottom: "20px" }}>
