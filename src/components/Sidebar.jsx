@@ -24,20 +24,15 @@ function Sidebar() {
 
       <hr />
 
-      <p>🏠 Dashboard</p>
-      <p
-        style={{ cursor: "pointer" }}
-        onClick={() =>
-          window.location.href = "/animais"
-        }
-      >
-        🐶 Animais
-      </p>
-      <p>👤 Tutores</p>
-      <p>📝 Check-in</p>
-      <p>💉 Vacinas</p>
-      <p>💊 Prescrições</p>
-      <p>📖 Prontuários</p>
+      <p style={{ cursor: "pointer" }} onClick={() => window.location.href = "/dashboard"}>🏠 Dashboard</p>
+      <p style={{ cursor: "pointer" }} onClick={() => window.location.href = "/animais"}>🐶 Animais</p>
+      <p style={{ cursor: "pointer" }} onClick={() => window.location.href = "/tutores"}>👤 Tutores</p>
+      <p style={{ cursor: "pointer" }} onClick={() => window.location.href = "/checkin"}>📝 Check-in</p>
+      <p style={{ cursor: "pointer" }} onClick={() => window.location.href = "/usuarios"}>🛡️ Usuários & Perfis</p> {/* <-- ADICIONADO AQUI */}
+      <p style={{ cursor: "pointer" }} onClick={() => window.location.href = "/vacinas"}>💉 Vacinas</p>
+      <p style={{ cursor: "pointer" }} onClick={() => window.location.href = "/prescricoes"}>💊 Prescrições</p>
+      <p style={{ cursor: "pointer" }} onClick={() => window.location.href = "/prontuarios"}>📖 Prontuários</p>
+      
       <button
         onClick={logout}
         style={{
