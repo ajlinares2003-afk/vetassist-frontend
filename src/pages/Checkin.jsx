@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdEvent, MdTv, MdDelete } from "react-icons/md";
+import { MdEvent, MdTv, MdDelete, MdSearch } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
@@ -15,6 +15,7 @@ function Checkin() {
 
   // Estados do Formulário de Check-in
   const [animalId, setAnimalId] = useState("");
+  const [buscaPaciente, setBuscaPaciente] = useState(""); // Campo de busca rápida
   const [usuarioId, setUsuarioId] = useState("");
   const [queixaPrincipal, setQueixaPrincipal] = useState("");
   const [peso, setPeso] = useState("");
@@ -45,7 +46,6 @@ function Checkin() {
       setAnimais(resAnimais.data || []);
       setTutores(resTutores.data || []);
       
-      // Filtra estritamente apenas perfis de TRIAGEM ou ENFERMEIRO
       const listaUsuarios = resUsuarios.data || [];
       const apenasEnfermeiros = listaUsuarios.filter(
         (u) => u.perfil === "TRIAGEM" || u.perfil === "ENFERMEIRO"
@@ -67,6 +67,16 @@ function Checkin() {
 
     return `${a.nome} (${a.especie || "Pet"}) — Tutor: ${nomeTutor}`;
   };
+
+  // Filtragem dos animais com base no texto digitado (pesquisa por nome do pet ou do tutor)
+  const animaisFiltrados = animais.filter((a) => {
+    if (!buscaPaciente) return true;
+    const termo = buscaPaciente.toLowerCase();
+    const nomePet = (a.nome || "").toLowerCase();
+    const t = tutores.find((tutor) => tutor.id === a.tutor_id);
+    const nomeTutor = t ? (t.nome || "").toLowerCase() : "";
+    return nomePet.includes(termo) || nomeTutor.includes(termo);
+  });
 
   const realizarCheckin = async (e) => {
     e.preventDefault();
@@ -93,6 +103,7 @@ function Checkin() {
       setMensagemSucesso("✅ Check-in realizado com sucesso! Paciente adicionado à fila.");
       setMostrarModal(false);
       setAnimalId("");
+      setBuscaPaciente("");
       setUsuarioId("");
       setQueixaPrincipal("");
       setPeso("");
@@ -219,7 +230,6 @@ function Checkin() {
                   </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  {/* ALTERADO PARA RETÂNGULO COM BORDAS SUAVES (6px) */}
                   <span style={{ backgroundColor: "#fef3c7", color: "#b45309", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "600" }}>
                     Aguardando Triagem
                   </span>
@@ -271,11 +281,27 @@ function Checkin() {
             <h3 style={{ marginTop: 0, color: "#1e1b4b", fontSize: "20px", marginBottom: "16px" }}>Novo Check-in de Paciente</h3>
             
             <form onSubmit={realizarCheckin}>
+              
+              {/* CAMPO DE BUSCA RÁPIDA DE PACIENTE / TUTOR */}
+              <div style={{ marginBottom: "10px" }}>
+                <label style={estiloLabel}>Busca Rápida (Nome do Pet ou Tutor)</label>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <MdSearch size={20} color="#9ca3af" style={{ position: "absolute", left: "10px" }} />
+                  <input
+                    type="text"
+                    placeholder="Digite para filtrar o paciente ou tutor..."
+                    value={buscaPaciente}
+                    onChange={(e) => setBuscaPaciente(e.target.value)}
+                    style={{ ...estiloInput, paddingLeft: "36px" }}
+                  />
+                </div>
+              </div>
+
               <div style={{ marginBottom: "14px" }}>
                 <label style={estiloLabel}>Paciente & Tutor *</label>
                 <select value={animalId} onChange={(e) => setAnimalId(e.target.value)} style={estiloInput} required>
-                  <option value="">Selecione o paciente cadastrado...</option>
-                  {animais.map((a) => {
+                  <option value="">Selecione o paciente cadastrado ({animaisFiltrados.length} encontrados)...</option>
+                  {animaisFiltrados.map((a) => {
                     const t = tutores.find((tutor) => tutor.id === a.tutor_id);
                     const nomeTutor = t ? t.nome : "Sem Tutor";
                     return (
