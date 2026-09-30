@@ -30,7 +30,7 @@ function Triagem() {
 
   const [animalIdDireto, setAnimalIdDireto] = useState("");
   const [usuarioIdVet, setUsuarioIdVet] = useState(""); 
-  const [consultorioAtribuido, setConsultorioAtribuido] = useState(""); // Consultório vinculado
+  const [consultorioAtribuido, setConsultorioAtribuido] = useState(""); 
   const [peso, setPeso] = useState("");
   const [temperatura, setTemperatura] = useState("");
   const [frequenciaCardiaca, setFrequenciaCardiaca] = useState("");
@@ -55,6 +55,16 @@ function Triagem() {
 
     return () => clearInterval(intervalo);
   }, []);
+
+  // Restauração da avaliação automática por IA de forma inteligente ao alterar os sinais ou queixa
+  useEffect(() => {
+    if ((atendimentoSelecionado || animalIdDireto) && (temperatura || queixaPrincipal)) {
+      const timer = setTimeout(() => {
+        sugerirClassificacaoIA();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [temperatura, frequenciaCardiaca, frequenciaRespiratoria, tpcSegundos, mucosas, queixaPrincipal, animalIdDireto, atendimentoSelecionado]);
 
   const carregarDados = async (loaderPrincipal = false) => {
     if (loaderPrincipal) {
@@ -95,6 +105,25 @@ function Triagem() {
     return a ? `${a.nome} (${a.codigo || `PET-${a.id}`})` : `-`;
   };
 
+  // Identifica as faixas de referência normais com base na espécie do animal selecionado
+  const obterReferenciasEspecie = () => {
+    const animalAlvo = atendimentoSelecionado 
+      ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
+      : animais.find(a => a.id === Number(animalIdDireto));
+    
+    const esp = (animalAlvo?.especie || "").toLowerCase();
+    
+    if (esp.includes("réptil") || esp.includes("reptil") || esp.includes("iguana") || esp.includes("tartaruga")) {
+      return { temp: "Normal para répteis: 28°C - 37°C", fc: "Variável por espécie", tpc: "Até 3s" };
+    } else if (esp.includes("felino") || esp.includes("gato")) {
+      return { temp: "Normal para felinos: 38.1°C - 39.2°C", fc: "120 - 220 bpm", tpc: "Até 2s" };
+    } else {
+      return { temp: "Normal para cães/outros: 38.3°C - 39.2°C", fc: "70 - 160 bpm", tpc: "Até 2s" };
+    }
+  };
+
+  const refs = obterReferenciasEspecie();
+
   const limparFormulario = () => {
     setAnimalIdDireto("");
     setUsuarioIdVet("");
@@ -111,7 +140,6 @@ function Triagem() {
     setJustificativa("");
   };
 
-  // Preenche automaticamente o consultório ao selecionar o veterinário
   const handleVeterinarioChange = (e) => {
     const vetId = e.target.value;
     setUsuarioIdVet(vetId);
@@ -179,20 +207,33 @@ function Triagem() {
     }
   };
 
-  const sugerirClassificacaoLocal = () => {
-    const temp = parseFloat(temperatura);
-    const fc = parseInt(frequenciaCardiaca);
-    const tpc = parseInt(tpcSegundos);
+  const sugerirClassificacaoIA = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      
+      const animalAlvo = atendimentoSelecionado 
+        ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
+        : animais.find(a => a.id === Number(animalIdDireto));
 
-    if (temp > 41.0 || temp < 32.0 || fc > 240 || mucosas === "Cianóticas" || tpc > 3) {
-      setClassificacaoRisco("VERMELHO");
-      setJustificativa("Alteração severa de parâmetros vitais ou perfusão (Emergência imediata).");
-    } else if (temp > 39.9 || temp < 34.0 || fc > 200 || mucosas === "Hipocoradas / Pálidas") {
-      setClassificacaoRisco("LARANJA");
-      setJustificativa("Sinais vitais alterados com risco de descompensação.");
-    } else {
-      setClassificacaoRisco("VERDE");
-      setJustificativa("Parâmetros vitais estáveis dentro da normalidade clínica.");
+      const payloadIA = {
+        animal_id: animalAlvo?.id || null,
+        especie: animalAlvo?.especie || "Felino",
+        queixa_principal: queixaPrincipal || "Consulta de rotina",
+        temperatura: temperatura ? parseFloat(temperatura) : null,
+        frequencia_cardiaca: frequenciaCardiaca ? parseInt(frequenciaCardiaca) : null,
+        frequencia_respiratoria: frequenciaRespiratoria ? parseInt(frequenciaRespiratoria) : null,
+        tpc_segundos: tpcSegundos ? parseInt(tpcSegundos) : null,
+        mucosas: mucosas || "Normocoradas"
+      };
+
+      const res = await api.post("/triagem/avaliar-ia", payloadIA, config);
+      if (res.data && res.data.classificacao_risco) {
+        setClassificacaoRisco(res.data.classificacao_risco);
+        setJustificativa(res.data.justificativa || "");
+      }
+    } catch (err) {
+      console.warn("Aviso ao consultar IA na Triagem:", err);
     }
   };
 
@@ -439,10 +480,12 @@ function Triagem() {
               <div>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Temperatura (°C)</label>
                 <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloInput} placeholder="Ex: 38.5" />
+                <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "2px" }}>💡 {refs.temp}</span>
               </div>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>FC (bpm)</label>
                 <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloInput} placeholder="Ex: 150" />
+                <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "2px" }}>💡 {refs.fc}</span>
               </div>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>FR (mpm)</label>
@@ -451,6 +494,7 @@ function Triagem() {
               <div>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>TPC (segundos)</label>
                 <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
+                <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "2px" }}>💡 {refs.tpc}</span>
               </div>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Mucosas</label>
@@ -472,7 +516,7 @@ function Triagem() {
             <div style={{ marginBottom: "20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                 <label style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
-                <button type="button" onClick={sugerirClassificacaoLocal} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
                   <MdAutoAwesome /> Avaliar com IA
                 </button>
               </div>
@@ -577,10 +621,12 @@ function Triagem() {
                 <div>
                   <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Temperatura (°C)</label>
                   <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloInput} placeholder="Ex: 38.5" />
+                  <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "2px" }}>💡 {refs.temp}</span>
                 </div>
                 <div>
                   <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>FC (bpm)</label>
                   <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloInput} placeholder="Ex: 150" />
+                  <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "2px" }}>💡 {refs.fc}</span>
                 </div>
                 <div>
                   <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>FR (mpm)</label>
@@ -589,6 +635,7 @@ function Triagem() {
                 <div>
                   <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>TPC (segundos)</label>
                   <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
+                  <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "2px" }}>💡 {refs.tpc}</span>
                 </div>
                 <div>
                   <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Mucosas</label>
@@ -610,7 +657,7 @@ function Triagem() {
               <div style={{ marginBottom: "20px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                   <label style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
-                  <button type="button" onClick={sugerirClassificacaoLocal} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
                     <MdAutoAwesome /> Avaliar IA
                   </button>
                 </div>
