@@ -75,7 +75,7 @@ function Usuarios() {
     try {
       const token = localStorage.getItem("token");
 
-      // Se não for admin, garante que o perfil enviado seja o do utilizador em edição (ou veterinário) e protege dados sensíveis
+      // Se não for admin, garante que o perfil enviado seja o do usuário em edição (ou veterinário) e protege dados sensíveis
       const perfilFinal = isAdmin ? perfil : (usuarioEditando ? usuarioEditando.perfil : "VETERINARIO");
 
       const payload = {
@@ -314,33 +314,35 @@ function Usuarios() {
             </tr>
           </thead>
           <tbody>
-            {usuarios.map((u, index) => (
-              <tr key={u.id} style={{ backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb", borderBottom: "1px solid #f3f4f6", fontSize: "14px" }}>
-                <td style={{ padding: "14px", fontWeight: "600", color: "#1f2937" }}>{u.nome}</td>
-                <td style={{ padding: "14px", color: "#4b5563" }}>{u.email}</td>
-                {isAdmin && <td style={{ padding: "14px" }}>{renderBadgePerfil(u.perfil)}</td>}
-                <td style={{ padding: "14px", color: "#6b7280" }}>{u.crmv || "-"}</td>
-                <td style={{ padding: "14px", color: "#6b7280" }}>{u.consultorio_padrao || "-"}</td>
-                <td style={{ padding: "14px", textAlign: "center", display: "flex", justifyContent: "center", gap: "8px" }}>
-                  <button 
-                    onClick={() => prepararEdicao(u)} 
-                    title={isAdmin ? "Editar Usuário" : "Atribuir Consultório"}
-                    style={{ backgroundColor: "#fef3c7", color: "#b45309", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer" }}
-                  >
-                    <MdEdit size={18} />
-                  </button>
-                  {isAdmin && (
+            {usuarios
+              .filter((u) => isAdmin || u.perfil === "VETERINARIO")
+              .map((u, index) => (
+                <tr key={u.id} style={{ backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb", borderBottom: "1px solid #f3f4f6", fontSize: "14px" }}>
+                  <td style={{ padding: "14px", fontWeight: "600", color: "#1f2937" }}>{u.nome}</td>
+                  <td style={{ padding: "14px", color: "#4b5563" }}>{u.email}</td>
+                  {isAdmin && <td style={{ padding: "14px" }}>{renderBadgePerfil(u.perfil)}</td>}
+                  <td style={{ padding: "14px", color: "#6b7280" }}>{u.crmv || "-"}</td>
+                  <td style={{ padding: "14px", color: "#6b7280" }}>{u.consultorio_padrao || "-"}</td>
+                  <td style={{ padding: "14px", textAlign: "center", display: "flex", justifyContent: "center", gap: "8px" }}>
                     <button 
-                      onClick={() => setUsuarioParaExcluir(u)} 
-                      title="Excluir Usuário"
-                      style={{ backgroundColor: "#fee2e2", color: "#b91c1c", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer" }}
+                      onClick={() => prepararEdicao(u)} 
+                      title={isAdmin ? "Editar Usuário" : "Atribuir Consultório"}
+                      style={{ backgroundColor: "#fef3c7", color: "#b45309", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer" }}
                     >
-                      <MdDelete size={18} />
+                      <MdEdit size={18} />
                     </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                    {isAdmin && (
+                      <button 
+                        onClick={() => setUsuarioParaExcluir(u)} 
+                        title="Excluir Usuário"
+                        style={{ backgroundColor: "#fee2e2", color: "#b91c1c", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer" }}
+                      >
+                        <MdDelete size={18} />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
