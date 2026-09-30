@@ -56,12 +56,6 @@ function Triagem() {
     return () => clearInterval(intervalo);
   }, []);
 
-  useEffect(() => {
-    if (atendimentoSelecionado || animalIdDireto) {
-      sugerirClassificacaoLocal();
-    }
-  }, [temperatura, frequenciaCardiaca, frequenciaRespiratoria, tpcSegundos, mucosas]);
-
   const carregarDados = async (loaderPrincipal = false) => {
     if (loaderPrincipal) {
       setCarregando(true);
@@ -146,7 +140,7 @@ function Triagem() {
         prev.map(item => item.id === consulta.id ? { ...item, status: "Chamando para Triagem" } : item)
       );
 
-      setMensagem({ tipo: "sucesso", texto: `📢 A chamar ${obterNomeAnimal(consulta.animal_id)} no painel para Triagem!` });
+      setMensagem({ tipo: "sucesso", texto: `📢 Chamando ${obterNomeAnimal(consulta.animal_id)} no painel para Triagem!` });
     } catch (err) {
       console.error("Erro ao chamar paciente:", err);
       setMensagem({ tipo: "erro", texto: "Erro ao emitir chamada para o paciente." });
@@ -188,54 +182,18 @@ function Triagem() {
   const sugerirClassificacaoLocal = () => {
     const temp = parseFloat(temperatura);
     const fc = parseInt(frequenciaCardiaca);
-    const fr = parseInt(frequenciaRespiratoria);
     const tpc = parseInt(tpcSegundos);
 
-    if (temp > 40.5 || temp < 37.0 || fc > 220 || mucosas === "Cianóticas" || tpc > 3) {
+    if (temp > 41.0 || temp < 32.0 || fc > 240 || mucosas === "Cianóticas" || tpc > 3) {
       setClassificacaoRisco("VERMELHO");
       setJustificativa("Alteração severa de parâmetros vitais ou perfusão (Emergência imediata).");
-    } else if (temp >= 39.8 || temp <= 37.5 || fc > 180 || mucosas === "Hipocoradas / Pálidas") {
+    } else if (temp > 39.9 || temp < 34.0 || fc > 200 || mucosas === "Hipocoradas / Pálidas") {
       setClassificacaoRisco("LARANJA");
       setJustificativa("Sinais vitais alterados com risco de descompensação.");
-    } else if (temp >= 39.3 || fc > 160) {
-      setClassificacaoRisco("AMARELO");
-      setJustificativa("Parâmetros moderadamente alterados.");
     } else {
       setClassificacaoRisco("VERDE");
-      setJustificativa("Sinais vitais, TPC e coloração de mucosas normais para a espécie.");
+      setJustificativa("Parâmetros vitais estáveis dentro da normalidade clínica.");
     }
-  };
-
-  const sugerirClassificacaoIA = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      
-      const animalAlvo = atendimentoSelecionado 
-        ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
-        : animais.find(a => a.id === Number(animalIdDireto));
-
-      const payloadIA = {
-        animal_id: animalAlvo?.id || null,
-        especie: animalAlvo?.especie || "Felino",
-        queixa_principal: queixaPrincipal || "Consulta de rotina",
-        temperatura: temperatura ? parseFloat(temperatura) : null,
-        frequencia_cardiaca: frequenciaCardiaca ? parseInt(frequenciaCardiaca) : null,
-        frequencia_respiratoria: frequenciaRespiratoria ? parseInt(frequenciaRespiratoria) : null,
-        tpc_segundos: tpcSegundos ? parseInt(tpcSegundos) : null,
-        mucosas: mucosas || "Normocoradas"
-      };
-
-      const res = await api.post("/triagem/avaliar-ia", payloadIA, config);
-      if (res.data && res.data.classificacao_risco) {
-        setClassificacaoRisco(res.data.classificacao_risco);
-        setJustificativa(res.data.justificativa || "");
-        return;
-      }
-    } catch (err) {
-      console.warn("Aviso ao consultar IA na Triagem:", err);
-    }
-    sugerirClassificacaoLocal();
   };
 
   const salvarTriagemExistente = async () => {
@@ -351,7 +309,7 @@ function Triagem() {
 
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {atualizandoSilencioso && (
-            <span style={{ fontSize: "12px", color: "#6366f1", fontWeight: "500" }}>A sincronizar...</span>
+            <span style={{ fontSize: "12px", color: "#6366f1", fontWeight: "500" }}>Sincronizando...</span>
           )}
           <button
             onClick={() => carregarDados(true)}
@@ -386,7 +344,7 @@ function Triagem() {
 
           {atendimentosPendentes.length === 0 ? (
             <p style={{ color: "#9ca3af", fontSize: "14px", textAlign: "center", padding: "30px 0", fontStyle: "italic" }}>
-              Nenhum paciente a aguardar triagem. Clique em <strong>"Novo Check-in & Triagem"</strong> para dar entrada direta num paciente!
+              Nenhum paciente aguardando triagem. Clique em <strong>"Novo Check-in & Triagem"</strong> para dar entrada direta em um paciente!
             </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -409,7 +367,7 @@ function Triagem() {
                     <div>
                       <strong style={{ color: ehVacina ? "#0f766e" : "#1f2937", display: "block", fontSize: "15px" }}>
                         {ehVacina ? "💉 " : "🐾 "} {obterNomeAnimal(item.animal_id)}
-                        {estaSendoChamado && <span style={{ fontSize: "11px", backgroundColor: "#fee2e2", color: "#991b1b", padding: "2px 6px", borderRadius: "4px", marginLeft: "8px", fontWeight: "bold" }}>📢 A chamar...</span>}
+                        {estaSendoChamado && <span style={{ fontSize: "11px", backgroundColor: "#fee2e2", color: "#991b1b", padding: "2px 6px", borderRadius: "4px", marginLeft: "8px", fontWeight: "bold" }}>📢 Chamando...</span>}
                       </strong>
                       <span style={{ fontSize: "12px", color: "#6b7280" }}>
                         Check-in: {item.codigo || `CNS-${item.id}`} {item.queixa_principal ? `| Motivo: ${item.queixa_principal}` : ""}
@@ -514,7 +472,7 @@ function Triagem() {
             <div style={{ marginBottom: "20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                 <label style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
-                <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                <button type="button" onClick={sugerirClassificacaoLocal} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
                   <MdAutoAwesome /> Avaliar com IA
                 </button>
               </div>
@@ -552,7 +510,7 @@ function Triagem() {
                 Cancelar
               </button>
               <button onClick={salvarTriagemExistente} disabled={carregando} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>
-                {carregando ? "A enviar..." : "Finalizar Triagem"}
+                {carregando ? "Enviando..." : "Finalizar Triagem"}
               </button>
             </div>
           </div>
@@ -652,7 +610,7 @@ function Triagem() {
               <div style={{ marginBottom: "20px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                   <label style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
-                  <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <button type="button" onClick={sugerirClassificacaoLocal} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
                     <MdAutoAwesome /> Avaliar IA
                   </button>
                 </div>
@@ -690,7 +648,7 @@ function Triagem() {
                   Cancelar
                 </button>
                 <button type="submit" disabled={carregando} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>
-                  {carregando ? "A processar..." : "Confirmar Check-in & Triagem"}
+                  {carregando ? "Processando..." : "Confirmar Check-in & Triagem"}
                 </button>
               </div>
             </form>
