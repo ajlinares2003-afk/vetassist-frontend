@@ -10,6 +10,10 @@ function Usuarios() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [usuarioEditando, setUsuarioEditando] = useState(null);
 
+  // Identifica o perfil do usuário logado no navegador
+  const perfilLogado = localStorage.getItem("perfil") || "ADMIN";
+  const isAdmin = perfilLogado === "ADMIN";
+
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -34,7 +38,7 @@ function Usuarios() {
       setUsuarios(res.data || []);
     } catch (err) {
       if (err.response?.status === 403) {
-        setMensagemErro("⛔ Acesso negado. Apenas Administradores podem acessar esta página.");
+        setMensagemErro("⛔ Acesso negado. Permissões insuficientes.");
       }
     }
   };
@@ -54,7 +58,7 @@ function Usuarios() {
     setUsuarioEditando(u);
     setNome(u.nome || "");
     setEmail(u.email || "");
-    setSenha(""); // Deixa em branco por segurança; se digitar, altera a senha
+    setSenha(""); 
     setPerfil(u.perfil || "VETERINARIO");
     setCrmv(u.crmv || "");
     setConsultorioPadrao(u.consultorio_padrao || "");
@@ -71,13 +75,16 @@ function Usuarios() {
     try {
       const token = localStorage.getItem("token");
 
+      // Se não for admin, garante que o perfil enviado seja o do utilizador em edição (ou veterinário) e protege dados sensíveis
+      const perfilFinal = isAdmin ? perfil : (usuarioEditando ? usuarioEditando.perfil : "VETERINARIO");
+
       const payload = {
         nome: nome.trim(),
         email: email.trim().toLowerCase(),
         senha: senha ? senha : "", 
-        perfil: perfil,
-        crmv: perfil === "VETERINARIO" && crmv.trim() ? crmv.trim() : null,
-        consultorio_padrao: perfil === "VETERINARIO" && consultorioPadrao ? consultorioPadrao : null,
+        perfil: perfilFinal,
+        crmv: perfilFinal === "VETERINARIO" && crmv.trim() ? crmv.trim() : null,
+        consultorio_padrao: perfilFinal === "VETERINARIO" && consultorioPadrao ? consultorioPadrao : null,
       };
 
       if (usuarioEditando) {
@@ -86,6 +93,9 @@ function Usuarios() {
         });
         setMensagemSucesso("✅ Usuário atualizado com sucesso!");
       } else {
+        if (!isAdmin) {
+          throw new Error("Apenas administradores podem cadastrar novos colaboradores.");
+        }
         await api.post("/usuarios/", payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -97,7 +107,7 @@ function Usuarios() {
       carregarUsuarios();
     } catch (err) {
       console.error("Erro ao salvar usuário:", err.response);
-      const detalhe = err.response?.data?.detail;
+      const detalhe = err.response?.data?.detail || err.message;
       if (Array.isArray(detalhe)) {
         const msgs = detalhe.map((d) => `${d.loc[d.loc.length - 1]}: ${d.msg}`).join(" | ");
         setMensagemErro(`❌ Erro nos dados enviados: ${msgs}`);
@@ -155,27 +165,29 @@ function Usuarios() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <h1 style={{ display: "flex", alignItems: "center", gap: "12px", margin: 0, fontSize: "26px", color: "#1e1b4b" }}>
           <MdAdminPanelSettings color="#4f46e5" size={38} />
-          Usuários & Controle de Acesso
+          {isAdmin ? "Usuários & Controle de Acesso" : "Atribuição de Consultórios Padrão"}
         </h1>
 
-        <button
-          onClick={() => {
-            if (mostrarFormulario) limparForm();
-            setMostrarFormulario(!mostrarFormulario);
-          }}
-          style={{
-            backgroundColor: "#4f46e5",
-            color: "white",
-            border: "none",
-            padding: "10px 20px",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontWeight: "600",
-            fontSize: "14px"
-          }}
-        >
-          {mostrarFormulario ? "Fechar Formulário" : "＋ Cadastrar Novo Colaborador"}
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => {
+              if (mostrarFormulario) limparForm();
+              setMostrarFormulario(!mostrarFormulario);
+            }}
+            style={{
+              backgroundColor: "#4f46e5",
+              color: "white",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "14px"
+            }}
+          >
+            {mostrarFormulario ? "Fechar Formulário" : "＋ Cadastrar Novo Colaborador"}
+          </button>
+        )}
       </div>
 
       {mensagemSucesso && (
@@ -197,7 +209,7 @@ function Usuarios() {
           style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", marginBottom: "25px", border: "1px solid #e5e7eb" }}
         >
           <h3 style={{ margin: "0 0 16px 0", color: "#111827", fontSize: "18px" }}>
-            {usuarioEditando ? "✏️ Editar Usuário" : "👤 Novo Usuário do Sistema"}
+            {usuarioEditando ? (isAdmin ? "✏️ Editar Usuário" : "🩺 Configurar Consultório Padrão do Veterinário") : "👤 Novo Usuário do Sistema"}
           </h3>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" }}>
@@ -206,11 +218,11 @@ function Usuarios() {
               <input 
                 type="text" 
                 required 
-                autoComplete="off"
+                disabled={!isAdmin}
                 placeholder="Ex: João Silva"
                 value={nome} 
                 onChange={(e) => setNome(e.target.value)} 
-                style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }} 
+                style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", backgroundColor: isAdmin ? "#fff" : "#f3f4f6" }} 
               />
             </div>
 
@@ -219,49 +231,55 @@ function Usuarios() {
               <input 
                 type="email" 
                 required 
-                autoComplete="new-password"
+                disabled={!isAdmin}
                 placeholder="Ex: joao@vetassist.com"
                 value={email} 
                 onChange={(e) => setEmail(e.target.value)} 
-                style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }} 
+                style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", backgroundColor: isAdmin ? "#fff" : "#f3f4f6" }} 
               />
             </div>
 
-            <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>
-                {usuarioEditando ? "Nova Senha (deixe vazio p/ manter)" : "Senha de Acesso *"}
-              </label>
-              <input 
-                type="password" 
-                required={!usuarioEditando} 
-                autoComplete="new-password"
-                placeholder={usuarioEditando ? "Preencha apenas para alterar" : "••••••••"}
-                value={senha} 
-                onChange={(e) => setSenha(e.target.value)} 
-                style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }} 
-              />
-            </div>
+            {isAdmin && (
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>
+                  {usuarioEditando ? "Nova Senha (deixe vazio p/ manter)" : "Senha de Acesso *"}
+                </label>
+                <input 
+                  type="password" 
+                  required={!usuarioEditando} 
+                  autoComplete="new-password"
+                  placeholder={usuarioEditando ? "Preencha apenas para alterar" : "••••••••"}
+                  value={senha} 
+                  onChange={(e) => setSenha(e.target.value)} 
+                  style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }} 
+                />
+              </div>
+            )}
 
-            <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>Perfil de Acesso (RBAC) *</label>
-              <select value={perfil} onChange={(e) => setPerfil(e.target.value)} style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }}>
-                <option value="VETERINARIO">🩺 VETERINARIO (Acesso Clínico + IA)</option>
-                <option value="RECEPCAO">📋 RECEPCAO (Cadastro e Triagem)</option>
-                <option value="TRIAGEM">💉 TRIAGEM (Fila e Sinais Vitais)</option>
-                <option value="ADMIN">🛡️ ADMIN (Acesso Total ao Sistema)</option>
-              </select>
-            </div>
+            {isAdmin && (
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>Perfil de Acesso (RBAC) *</label>
+                <select value={perfil} onChange={(e) => setPerfil(e.target.value)} style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }}>
+                  <option value="VETERINARIO">🩺 VETERINARIO (Acesso Clínico + IA)</option>
+                  <option value="RECEPCAO">📋 RECEPCAO (Cadastro e Triagem)</option>
+                  <option value="TRIAGEM">💉 TRIAGEM (Fila e Sinais Vitais)</option>
+                  <option value="ADMIN">🛡️ ADMIN (Acesso Total ao Sistema)</option>
+                </select>
+              </div>
+            )}
 
-            {perfil === "VETERINARIO" && (
+            {(isAdmin || perfil === "VETERINARIO") && (
               <>
-                <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>CRMV (Número do Registro)</label>
-                  <input type="text" placeholder="Ex: SP-12345" value={crmv} onChange={(e) => setCrmv(e.target.value)} style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }} />
-                </div>
+                {isAdmin && (
+                  <div>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>CRMV (Número do Registro)</label>
+                    <input type="text" placeholder="Ex: SP-12345" value={crmv} onChange={(e) => setCrmv(e.target.value)} style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }} />
+                  </div>
+                )}
 
                 <div>
                   <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>Consultório Padrão (Sala)</label>
-                  <select value={consultorioPadrao} onChange={(e) => setConsultorioPadrao(e.target.value)} style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }}>
+                  <select value={consultorioPadrao} onChange={(e) => setConsultorioPadrao(e.target.value)} style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", backgroundColor: "#fff" }}>
                     <option value="">Selecione o consultório...</option>
                     <option value="Consultório 1">Consultório 1</option>
                     <option value="Consultório 2">Consultório 2</option>
@@ -276,7 +294,7 @@ function Usuarios() {
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "20px" }}>
             <button type="button" onClick={() => { limparForm(); setMostrarFormulario(false); }} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer" }}>Cancelar</button>
             <button type="submit" style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>
-              {usuarioEditando ? "Atualizar Usuário" : "Salvar Usuário"}
+              {usuarioEditando ? "Atualizar Consultório" : "Salvar Usuário"}
             </button>
           </div>
         </form>
@@ -289,7 +307,7 @@ function Usuarios() {
             <tr style={{ backgroundColor: "#4f46e5", color: "white", fontSize: "14px" }}>
               <th style={{ padding: "14px" }}>Nome</th>
               <th style={{ padding: "14px" }}>E-mail</th>
-              <th style={{ padding: "14px" }}>Perfil</th>
+              {isAdmin && <th style={{ padding: "14px" }}>Perfil</th>}
               <th style={{ padding: "14px" }}>CRMV</th>
               <th style={{ padding: "14px" }}>Consultório Padrão</th>
               <th style={{ padding: "14px", textAlign: "center" }}>Ações</th>
@@ -300,24 +318,26 @@ function Usuarios() {
               <tr key={u.id} style={{ backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb", borderBottom: "1px solid #f3f4f6", fontSize: "14px" }}>
                 <td style={{ padding: "14px", fontWeight: "600", color: "#1f2937" }}>{u.nome}</td>
                 <td style={{ padding: "14px", color: "#4b5563" }}>{u.email}</td>
-                <td style={{ padding: "14px" }}>{renderBadgePerfil(u.perfil)}</td>
+                {isAdmin && <td style={{ padding: "14px" }}>{renderBadgePerfil(u.perfil)}</td>}
                 <td style={{ padding: "14px", color: "#6b7280" }}>{u.crmv || "-"}</td>
                 <td style={{ padding: "14px", color: "#6b7280" }}>{u.consultorio_padrao || "-"}</td>
                 <td style={{ padding: "14px", textAlign: "center", display: "flex", justifyContent: "center", gap: "8px" }}>
                   <button 
                     onClick={() => prepararEdicao(u)} 
-                    title="Editar Usuário"
+                    title={isAdmin ? "Editar Usuário" : "Atribuir Consultório"}
                     style={{ backgroundColor: "#fef3c7", color: "#b45309", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer" }}
                   >
                     <MdEdit size={18} />
                   </button>
-                  <button 
-                    onClick={() => setUsuarioParaExcluir(u)} 
-                    title="Excluir Usuário"
-                    style={{ backgroundColor: "#fee2e2", color: "#b91c1c", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer" }}
-                  >
-                    <MdDelete size={18} />
-                  </button>
+                  {isAdmin && (
+                    <button 
+                      onClick={() => setUsuarioParaExcluir(u)} 
+                      title="Excluir Usuário"
+                      style={{ backgroundColor: "#fee2e2", color: "#b91c1c", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer" }}
+                    >
+                      <MdDelete size={18} />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
