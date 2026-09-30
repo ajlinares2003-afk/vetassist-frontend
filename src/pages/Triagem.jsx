@@ -24,10 +24,12 @@ function Triagem() {
 
   const [atendimentosPendentes, setAtendimentosPendentes] = useState([]);
   const [animais, setAnimais] = useState([]);
+  const [veterinarios, setVeterinarios] = useState([]);
   const [atendimentoSelecionado, setAtendimentoSelecionado] = useState(null);
   const [mostrarModalNovoCheckin, setMostrarModalNovoCheckin] = useState(false);
 
   const [animalIdDireto, setAnimalIdDireto] = useState("");
+  const [usuarioIdVet, setUsuarioIdVet] = useState(""); // Veterinário responsável selecionado
   const [peso, setPeso] = useState("");
   const [temperatura, setTemperatura] = useState("");
   const [frequenciaCardiaca, setFrequenciaCardiaca] = useState("");
@@ -72,15 +74,22 @@ function Triagem() {
 
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      const [resFila, resAnimais] = await Promise.all([
+      const [resFila, resAnimais, resUsuarios] = await Promise.all([
         api.get("/consultas/fila-triagem", config),
         api.get("/animais/", config),
+        api.get("/usuarios/", config),
       ]);
 
       setAnimais(resAnimais.data || []);
       setAtendimentosPendentes(resFila.data || []);
+
+      // Filtra estritamente apenas usuários com perfil VETERINARIO
+      const listaUsuarios = resUsuarios.data || [];
+      const apenasVets = listaUsuarios.filter((u) => u.perfil === "VETERINARIO");
+      setVeterinarios(apenasVets);
+
     } catch (err) {
-      console.error("Erro ao carregar fila de triagem:", err);
+      console.error("Erro ao carregar dados de triagem:", err);
     } finally {
       setCarregando(false);
       setAtualizandoSilencioso(false);
@@ -94,6 +103,7 @@ function Triagem() {
 
   const limparFormulario = () => {
     setAnimalIdDireto("");
+    setUsuarioIdVet("");
     setPeso("");
     setTemperatura("");
     setFrequenciaCardiaca("");
@@ -106,17 +116,15 @@ function Triagem() {
     setJustificativa("");
   };
 
-  // ACIONA A CHAMADA DA TV COM STATUS ESPECÍFICO PARA TRIAGEM
   const chamarPaciente = async (consulta, e) => {
     e.stopPropagation();
     try {
       const token = localStorage.getItem("token");
       await api.put(
-        `/consultas/${consulta.id}/chamar-triagem`, // Rota específica ou a mesma ajustada no back
+        `/consultas/${consulta.id}/chamar-triagem`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       ).catch(async () => {
-        // Fallback caso a rota específica não exista, atualiza via PUT comum
         await api.put(`/consultas/${consulta.id}`, { status: "Chamando para Triagem" }, { headers: { Authorization: `Bearer ${token}` } });
       });
       
@@ -131,7 +139,6 @@ function Triagem() {
     }
   };
 
-  // INicia A TRIAGEM, PARA O ALARME DA TV E MUDA O STATUS PARA "Em Triagem"
   const selecionarParaTriagem = async (consulta) => {
     setAtendimentoSelecionado(consulta);
     setQueixaPrincipal(consulta.queixa_principal || "");
@@ -139,12 +146,12 @@ function Triagem() {
     setTemperatura(consulta.temperatura || "");
     setFrequenciaCardiaca(consulta.frequencia_cardiaca || "");
     setFrequenciaRespiratoria(consulta.frequencia_respiratoria || "");
+    setUsuarioIdVet(consulta.usuario_id || "");
 
     try {
       const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
-      // Atualiza imediatamente o status no banco para parar o alarme sonoro da TV
       await api.put(`/consultas/${consulta.id}/iniciar-triagem`, {}, config).catch(async () => {
         await api.put(`/consultas/${consulta.id}`, { status: "Em Triagem" }, config);
       });
@@ -238,6 +245,19 @@ function Triagem() {
         }
       }
 
+      // Atualiza também o veterinário responsável na consulta, se selecionado
+      if (usuarioIdVet) {
+        try {
+          await api.put(
+            `/consultas/${atendimentoSelecionado.id}`,
+            { usuario_id: Number(usuarioIdVet) },
+            config
+          );
+        } catch (errVet) {
+          console.warn("Aviso ao vincular veterinário:", errVet);
+        }
+      }
+
       const payload = {
         consulta_id: atendimentoSelecionado.id,
         peso: peso ? parseFloat(peso) : null,
@@ -279,6 +299,7 @@ function Triagem() {
 
       const payload = {
         animal_id: Number(animalIdDireto),
+        usuario_id: usuarioIdVet ? Number(usuarioIdVet) : null,
         queixa_principal: queixaPrincipal,
         classificacao_risco: classificacaoRisco,
         peso: peso ? parseFloat(peso) : null,
@@ -412,6 +433,21 @@ function Triagem() {
               🩺 Aferição de Sinais Vitais — {obterNomeAnimal(atendimentoSelecionado.animal_id)}
             </h3>
 
+            {/* SELEÇÃO DO VETERINÁRIO RESPONSÁVEL */}
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "4px" }}>
+                👨‍⚕️ Veterinário Responsável pelo Atendimento *
+              </label>
+              <select value={usuarioIdVet} onChange={(e) => setUsuarioIdVet(e.target.value)} style={estiloInput} required>
+                <option value="">Selecione o médico veterinário...</option>
+                {veterinarios.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.nome || v.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
@@ -517,6 +553,21 @@ function Triagem() {
                   <option value="">Selecione o paciente cadastrado...</option>
                   {animais.map((a) => (
                     <option key={a.id} value={a.id}>{a.nome} ({a.especie || 'Pet'} - {a.codigo || `PET-${a.id}`})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* SELEÇÃO DO VETERINÁRIO NO CHECK-IN DIRETO */}
+              <div style={{ marginBottom: "14px" }}>
+                <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "4px" }}>
+                  👨‍⚕️ Veterinário Responsável pelo Atendimento *
+                </label>
+                <select value={usuarioIdVet} onChange={(e) => setUsuarioIdVet(e.target.value)} style={estiloInput} required>
+                  <option value="">Selecione o médico veterinário...</option>
+                  {veterinarios.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.nome || v.email}
+                    </option>
                   ))}
                 </select>
               </div>
