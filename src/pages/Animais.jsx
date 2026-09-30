@@ -4,6 +4,16 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
+const SUB_ESPECIES_POR_ESPECIE = {
+  Ave: ["Galinha", "Pato", "Periquito", "Papagaio", "Pombo", "Águia", "Pardal", "Calopsita"],
+  Roedor: ["Hamster", "Porquinho-da-Índia", "Chinchila", "Gerbil", "Rato Doméstico"],
+  "Coelho / Lagomorfo": ["Coelho Mini Lop", "Coelho Netherland Dwarf", "Coelho Cabeça-de-Leão", "Coelho Nova Zelândia"],
+  Réptil: ["Iguana", "Tartaruga", "Jabuti", "Serpente", "Gecko"],
+  Canino: ["Cão Doméstico"],
+  Felino: ["Gato Doméstico"],
+  Outros: []
+};
+
 function Animais() {
   const navigate = useNavigate();
   const [animais, setAnimais] = useState([]);
@@ -13,6 +23,8 @@ function Animais() {
   const [codigo, setCodigo] = useState("");
   const [nome, setNome] = useState("");
   const [especie, setEspecie] = useState("");
+  const [subEspecieSelect, setSubEspecieSelect] = useState("");
+  const [subEspecieOutro, setSubEspecieOutro] = useState("");
   const [raca, setRaca] = useState("");
   const [sexo, setSexo] = useState("");
   const [idade, setIdade] = useState("");
@@ -50,9 +62,7 @@ function Animais() {
       if (!token) return tratarSessaoExpirada();
 
       const response = await api.get("/animais/", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       setAnimais(response.data);
@@ -71,9 +81,7 @@ function Animais() {
       if (!token) return;
 
       const response = await api.get("/tutores/", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       setTutores(response.data);
@@ -87,6 +95,8 @@ function Animais() {
     setCodigo("");
     setNome("");
     setEspecie("");
+    setSubEspecieSelect("");
+    setSubEspecieOutro("");
     setRaca("");
     setSexo("");
     setIdade("");
@@ -105,16 +115,6 @@ function Animais() {
 
       if (!nome.trim()) {
         setMensagemErro("🐾 Informe o nome do animal.");
-        return;
-      }
-
-      if (!/[A-Za-zÀ-ÿ]/.test(nome)) {
-        setMensagemErro("🐾 Informe um nome válido para o animal.");
-        return;
-      }
-
-      if (nome.trim().length < 2) {
-        setMensagemErro("🐾 O nome do animal deve ter pelo menos 2 caracteres.");
         return;
       }
 
@@ -149,16 +149,18 @@ function Animais() {
       }
 
       const token = localStorage.getItem("token");
-
       if (!token) {
         tratarSessaoExpirada();
         return;
       }
 
+      const subEspecieFinal = subEspecieSelect === "Outro" ? subEspecieOutro.trim() : subEspecieSelect;
+
       const novoAnimal = {
         codigo: codigo.trim() ? codigo.trim() : undefined,
         nome,
         especie,
+        sub_especie: subEspecieFinal || null,
         raca,
         sexo,
         idade: parseFloat(idade),
@@ -203,16 +205,13 @@ function Animais() {
 
     try {
       const token = localStorage.getItem("token");
-
       if (!token) {
         tratarSessaoExpirada();
         return;
       }
 
       await api.delete(`/animais/${animalParaExcluir.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       setMensagemSucesso("✅ Paciente excluído com sucesso!");
@@ -239,12 +238,23 @@ function Animais() {
     setAnimalEditando(animal);
     setCodigo(animal.codigo || "");
     setNome(animal.nome);
-    setEspecie(animal.especie);
-    setRaca(animal.raca);
-    setSexo(animal.sexo);
-    setIdade(animal.idade);
-    setTutorId(animal.tutor_id);
-    setStatus(animal.status);
+    setEspecie(animal.especie || "");
+    
+    const sub = animal.sub_especie || animal.subEspécie || "";
+    const opcoesPadrao = SUB_ESPECIES_POR_ESPECIE[animal.especie] || [];
+    if (sub && !opcoesPadrao.includes(sub)) {
+      setSubEspecieSelect("Outro");
+      setSubEspecieOutro(sub);
+    } else {
+      setSubEspecieSelect(sub);
+      setSubEspecieOutro("");
+    }
+
+    setRaca(animal.raca || "");
+    setSexo(animal.sexo || "");
+    setIdade(animal.idade ?? "");
+    setTutorId(animal.tutor_id || "");
+    setStatus(animal.status || "ATIVO");
     setCastrado(animal.castrado || "");
     setCor(animal.cor || "");
     setPorte(animal.porte || "");
@@ -256,14 +266,16 @@ function Animais() {
     const termo = busca.toLowerCase();
     const codigoAnimal = (animal.codigo || `PET-${String(animal.id).padStart(4, "0")}`).toLowerCase();
     const nomeAnimal = animal.nome.toLowerCase();
-    const especieAnimal = animal.especie.toLowerCase();
-    const racaAnimal = animal.raca.toLowerCase();
+    const especieAnimal = (animal.especie || "").toLowerCase();
+    const subEspecieAnimal = (animal.sub_especie || animal.subEspécie || "").toLowerCase();
+    const racaAnimal = (animal.raca || "").toLowerCase();
     const nomeTutor = obterNomeTutor(animal.tutor_id).toLowerCase();
 
     return (
       codigoAnimal.includes(termo) ||
       nomeAnimal.includes(termo) ||
       especieAnimal.includes(termo) ||
+      subEspecieAnimal.includes(termo) ||
       racaAnimal.includes(termo) ||
       nomeTutor.includes(termo)
     );
@@ -291,156 +303,69 @@ function Animais() {
 
   return (
     <Layout>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-        }}
-      >
-        <h1
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            margin: 0,
-            fontSize: "26px",
-            color: "#1e1b4b",
-          }}
-        >
-          <MdPets color="#4f46e5" size={40} />
-          Animais
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <h1 style={{ display: "flex", alignItems: "center", gap: "12px", margin: 0, fontSize: "26px", color: "#1e1b4b" }}>
+          <MdPets color="#4f46e5" size={40} /> Animais
         </h1>
 
         <button
           onClick={() => {
-            if (mostrarFormulario) {
-              limparFormulario();
-            }
+            if (mostrarFormulario) limparFormulario();
             setMostrarFormulario(!mostrarFormulario);
           }}
-          style={{
-            backgroundColor: "#4f46e5",
-            color: "white",
-            border: "none",
-            padding: "10px 20px",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontWeight: "600",
-            fontSize: "14px",
-            boxShadow: "0 2px 4px rgba(79, 70, 229, 0.2)",
-          }}
+          style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px", boxShadow: "0 2px 4px rgba(79, 70, 229, 0.2)" }}
         >
           {mostrarFormulario ? "Fechar Formulário" : "＋ Novo Animal"}
         </button>
       </div>
 
       {mensagemSucesso && (
-        <div
-          style={{
-            backgroundColor: "#dcfce7",
-            color: "#166534",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            marginBottom: "15px",
-            fontWeight: "500",
-            border: "1px solid #bbf7d0",
-          }}
-        >
+        <div style={{ backgroundColor: "#dcfce7", color: "#166534", padding: "12px 16px", borderRadius: "8px", marginBottom: "15px", fontWeight: "500", border: "1px solid #bbf7d0" }}>
           {mensagemSucesso}
         </div>
       )}
 
       {mensagemErro && (
-        <div
-          style={{
-            backgroundColor: "#fee2e2",
-            color: "#991b1b",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            marginBottom: "15px",
-            fontWeight: "500",
-            border: "1px solid #fecaca",
-          }}
-        >
+        <div style={{ backgroundColor: "#fee2e2", color: "#991b1b", padding: "12px 16px", borderRadius: "8px", marginBottom: "15px", fontWeight: "500", border: "1px solid #fecaca" }}>
           {mensagemErro}
         </div>
       )}
 
       {/* CARD DO FORMULÁRIO */}
       {mostrarFormulario && (
-        <div
-          style={{
-            backgroundColor: "#ffffff",
-            padding: "24px",
-            borderRadius: "12px",
-            marginBottom: "25px",
-            boxShadow:
-              "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
-            border: "1px solid #e5e7eb",
-          }}
-        >
-          <div
-            style={{
-              borderBottom: "1px solid #f3f4f6",
-              paddingBottom: "12px",
-              marginBottom: "20px",
-            }}
-          >
-            <h3
-              style={{
-                margin: 0,
-                color: "#111827",
-                fontSize: "18px",
-                fontWeight: "600",
-              }}
-            >
-              {animalEditando
-                ? "✏️ Editar Cadastro do Paciente"
-                : "🐾 Cadastrar Novo Paciente"}
+        <div style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", marginBottom: "25px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)", border: "1px solid #e5e7eb" }}>
+          <div style={{ borderBottom: "1px solid #f3f4f6", paddingBottom: "12px", marginBottom: "20px" }}>
+            <h3 style={{ margin: 0, color: "#111827", fontSize: "18px", fontWeight: "600" }}>
+              {animalEditando ? "✏️ Editar Cadastro do Paciente" : "🐾 Cadastrar Novo Paciente"}
             </h3>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-              gap: "18px",
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "18px" }}>
             <div>
               <label style={estiloLabel}>Código / Ficha</label>
-              <input
-                type="text"
-                placeholder="Ex: PET-0001 (Automático se em branco)"
-                value={codigo}
-                onChange={(e) => setCodigo(e.target.value)}
-                style={{ ...estiloInput, backgroundColor: "#f9fafb" }}
-              />
+              <input type="text" placeholder="Ex: PET-0001" value={codigo} onChange={(e) => setCodigo(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f9fafb" }} />
             </div>
 
             <div>
               <label style={estiloLabel}>Nome do Paciente *</label>
-              <input
-                type="text"
-                placeholder="Ex: Rex"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                style={estiloInput}
-              />
+              <input type="text" placeholder="Ex: Rex" value={nome} onChange={(e) => setNome(e.target.value)} style={estiloInput} />
             </div>
 
             <div>
               <label style={estiloLabel}>Espécie *</label>
               <select
                 value={especie}
-                onChange={(e) => setEspecie(e.target.value)}
+                onChange={(e) => {
+                  setEspecie(e.target.value);
+                  setSubEspecieSelect("");
+                  setSubEspecieOutro("");
+                }}
                 style={estiloInput}
               >
                 <option value="">Selecione a Espécie</option>
                 <option value="Canino">Canino</option>
                 <option value="Felino">Felino</option>
+                <option value="Coelho / Lagomorfo">Coelho / Lagomorfo</option>
                 <option value="Ave">Ave</option>
                 <option value="Roedor">Roedor</option>
                 <option value="Réptil">Réptil</option>
@@ -449,23 +374,39 @@ function Animais() {
             </div>
 
             <div>
-              <label style={estiloLabel}>Raça *</label>
-              <input
-                type="text"
-                placeholder="Ex: Labrador"
-                value={raca}
-                onChange={(e) => setRaca(e.target.value)}
+              <label style={estiloLabel}>Sub-espécie / Tipo</label>
+              <select
+                value={subEspecieSelect}
+                onChange={(e) => setSubEspecieSelect(e.target.value)}
                 style={estiloInput}
-              />
+                disabled={!especie}
+              >
+                <option value="">{especie ? "Selecione a Sub-espécie..." : "Primeiro selecione a Espécie"}</option>
+                {especie && SUB_ESPECIES_POR_ESPECIE[especie]?.map((sub, idx) => (
+                  <option key={idx} value={sub}>{sub}</option>
+                ))}
+                <option value="Outro">Outro (Digitar...)</option>
+              </select>
+
+              {subEspecieSelect === "Outro" && (
+                <input
+                  type="text"
+                  placeholder="Digite a sub-espécie..."
+                  value={subEspecieOutro}
+                  onChange={(e) => setSubEspecieOutro(e.target.value)}
+                  style={{ ...estiloInput, marginTop: "8px" }}
+                />
+              )}
+            </div>
+
+            <div>
+              <label style={estiloLabel}>Raça *</label>
+              <input type="text" placeholder="Ex: Labrador" value={raca} onChange={(e) => setRaca(e.target.value)} style={estiloInput} />
             </div>
 
             <div>
               <label style={estiloLabel}>Sexo *</label>
-              <select
-                value={sexo}
-                onChange={(e) => setSexo(e.target.value)}
-                style={estiloInput}
-              >
+              <select value={sexo} onChange={(e) => setSexo(e.target.value)} style={estiloInput}>
                 <option value="">Selecione o Sexo</option>
                 <option value="M">Macho</option>
                 <option value="F">Fêmea</option>
@@ -474,22 +415,12 @@ function Animais() {
 
             <div>
               <label style={estiloLabel}>Cor</label>
-              <input
-                type="text"
-                placeholder="Ex: Preto e Branco"
-                value={cor}
-                onChange={(e) => setCor(e.target.value)}
-                style={estiloInput}
-              />
+              <input type="text" placeholder="Ex: Preto e Branco" value={cor} onChange={(e) => setCor(e.target.value)} style={estiloInput} />
             </div>
 
             <div>
               <label style={estiloLabel}>Porte</label>
-              <select
-                value={porte}
-                onChange={(e) => setPorte(e.target.value)}
-                style={estiloInput}
-              >
+              <select value={porte} onChange={(e) => setPorte(e.target.value)} style={estiloInput}>
                 <option value="">Selecione o Porte</option>
                 <option value="Miniatura">Miniatura</option>
                 <option value="Pequeno">Pequeno</option>
@@ -500,11 +431,7 @@ function Animais() {
 
             <div>
               <label style={estiloLabel}>Castrado?</label>
-              <select
-                value={castrado}
-                onChange={(e) => setCastrado(e.target.value)}
-                style={estiloInput}
-              >
+              <select value={castrado} onChange={(e) => setCastrado(e.target.value)} style={estiloInput}>
                 <option value="">Selecione</option>
                 <option value="Sim">Sim</option>
                 <option value="Não">Não</option>
@@ -513,86 +440,33 @@ function Animais() {
 
             <div>
               <label style={estiloLabel}>Idade (Anos) *</label>
-              <input
-                type="number"
-                min="0"
-                step="0.1"
-                placeholder="Ex: 4.6"
-                value={idade}
-                onChange={(e) => setIdade(e.target.value)}
-                style={estiloInput}
-              />
+              <input type="number" min="0" step="0.1" placeholder="Ex: 4.6" value={idade} onChange={(e) => setIdade(e.target.value)} style={estiloInput} />
             </div>
 
             <div>
               <label style={estiloLabel}>Tutor Responsável *</label>
-              <select
-                value={tutorId}
-                onChange={(e) => setTutorId(e.target.value)}
-                style={estiloInput}
-              >
+              <select value={tutorId} onChange={(e) => setTutorId(e.target.value)} style={estiloInput}>
                 <option value="">Selecione o Tutor</option>
                 {tutores.map((tutor) => (
-                  <option key={tutor.id} value={tutor.id}>
-                    {tutor.nome}
-                  </option>
+                  <option key={tutor.id} value={tutor.id}>{tutor.nome}</option>
                 ))}
               </select>
             </div>
 
             <div>
               <label style={estiloLabel}>Status do Cadastro</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                style={estiloInput}
-              >
+              <select value={status} onChange={(e) => setStatus(e.target.value)} style={estiloInput}>
                 <option value="ATIVO">ATIVO</option>
                 <option value="INATIVO">INATIVO</option>
               </select>
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "12px",
-              marginTop: "24px",
-              paddingTop: "16px",
-              borderTop: "1px solid #f3f4f6",
-            }}
-          >
-            <button
-              onClick={() => {
-                limparFormulario();
-                setMostrarFormulario(false);
-              }}
-              style={{
-                backgroundColor: "#f3f4f6",
-                color: "#374151",
-                border: "none",
-                padding: "10px 20px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600",
-              }}
-            >
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "24px", paddingTop: "16px", borderTop: "1px solid #f3f4f6" }}>
+            <button onClick={() => { limparFormulario(); setMostrarFormulario(false); }} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>
               Cancelar
             </button>
-            <button
-              onClick={salvarAnimal}
-              style={{
-                backgroundColor: "#16a34a",
-                color: "white",
-                border: "none",
-                padding: "10px 24px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600",
-                boxShadow: "0 2px 4px rgba(22, 163, 74, 0.2)",
-              }}
-            >
+            <button onClick={salvarAnimal} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", boxShadow: "0 2px 4px rgba(22, 163, 74, 0.2)" }}>
               Salvar Alterações
             </button>
           </div>
@@ -603,57 +477,24 @@ function Animais() {
       <div style={{ marginBottom: "16px" }}>
         <input
           type="text"
-          placeholder="🔍 Pesquisar paciente por nome, código (PET-0000), tutor, espécie ou raça..."
+          placeholder="🔍 Pesquisar paciente por nome, código, tutor, espécie, sub-espécie ou raça..."
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          style={{
-            width: "100%",
-            height: "44px",
-            padding: "0 16px",
-            border: "1px solid #d1d5db",
-            borderRadius: "10px",
-            fontSize: "14px",
-            outline: "none",
-            backgroundColor: "#ffffff",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-            boxSizing: "border-box",
-          }}
+          style={{ width: "100%", height: "44px", padding: "0 16px", border: "1px solid #d1d5db", borderRadius: "10px", fontSize: "14px", outline: "none", backgroundColor: "#ffffff", boxSizing: "border-box" }}
         />
       </div>
 
       {/* TABELA DE PACIENTES */}
-      <div
-        style={{
-          overflowX: "auto",
-          backgroundColor: "white",
-          borderRadius: "12px",
-          boxShadow:
-            "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
-          border: "1px solid #e5e7eb",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            minWidth: "1000px",
-            borderCollapse: "collapse",
-            textAlign: "center",
-          }}
-        >
+      <div style={{ overflowX: "auto", backgroundColor: "white", borderRadius: "12px", border: "1px solid #e5e7eb" }}>
+        <table style={{ width: "100%", minWidth: "1000px", borderCollapse: "collapse", textAlign: "center" }}>
           <thead>
-            <tr
-              style={{
-                backgroundColor: "#4f46e5",
-                color: "white",
-                fontSize: "14px",
-              }}
-            >
+            <tr style={{ backgroundColor: "#4f46e5", color: "white", fontSize: "14px" }}>
               <th style={{ padding: "14px" }}>Código</th>
               <th style={{ padding: "14px" }}>Nome</th>
               <th style={{ padding: "14px" }}>Tutor</th>
-              <th style={{ padding: "14px" }}>Espécie / Raça</th>
+              <th style={{ padding: "14px" }}>Espécie / Sub-espécie</th>
+              <th style={{ padding: "14px" }}>Raça</th>
               <th style={{ padding: "14px" }}>Porte / Cor</th>
-              <th style={{ padding: "14px" }}>Castrado</th>
               <th style={{ padding: "14px" }}>Idade</th>
               <th style={{ padding: "14px" }}>Status</th>
               <th style={{ padding: "14px" }}>Ações</th>
@@ -663,116 +504,31 @@ function Animais() {
           <tbody>
             {animaisFiltrados.length > 0 ? (
               animaisFiltrados.map((animal, index) => (
-                <tr
-                  key={animal.id}
-                  style={{
-                    backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb",
-                    borderBottom: "1px solid #f3f4f6",
-                    fontSize: "14px",
-                  }}
-                >
-                  <td
-                    style={{
-                      padding: "14px",
-                      fontWeight: "bold",
-                      color: "#4f46e5",
-                    }}
-                  >
-                    {animal.codigo ||
-                      `PET-${String(animal.id).padStart(4, "0")}`}
-                  </td>
-                  <td
-                    style={{
-                      padding: "14px",
-                      fontWeight: "600",
-                      color: "#1f2937",
-                    }}
-                  >
-                    {animal.nome}
-                  </td>
+                <tr key={animal.id} style={{ backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb", borderBottom: "1px solid #f3f4f6", fontSize: "14px" }}>
+                  <td style={{ padding: "14px", fontWeight: "bold", color: "#4f46e5" }}>{animal.codigo || `PET-${String(animal.id).padStart(4, "0")}`}</td>
+                  <td style={{ padding: "14px", fontWeight: "600", color: "#1f2937" }}>{animal.nome}</td>
+                  <td style={{ padding: "14px", color: "#4b5563" }}>{obterNomeTutor(animal.tutor_id)}</td>
                   <td style={{ padding: "14px", color: "#4b5563" }}>
-                    {obterNomeTutor(animal.tutor_id)}
+                    {animal.especie} {animal.sub_espécie ? `(${animal.sub_espécie})` : animal.sub_especie ? `(${animal.sub_especie})` : ""}
                   </td>
-                  <td style={{ padding: "14px", color: "#4b5563" }}>
-                    {animal.especie} - {animal.raca}
-                  </td>
-                  <td style={{ padding: "14px", color: "#4b5563" }}>
-                    {animal.porte || "-"} / {animal.cor || "-"}
-                  </td>
-                  <td style={{ padding: "14px", color: "#4b5563" }}>
-                    {animal.castrado || "-"}
-                  </td>
-                  <td style={{ padding: "14px", color: "#4b5563" }}>
-                    {animal.idade} anos
-                  </td>
+                  <td style={{ padding: "14px", color: "#4b5563" }}>{animal.raca}</td>
+                  <td style={{ padding: "14px", color: "#4b5563" }}>{animal.porte || "-"} / {animal.cor || "-"}</td>
+                  <td style={{ padding: "14px", color: "#4b5563" }}>{animal.idade} anos</td>
                   <td style={{ padding: "14px" }}>
-                    <span
-                      style={{
-                        backgroundColor:
-                          animal.status === "ATIVO" ? "#dcfce7" : "#fee2e2",
-                        color: animal.status === "ATIVO" ? "#166534" : "#991b1b",
-                        padding: "4px 10px",
-                        borderRadius: "999px",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                      }}
-                    >
+                    <span style={{ backgroundColor: animal.status === "ATIVO" ? "#dcfce7" : "#fee2e2", color: animal.status === "ATIVO" ? "#166534" : "#991b1b", padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>
                       {animal.status}
                     </span>
                   </td>
 
-                  <td
-                    style={{
-                      padding: "14px",
-                      display: "flex",
-                      justifyContent: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <button
-                      onClick={() => editarAnimal(animal)}
-                      style={{
-                        backgroundColor: "#fef3c7",
-                        color: "#b45309",
-                        border: "none",
-                        padding: "6px 12px",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontWeight: "600",
-                        fontSize: "13px",
-                      }}
-                    >
-                      ✏️ Editar
-                    </button>
-
-                    <button
-                      onClick={() => setAnimalParaExcluir(animal)}
-                      style={{
-                        backgroundColor: "#fee2e2",
-                        color: "#b91c1c",
-                        border: "none",
-                        padding: "6px 12px",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontWeight: "600",
-                        fontSize: "13px",
-                      }}
-                    >
-                      🗑️ Excluir
-                    </button>
+                  <td style={{ padding: "14px", display: "flex", justifyContent: "center", gap: "8px" }}>
+                    <button onClick={() => editarAnimal(animal)} style={{ backgroundColor: "#fef3c7", color: "#b45309", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>✏️ Editar</button>
+                    <button onClick={() => setAnimalParaExcluir(animal)} style={{ backgroundColor: "#fee2e2", color: "#b91c1c", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>🗑️️ Excluir</button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td
-                  colSpan="9"
-                  style={{
-                    padding: "24px",
-                    color: "#6b7280",
-                    fontSize: "14px",
-                  }}
-                >
+                <td colSpan="9" style={{ padding: "24px", color: "#6b7280", fontSize: "14px" }}>
                   Nenhum paciente encontrado para a busca "{busca}".
                 </td>
               </tr>
@@ -783,79 +539,16 @@ function Animais() {
 
       {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
       {animalParaExcluir && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "rgba(0, 0, 0, 0.4)",
-            backdropFilter: "blur(2px)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "white",
-              padding: "28px",
-              borderRadius: "14px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-              textAlign: "center",
-              maxWidth: "400px",
-              width: "90%",
-            }}
-          >
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(2px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "14px", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)", textAlign: "center", maxWidth: "400px", width: "90%" }}>
             <div style={{ fontSize: "42px", marginBottom: "8px" }}>⚠️</div>
-            <h3 style={{ marginTop: 0, color: "#111827", fontSize: "18px" }}>
-              Confirmar Exclusão
-            </h3>
-            <p
-              style={{ color: "#4b5563", fontSize: "14px", lineHeight: "1.5" }}
-            >
-              Tem certeza que deseja excluir o paciente{" "}
-              <strong>{animalParaExcluir.nome}</strong>?
+            <h3 style={{ marginTop: 0, color: "#111827", fontSize: "18px" }}>Confirmar Exclusão</h3>
+            <p style={{ color: "#4b5563", fontSize: "14px", lineHeight: "1.5" }}>
+              Tem certeza que deseja excluir o paciente <strong>{animalParaExcluir.nome}</strong>?
             </p>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: "12px",
-                marginTop: "22px",
-              }}
-            >
-              <button
-                onClick={() => setAnimalParaExcluir(null)}
-                style={{
-                  backgroundColor: "#f3f4f6",
-                  color: "#374151",
-                  border: "none",
-                  padding: "10px 18px",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontWeight: "600",
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={deletarAnimal}
-                style={{
-                  backgroundColor: "#dc2626",
-                  color: "white",
-                  border: "none",
-                  padding: "10px 18px",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontWeight: "600",
-                  boxShadow: "0 2px 4px rgba(220, 38, 38, 0.2)",
-                }}
-              >
-                Sim, Excluir
-              </button>
+            <div style={{ display: "flex", justifyContent: "center", gap: "12px", marginTop: "22px" }}>
+              <button onClick={() => setAnimalParaExcluir(null)} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Cancelar</button>
+              <button onClick={deletarAnimal} style={{ backgroundColor: "#dc2626", color: "white", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Sim, Excluir</button>
             </div>
           </div>
         </div>
