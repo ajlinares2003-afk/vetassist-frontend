@@ -56,7 +56,6 @@ function Triagem() {
     return () => clearInterval(intervalo);
   }, []);
 
-  // Restauração da avaliação automática por IA de forma inteligente ao alterar os sinais ou queixa
   useEffect(() => {
     if ((atendimentoSelecionado || animalIdDireto) && (temperatura || queixaPrincipal)) {
       const timer = setTimeout(() => {
@@ -105,7 +104,6 @@ function Triagem() {
     return a ? `${a.nome} (${a.codigo || `PET-${a.id}`})` : `-`;
   };
 
-  // Identifica as faixas de referência normais com base na espécie do animal selecionado
   const obterReferenciasEspecie = () => {
     const animalAlvo = atendimentoSelecionado 
       ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
@@ -114,11 +112,11 @@ function Triagem() {
     const esp = (animalAlvo?.especie || "").toLowerCase();
     
     if (esp.includes("réptil") || esp.includes("reptil") || esp.includes("iguana") || esp.includes("tartaruga")) {
-      return { temp: "Normal para répteis: 28°C - 37°C", fc: "Variável por espécie", tpc: "Até 3s" };
+      return { temp: "Normal: 28°C - 37°C", fc: "Variável por espécie", tpc: "Até 3s" };
     } else if (esp.includes("felino") || esp.includes("gato")) {
-      return { temp: "Normal para felinos: 38.1°C - 39.2°C", fc: "120 - 220 bpm", tpc: "Até 2s" };
+      return { temp: "Normal: 38.1°C - 39.2°C", fc: "120 - 220 bpm", tpc: "Até 2s" };
     } else {
-      return { temp: "Normal para cães/outros: 38.3°C - 39.2°C", fc: "70 - 160 bpm", tpc: "Até 2s" };
+      return { temp: "Normal: 38.3°C - 39.2°C", fc: "70 - 160 bpm", tpc: "Até 2s" };
     }
   };
 
@@ -377,7 +375,7 @@ function Triagem() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: atendimentoSelecionado ? "1fr 1.2fr" : "1fr", gap: "20px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: atendimentoSelecionado ? "1fr 1.4fr" : "1fr", gap: "20px" }}>
         <div style={{ backgroundColor: "white", padding: "20px", borderRadius: "12px", border: "1px solid #e5e7eb" }}>
           <h3 style={{ marginTop: 0, color: "#111827", fontSize: "16px" }}>
             📋 Fila de Check-in para Triagem ({atendimentosPendentes.length} aguardando)
@@ -443,7 +441,6 @@ function Triagem() {
               🩺 Aferição de Sinais Vitais — {obterNomeAnimal(atendimentoSelecionado.animal_id)}
             </h3>
 
-            {/* SELEÇÃO DO VETERINÁRIO RESPONSÁVEL COM PREENCHIMENTO AUTOMÁTICO DA SALA */}
             <div style={{ marginBottom: "16px" }}>
               <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "4px" }}>
                 👨‍⚕️ Veterinário Responsável pelo Atendimento *
@@ -472,7 +469,7 @@ function Triagem() {
               />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
                 <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
@@ -563,7 +560,8 @@ function Triagem() {
 
       {mostrarModalNovoCheckin && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(3px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "20px" }}>
-          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "16px", maxWidth: "600px", width: "100%", maxHeight: "90vh", overflowY: "auto" }}>
+          {/* LARGURA AMPLIADA PARA 780px PARA ELIMINAR QUALQUER ROLAGEM LATERAL */}
+          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "16px", maxWidth: "780px", width: "100%", maxHeight: "92vh", overflowY: "auto", boxSizing: "border-box" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: "12px", marginBottom: "16px" }}>
               <h3 style={{ margin: 0, color: "#111827", fontSize: "18px" }}>
                 🏥 Novo Check-in & Triagem Direta
@@ -584,7 +582,6 @@ function Triagem() {
                 </select>
               </div>
 
-              {/* SELEÇÃO DO VETERINÁRIO NO CHECK-IN DIRETO COM SALA AUTOMÁTICA */}
               <div style={{ marginBottom: "14px" }}>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "4px" }}>
                   👨‍⚕️ Veterinário Responsável pelo Atendimento *
@@ -613,7 +610,7 @@ function Triagem() {
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "14px" }}>
                 <div>
                   <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
                   <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
