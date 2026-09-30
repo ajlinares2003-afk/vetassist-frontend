@@ -29,7 +29,8 @@ function Triagem() {
   const [mostrarModalNovoCheckin, setMostrarModalNovoCheckin] = useState(false);
 
   const [animalIdDireto, setAnimalIdDireto] = useState("");
-  const [usuarioIdVet, setUsuarioIdVet] = useState(""); // Veterinário responsável selecionado
+  const [usuarioIdVet, setUsuarioIdVet] = useState(""); 
+  const [consultorioAtribuido, setConsultorioAtribuido] = useState(""); // Consultório vinculado
   const [peso, setPeso] = useState("");
   const [temperatura, setTemperatura] = useState("");
   const [frequenciaCardiaca, setFrequenciaCardiaca] = useState("");
@@ -83,7 +84,6 @@ function Triagem() {
       setAnimais(resAnimais.data || []);
       setAtendimentosPendentes(resFila.data || []);
 
-      // Filtra estritamente apenas usuários com perfil VETERINARIO
       const listaUsuarios = resUsuarios.data || [];
       const apenasVets = listaUsuarios.filter((u) => u.perfil === "VETERINARIO");
       setVeterinarios(apenasVets);
@@ -104,6 +104,7 @@ function Triagem() {
   const limparFormulario = () => {
     setAnimalIdDireto("");
     setUsuarioIdVet("");
+    setConsultorioAtribuido("");
     setPeso("");
     setTemperatura("");
     setFrequenciaCardiaca("");
@@ -114,6 +115,19 @@ function Triagem() {
     setQueixaPrincipal("");
     setClassificacaoRisco("VERDE");
     setJustificativa("");
+  };
+
+  // Preenche automaticamente o consultório ao selecionar o veterinário
+  const handleVeterinarioChange = (e) => {
+    const vetId = e.target.value;
+    setUsuarioIdVet(vetId);
+
+    const vetSelecionado = veterinarios.find((v) => v.id === Number(vetId));
+    if (vetSelecionado && vetSelecionado.consultorio_padrao) {
+      setConsultorioAtribuido(vetSelecionado.consultorio_padrao);
+    } else {
+      setConsultorioAtribuido("Consultório 1");
+    }
   };
 
   const chamarPaciente = async (consulta, e) => {
@@ -147,6 +161,13 @@ function Triagem() {
     setFrequenciaCardiaca(consulta.frequencia_cardiaca || "");
     setFrequenciaRespiratoria(consulta.frequencia_respiratoria || "");
     setUsuarioIdVet(consulta.usuario_id || "");
+
+    if (consulta.usuario_id) {
+      const vEncontrado = veterinarios.find(v => v.id === Number(consulta.usuario_id));
+      if (vEncontrado?.consultorio_padrao) {
+        setConsultorioAtribuido(vEncontrado.consultorio_padrao);
+      }
+    }
 
     try {
       const token = localStorage.getItem("token");
@@ -245,21 +266,10 @@ function Triagem() {
         }
       }
 
-      // Atualiza também o veterinário responsável na consulta, se selecionado
-      if (usuarioIdVet) {
-        try {
-          await api.put(
-            `/consultas/${atendimentoSelecionado.id}`,
-            { usuario_id: Number(usuarioIdVet) },
-            config
-          );
-        } catch (errVet) {
-          console.warn("Aviso ao vincular veterinário:", errVet);
-        }
-      }
-
       const payload = {
         consulta_id: atendimentoSelecionado.id,
+        usuario_id: usuarioIdVet ? Number(usuarioIdVet) : null,
+        consultorio: consultorioAtribuido || null,
         peso: peso ? parseFloat(peso) : null,
         temperatura: temperatura ? parseFloat(temperatura) : null,
         frequencia_cardiaca: frequenciaCardiaca ? parseInt(frequenciaCardiaca) : null,
@@ -300,6 +310,7 @@ function Triagem() {
       const payload = {
         animal_id: Number(animalIdDireto),
         usuario_id: usuarioIdVet ? Number(usuarioIdVet) : null,
+        consultorio: consultorioAtribuido || null,
         queixa_principal: queixaPrincipal,
         classificacao_risco: classificacaoRisco,
         peso: peso ? parseFloat(peso) : null,
@@ -433,19 +444,33 @@ function Triagem() {
               🩺 Aferição de Sinais Vitais — {obterNomeAnimal(atendimentoSelecionado.animal_id)}
             </h3>
 
-            {/* SELEÇÃO DO VETERINÁRIO RESPONSÁVEL */}
+            {/* SELEÇÃO DO VETERINÁRIO RESPONSÁVEL COM PREENCHIMENTO AUTOMÁTICO DA SALA */}
             <div style={{ marginBottom: "16px" }}>
               <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "4px" }}>
                 👨‍⚕️ Veterinário Responsável pelo Atendimento *
               </label>
-              <select value={usuarioIdVet} onChange={(e) => setUsuarioIdVet(e.target.value)} style={estiloInput} required>
+              <select value={usuarioIdVet} onChange={handleVeterinarioChange} style={estiloInput} required>
                 <option value="">Selecione o médico veterinário...</option>
                 {veterinarios.map((v) => (
                   <option key={v.id} value={v.id}>
-                    {v.nome || v.email}
+                    {v.nome || v.email} {v.consultorio_padrao ? `(${v.consultorio_padrao})` : ""}
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "4px" }}>
+                🏥 Consultório Atribuído (Automático / Editável)
+              </label>
+              <input 
+                type="text" 
+                value={consultorioAtribuido} 
+                onChange={(e) => setConsultorioAtribuido(e.target.value)} 
+                style={{ ...estiloInput, backgroundColor: "#f9fafb", fontWeight: "600", color: "#1e1b4b" }} 
+                placeholder="Ex: Consultório 1"
+                required 
+              />
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
@@ -557,19 +582,33 @@ function Triagem() {
                 </select>
               </div>
 
-              {/* SELEÇÃO DO VETERINÁRIO NO CHECK-IN DIRETO */}
+              {/* SELEÇÃO DO VETERINÁRIO NO CHECK-IN DIRETO COM SALA AUTOMÁTICA */}
               <div style={{ marginBottom: "14px" }}>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "4px" }}>
                   👨‍⚕️ Veterinário Responsável pelo Atendimento *
                 </label>
-                <select value={usuarioIdVet} onChange={(e) => setUsuarioIdVet(e.target.value)} style={estiloInput} required>
+                <select value={usuarioIdVet} onChange={handleVeterinarioChange} style={estiloInput} required>
                   <option value="">Selecione o médico veterinário...</option>
                   {veterinarios.map((v) => (
                     <option key={v.id} value={v.id}>
-                      {v.nome || v.email}
+                      {v.nome || v.email} {v.consultorio_padrao ? `(${v.consultorio_padrao})` : ""}
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div style={{ marginBottom: "14px" }}>
+                <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "4px" }}>
+                  🏥 Consultório Atribuído (Automático / Editável)
+                </label>
+                <input 
+                  type="text" 
+                  value={consultorioAtribuido} 
+                  onChange={(e) => setConsultorioAtribuido(e.target.value)} 
+                  style={{ ...estiloInput, backgroundColor: "#f9fafb", fontWeight: "600", color: "#1e1b4b" }} 
+                  placeholder="Ex: Consultório 1"
+                  required 
+                />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>

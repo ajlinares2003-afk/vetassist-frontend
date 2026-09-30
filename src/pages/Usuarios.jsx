@@ -15,6 +15,7 @@ function Usuarios() {
   const [senha, setSenha] = useState("");
   const [perfil, setPerfil] = useState("VETERINARIO");
   const [crmv, setCrmv] = useState("");
+  const [consultorioPadrao, setConsultorioPadrao] = useState("");
 
   const [mensagemSucesso, setMensagemSucesso] = useState("");
   const [mensagemErro, setMensagemErro] = useState("");
@@ -45,6 +46,7 @@ function Usuarios() {
     setSenha("");
     setPerfil("VETERINARIO");
     setCrmv("");
+    setConsultorioPadrao("");
     setMensagemErro("");
   };
 
@@ -55,6 +57,7 @@ function Usuarios() {
     setSenha(""); // Deixa em branco por segurança; se digitar, altera a senha
     setPerfil(u.perfil || "VETERINARIO");
     setCrmv(u.crmv || "");
+    setConsultorioPadrao(u.consultorio_padrao || "");
     setMensagemErro("");
     setMostrarFormulario(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -74,6 +77,7 @@ function Usuarios() {
         senha: senha ? senha : "", 
         perfil: perfil,
         crmv: perfil === "VETERINARIO" && crmv.trim() ? crmv.trim() : null,
+        consultorio_padrao: perfil === "VETERINARIO" && consultorioPadrao ? consultorioPadrao : null,
       };
 
       if (usuarioEditando) {
@@ -249,10 +253,23 @@ function Usuarios() {
             </div>
 
             {perfil === "VETERINARIO" && (
-              <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>CRMV (Número do Registro)</label>
-                <input type="text" placeholder="Ex: SP-12345" value={crmv} onChange={(e) => setCrmv(e.target.value)} style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }} />
-              </div>
+              <>
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>CRMV (Número do Registro)</label>
+                  <input type="text" placeholder="Ex: SP-12345" value={crmv} onChange={(e) => setCrmv(e.target.value)} style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }} />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>Consultório Padrão (Sala)</label>
+                  <select value={consultorioPadrao} onChange={(e) => setConsultorioPadrao(e.target.value)} style={{ width: "100%", height: "40px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px" }}>
+                    <option value="">Selecione o consultório...</option>
+                    <option value="Consultório 1">Consultório 1</option>
+                    <option value="Consultório 2">Consultório 2</option>
+                    <option value="Consultório 3">Consultório 3</option>
+                    <option value="Consultório 4">Consultório 4</option>
+                  </select>
+                </div>
+              </>
             )}
           </div>
 
@@ -274,6 +291,7 @@ function Usuarios() {
               <th style={{ padding: "14px" }}>E-mail</th>
               <th style={{ padding: "14px" }}>Perfil</th>
               <th style={{ padding: "14px" }}>CRMV</th>
+              <th style={{ padding: "14px" }}>Consultório Padrão</th>
               <th style={{ padding: "14px", textAlign: "center" }}>Ações</th>
             </tr>
           </thead>
@@ -284,6 +302,7 @@ function Usuarios() {
                 <td style={{ padding: "14px", color: "#4b5563" }}>{u.email}</td>
                 <td style={{ padding: "14px" }}>{renderBadgePerfil(u.perfil)}</td>
                 <td style={{ padding: "14px", color: "#6b7280" }}>{u.crmv || "-"}</td>
+                <td style={{ padding: "14px", color: "#6b7280" }}>{u.consultorio_padrao || "-"}</td>
                 <td style={{ padding: "14px", textAlign: "center", display: "flex", justifyContent: "center", gap: "8px" }}>
                   <button 
                     onClick={() => prepararEdicao(u)} 
