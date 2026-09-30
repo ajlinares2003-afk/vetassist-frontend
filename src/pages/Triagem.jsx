@@ -61,7 +61,7 @@ function Triagem() {
       const timer = setTimeout(() => {
         setMensagem({ tipo: "", texto: "" });
       }, 4000);
-      return () => clearTimeout(timer);
+      return () => clearInterval(timer);
     }
   }, [mensagem]);
 
@@ -113,7 +113,7 @@ function Triagem() {
     return a ? `${a.nome} (${a.codigo || `PET-${a.id}`})` : `-`;
   };
 
-  // Análise inteligente e dinâmica das referências com base na espécie e temperatura informada
+  // Análise inteligente e dinâmica das referências (Temperatura, FC e FR) com base na espécie e temperatura aferida
   const obterReferenciasEspecie = () => {
     const animalAlvo = atendimentoSelecionado 
       ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
@@ -123,24 +123,39 @@ function Triagem() {
     const tempNum = parseFloat(temperatura);
 
     if (esp.includes("réptil") || esp.includes("reptil") || esp.includes("iguana") || esp.includes("tartaruga")) {
-      // Se for réptil, a FC varia conforme o metabolismo/temperatura
-      let fcEstimada = "60 - 100 bpm (Normal em repouso)";
+      let fcEstimada = "60 - 100 bpm (Repouso)";
+      let frEstimada = "10 - 30 mpm (Repouso)";
+
       if (!isNaN(tempNum)) {
         if (tempNum < 26) {
-          fcEstimada = "30 - 50 bpm (Hipotermia / Bradicardia metabólica)";
+          fcEstimada = "30 - 50 bpm (Hipotermia)";
+          frEstimada = "5 - 12 mpm (Hipotermia / Baixo metabolismo)";
         } else if (tempNum > 37) {
-          fcEstimada = "90 - 130 bpm (Hipertermia / Taquicardia)";
+          fcEstimada = "90 - 130 bpm (Hipertermia)";
+          frEstimada = "30 - 45 mpm (Hipertermia / Taquipneia)";
         }
       }
+
       return { 
         temp: "Normal: 28°C - 37°C", 
         fc: fcEstimada, 
+        fr: frEstimada,
         tpc: "Até 3s" 
       };
     } else if (esp.includes("felino") || esp.includes("gato")) {
-      return { temp: "Normal: 38.1°C - 39.2°C", fc: "120 - 220 bpm", tpc: "Até 2s" };
+      return { 
+        temp: "Normal: 38.1°C - 39.2°C", 
+        fc: "120 - 220 bpm", 
+        fr: "20 - 42 mpm",
+        tpc: "Até 2s" 
+      };
     } else {
-      return { temp: "Normal: 38.3°C - 39.2°C", fc: "70 - 160 bpm", tpc: "Até 2s" };
+      return { 
+        temp: "Normal: 38.3°C - 39.2°C", 
+        fc: "70 - 160 bpm", 
+        fr: "15 - 30 mpm",
+        tpc: "Até 2s" 
+      };
     }
   };
 
@@ -508,6 +523,7 @@ function Triagem() {
               <div>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FR (mpm)</label>
                 <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloInput} placeholder="Ex: 25" />
+                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refs.fr}</span>
               </div>
               <div>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>TPC (segundos)</label>
@@ -535,7 +551,7 @@ function Triagem() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
                 <label style={{ fontSize: "11px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
                 <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "2px 5px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "600", display: "flex", alignItems: "center", gap: "3px" }}>
-                  <MdAutoAwesome /> Avaliar IA
+                  <MdAutoAwesome /> Avaliar com IA
                 </button>
               </div>
 
@@ -650,6 +666,7 @@ function Triagem() {
                 <div>
                   <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FR (mpm)</label>
                   <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloInput} placeholder="Ex: 25" />
+                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refs.fr}</span>
                 </div>
                 <div>
                   <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>TPC (segundos)</label>
