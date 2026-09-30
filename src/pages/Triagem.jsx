@@ -113,15 +113,30 @@ function Triagem() {
     return a ? `${a.nome} (${a.codigo || `PET-${a.id}`})` : `-`;
   };
 
+  // Análise inteligente e dinâmica das referências com base na espécie e temperatura informada
   const obterReferenciasEspecie = () => {
     const animalAlvo = atendimentoSelecionado 
       ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
       : animais.find(a => a.id === Number(animalIdDireto));
     
     const esp = (animalAlvo?.especie || "").toLowerCase();
-    
+    const tempNum = parseFloat(temperatura);
+
     if (esp.includes("réptil") || esp.includes("reptil") || esp.includes("iguana") || esp.includes("tartaruga")) {
-      return { temp: "Normal: 28°C - 37°C", fc: "Variável por espécie", tpc: "Até 3s" };
+      // Se for réptil, a FC varia conforme o metabolismo/temperatura
+      let fcEstimada = "60 - 100 bpm (Normal em repouso)";
+      if (!isNaN(tempNum)) {
+        if (tempNum < 26) {
+          fcEstimada = "30 - 50 bpm (Hipotermia / Bradicardia metabólica)";
+        } else if (tempNum > 37) {
+          fcEstimada = "90 - 130 bpm (Hipertermia / Taquicardia)";
+        }
+      }
+      return { 
+        temp: "Normal: 28°C - 37°C", 
+        fc: fcEstimada, 
+        tpc: "Até 3s" 
+      };
     } else if (esp.includes("felino") || esp.includes("gato")) {
       return { temp: "Normal: 38.1°C - 39.2°C", fc: "120 - 220 bpm", tpc: "Até 2s" };
     } else {
@@ -452,7 +467,7 @@ function Triagem() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
               <div>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>👨‍⚕️️ Veterinário Responsável *</label>
+                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>👨‍⚕️ Veterinário Responsável *</label>
                 <select value={usuarioIdVet} onChange={handleVeterinarioChange} style={estiloInput} required>
                   <option value="">Selecione o médico...</option>
                   {veterinarios.map((v) => (
