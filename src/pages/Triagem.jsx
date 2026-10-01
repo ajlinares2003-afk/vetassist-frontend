@@ -113,22 +113,29 @@ function Triagem() {
     return a ? `${a.nome} (${a.codigo || `PET-${a.id}`})` : `-`;
   };
 
-  // Análise inteligente e dinâmica das referências (Peso, Temperatura, FC, FR e Mucosas) com base na espécie e idade do animal
+  // Análise inteligente e dinâmica das referências considerando Espécie, Sub-espécie e Raça (Coelhos, Répteis, Felinos, etc.)
   const obterReferenciasEspecie = () => {
     const animalAlvo = atendimentoSelecionado 
       ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
       : animais.find(a => a.id === Number(animalIdDireto));
     
     const esp = (animalAlvo?.especie || "").toLowerCase();
+    const subEsp = (animalAlvo?.sub_especie || "").toLowerCase();
+    const raca = (animalAlvo?.raca || "").toLowerCase();
     const tempNum = parseFloat(temperatura);
 
-    // Tenta estimar a idade com base nos dados do animal (se houver campo de idade ou data de nascimento)
-    let idadeTexto = "";
-    if (animalAlvo?.idade) {
-      idadeTexto = ` (${animalAlvo.idade})`;
-    }
+    const ehCoelho = esp.includes("coelho") || esp.includes("lagomorfo") || subEsp.includes("coelho") || raca.includes("dwarf") || raca.includes("lop") || raca.includes("netherland");
 
-    if (esp.includes("réptil") || esp.includes("reptil") || esp.includes("iguana") || esp.includes("tartaruga")) {
+    if (ehCoelho) {
+      return { 
+        pesoRef: "💡 Ref. Peso: 0.9 - 2.5 kg (Porte Mini/Anão)",
+        temp: "Normal: 38.5°C - 40.0°C", 
+        fc: "180 - 300 bpm (Normal em coelhos)", 
+        fr: "30 - 60 mpm (Normal em coelhos)",
+        tpc: "Até 2s",
+        mucosasRef: "💡 Normocoradas (Rosadas e úmidas)"
+      };
+    } else if (esp.includes("réptil") || esp.includes("reptil") || esp.includes("iguana") || esp.includes("tartaruga")) {
       let fcEstimada = "60 - 100 bpm (Repouso)";
       let frEstimada = "10 - 30 mpm (Repouso)";
 
@@ -268,6 +275,8 @@ function Triagem() {
       const payloadIA = {
         animal_id: animalAlvo?.id || null,
         especie: animalAlvo?.especie || "Felino",
+        sub_especie: animalAlvo?.sub_especie || null,
+        raca: animalAlvo?.raca || "",
         queixa_principal: queixaPrincipal || "Consulta de rotina",
         temperatura: temperatura ? parseFloat(temperatura) : null,
         frequencia_cardiaca: frequenciaCardiaca ? parseInt(frequenciaCardiaca) : null,
