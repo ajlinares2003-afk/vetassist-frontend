@@ -350,10 +350,10 @@ function Triagem() {
     }
   };
 
-  // Formulário unificado compactado e com Mucosas dividindo espaço simetricamente em 2 colunas
+  // Formulário unificado compactado e com Mucosas + Desidratacao formando um par simétrico de 2 colunas
   const renderFormularioSinaisVitais = () => (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginBottom: "6px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px", marginBottom: "5px" }}>
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>👨‍⚕️ Veterinário Responsável *</label>
           <select value={usuarioIdVet} onChange={handleVeterinarioChange} style={estiloInput} required>
@@ -378,7 +378,7 @@ function Triagem() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginBottom: "6px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px", marginBottom: "5px" }}>
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
           <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
@@ -410,8 +410,8 @@ function Triagem() {
           <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.tpc}</span>
         </div>
         
-        {/* Mucosas posicionado simetricamente em 2 colunas, sem esticar */}
-        <div style={{ gridColumn: "span 2" }}>
+        {/* Mucosas na coluna esquerda e Desidratação na coluna direita, formando um par simétrico perfeito */}
+        <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Mucosas</label>
           <select value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInput}>
             <option value="Normocoradas">Normocoradas (Rosadas)</option>
@@ -421,6 +421,11 @@ function Triagem() {
             <option value="Congestas / Hiperêmicas">Congestas / Vermelhas</option>
           </select>
           <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refsDinamicas.mucosasRef}</span>
+        </div>
+        <div>
+          <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Desidratação (%)</label>
+          <input type="number" value={desidratacao} onChange={(e) => setDesidratacao(e.target.value)} style={estiloInput} placeholder="Ex: 5" />
+          <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 Padrão: 0% (Hidratado)</span>
         </div>
       </div>
     </>
@@ -536,14 +541,14 @@ function Triagem() {
 
             {renderFormularioSinaisVitais()}
 
-            {/* Queixa principal ajustada para 3 linhas fixas, sem barra de rolagem lateral */}
+            {/* Queixa principal ajustada para 3 linhas confortáveis sem estourar altura interna */}
             <div style={{ marginBottom: "6px" }}>
               <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>Queixa Principal *</label>
               <textarea 
                 rows={3} 
                 value={queixaPrincipal} 
                 onChange={(e) => setQueixaPrincipal(e.target.value)} 
-                style={{ ...estiloInput, height: "58px", padding: "6px", resize: "none" }} 
+                style={{ ...estiloInput, height: "auto", minHeight: "68px", padding: "6px", resize: "vertical" }} 
                 placeholder="Relato do tutor..." 
               />
             </div>
@@ -628,7 +633,7 @@ function Triagem() {
                   value={queixaPrincipal} 
                   onChange={(e) => setQueixaPrincipal(e.target.value)} 
                   required 
-                  style={{ ...estiloInput, height: "58px", padding: "6px", resize: "none" }} 
+                  style={{ ...estiloInput, height: "auto", minHeight: "68px", padding: "6px", resize: "vertical" }} 
                   placeholder="Relato do tutor..." 
                 />
               </div>
