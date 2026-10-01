@@ -4,8 +4,6 @@ import {
   MdMedicalServices, 
   MdAutoAwesome,
   MdRefresh,
-  MdAddCircle,
-  MdClose,
   MdCampaign
 } from "react-icons/md";
 import api from "../api/api";
@@ -26,9 +24,7 @@ function Triagem() {
   const [animais, setAnimais] = useState([]);
   const [veterinarios, setVeterinarios] = useState([]);
   const [atendimentoSelecionado, setAtendimentoSelecionado] = useState(null);
-  const [mostrarModalNovoCheckin, setMostrarModalNovoCheckin] = useState(false);
 
-  const [animalIdDireto, setAnimalIdDireto] = useState("");
   const [usuarioIdVet, setUsuarioIdVet] = useState(""); 
   const [consultorioAtribuido, setConsultorioAtribuido] = useState(""); 
   const [peso, setPeso] = useState("");
@@ -74,7 +70,7 @@ function Triagem() {
     const buscarReferenciasDaIA = async () => {
       const animalAlvo = atendimentoSelecionado 
         ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
-        : animais.find(a => a.id === Number(animalIdDireto));
+        : null;
 
       if (!animalAlvo) return;
 
@@ -106,7 +102,7 @@ function Triagem() {
       }
     };
     buscarReferenciasDaIA();
-  }, [atendimentoSelecionado, animalIdDireto, animais]);
+  }, [atendimentoSelecionado, animais]);
 
   useEffect(() => {
     if (!peso || !refsDinamicas.pesoRef) {
@@ -159,11 +155,11 @@ function Triagem() {
   }, [tpcSegundos, mucosas]);
 
   useEffect(() => {
-    if ((atendimentoSelecionado || animalIdDireto) && (temperatura || queixaPrincipal)) {
+    if (atendimentoSelecionado && (temperatura || queixaPrincipal)) {
       const timer = setTimeout(() => sugerirClassificacaoIA(), 500);
       return () => clearTimeout(timer);
     }
-  }, [temperatura, frequenciaCardiaca, frequenciaRespiratoria, tpcSegundos, mucosas, queixaPrincipal, animalIdDireto, atendimentoSelecionado]);
+  }, [temperatura, frequenciaCardiaca, frequenciaRespiratoria, tpcSegundos, mucosas, queixaPrincipal, atendimentoSelecionado]);
 
   const carregarDados = async (loaderPrincipal = false) => {
     if (loaderPrincipal) setCarregando(true);
@@ -195,7 +191,6 @@ function Triagem() {
   };
 
   const limparFormulario = () => {
-    setAnimalIdDireto("");
     setUsuarioIdVet("");
     setConsultorioAtribuido("");
     setPeso("");
@@ -262,7 +257,7 @@ function Triagem() {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const animalAlvo = atendimentoSelecionado 
         ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
-        : animais.find(a => a.id === Number(animalIdDireto));
+        : null;
 
       const payloadIA = {
         animal_id: animalAlvo?.id || null,
@@ -333,45 +328,6 @@ function Triagem() {
     }
   };
 
-  const salvarCheckinETriagemDireta = async (e) => {
-    e.preventDefault();
-    if (!animalIdDireto || !queixaPrincipal) return setMensagem({ tipo: "erro", texto: "Selecione o paciente e informe a queixa principal." });
-
-    try {
-      setCarregando(true);
-      const token = localStorage.getItem("token");
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-
-      const payload = {
-        animal_id: Number(animalIdDireto),
-        usuario_id: usuarioIdVet ? Number(usuarioIdVet) : null,
-        consultorio: consultorioAtribuido || null,
-        queixa_principal: queixaPrincipal,
-        classificacao_risco: classificacaoRisco,
-        peso: peso ? parseFloat(peso) : null,
-        ecc: ecc,
-        temperatura: temperatura ? parseFloat(temperatura) : null,
-        frequencia_cardiaca: frequenciaCardiaca ? parseInt(frequenciaCardiaca) : null,
-        frequencia_respiratoria: frequenciaRespiratoria ? parseInt(frequenciaRespiratoria) : null,
-        tpc_segundos: tpcSegundos ? parseInt(tpcSegundos) : null,
-        mucosas: mucosas || "Normocoradas",
-        desidratacao_percentual: desidratacao ? parseInt(desidratacao) : null,
-        justificativa_risco: justificativa,
-      };
-
-      await api.post("/triagem/checkin-direto", payload, config);
-      setMensagem({ tipo: "sucesso", texto: "✅ Check-in e Triagem realizados com sucesso!" });
-      setMostrarModalNovoCheckin(false);
-      limparFormulario();
-      carregarDados(true);
-    } catch (err) {
-      setMensagem({ tipo: "erro", texto: `❌ ${err.response?.data?.detail || "Erro ao registrar Check-in Direto."}` });
-    } finally {
-      setCarregando(false);
-    }
-  };
-
-  // Formulário ultra-compacto (gap reduzido para 3px para zerar a barra de rolagem)
   const renderFormularioSinaisVitais = () => (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "3px", marginBottom: "3px" }}>
@@ -431,7 +387,6 @@ function Triagem() {
           <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.tpc}</span>
         </div>
         
-        {/* Mucosas e Desidratação com referência do percentual ideal (< 5%) */}
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Mucosas</label>
           <select value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInput}>
@@ -475,16 +430,6 @@ function Triagem() {
           >
             <MdRefresh size={12} /> Atualizar
           </button>
-
-          <button
-            onClick={() => {
-              limparFormulario();
-              setMostrarModalNovoCheckin(true);
-            }}
-            style={{ display: "flex", alignItems: "center", gap: "4px", backgroundColor: "#4f46e5", color: "white", border: "none", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "11px" }}
-          >
-            <MdAddCircle size={12} /> Novo Check-in & Triagem
-          </button>
         </div>
       </div>
 
@@ -502,7 +447,7 @@ function Triagem() {
 
           {atendimentosPendentes.length === 0 ? (
             <p style={{ color: "#9ca3af", fontSize: "12px", textAlign: "center", padding: "16px 0", fontStyle: "italic" }}>
-              Nenhum paciente aguardando triagem. Clique em <strong>"Novo Check-in & Triagem"</strong> para dar entrada direta em um paciente!
+              Nenhum paciente aguardando triagem no momento. Os pacientes aparecerão aqui assim que realizarem o check-in na recepção.
             </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
@@ -620,56 +565,6 @@ function Triagem() {
           </div>
         )}
       </div>
-
-      {mostrarModalNovoCheckin && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(3px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "10px" }}>
-          <div style={{ backgroundColor: "white", padding: "12px 16px", borderRadius: "12px", maxWidth: "840px", width: "100%", maxHeight: "92vh", overflowY: "auto", boxSizing: "border-box" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: "4px", marginBottom: "6px" }}>
-              <h3 style={{ margin: 0, color: "#111827", fontSize: "14px" }}>
-                🏥 Novo Check-in & Triagem Direta
-              </h3>
-              <button onClick={() => setMostrarModalNovoCheckin(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
-                <MdClose size={16} color="#6b7280" />
-              </button>
-            </div>
-
-            <form onSubmit={salvarCheckinETriagemDireta}>
-              <div style={{ marginBottom: "3px" }}>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "1px" }}>Paciente *</label>
-                <select value={animalIdDireto} onChange={(e) => setAnimalIdDireto(e.target.value)} required style={estiloInput}>
-                  <option value="">Selecione o paciente...</option>
-                  {animais.map((a) => (
-                    <option key={a.id} value={a.id}>{a.nome} ({a.especie || 'Pet'} - {a.codigo || `PET-${a.id}`})</option>
-                  ))}
-                </select>
-              </div>
-
-              {renderFormularioSinaisVitais()}
-
-              <div style={{ marginBottom: "3px" }}>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "1px" }}>Queixa Principal *</label>
-                <textarea 
-                  rows={3} 
-                  value={queixaPrincipal} 
-                  onChange={(e) => setQueixaPrincipal(e.target.value)} 
-                  required 
-                  style={{ ...estiloInput, height: "50px", padding: "4px 6px", resize: "none" }} 
-                  placeholder="Relato do tutor..." 
-                />
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", marginTop: "6px" }}>
-                <button type="button" onClick={() => setMostrarModalNovoCheckin(false)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "11px" }}>
-                  Cancelar
-                </button>
-                <button type="submit" disabled={carregando} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "4px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "11px" }}>
-                  {carregando ? "Processando..." : "Confirmar Check-in & Triagem"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 }
