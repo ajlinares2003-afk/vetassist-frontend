@@ -32,7 +32,7 @@ function Triagem() {
   const [usuarioIdVet, setUsuarioIdVet] = useState(""); 
   const [consultorioAtribuido, setConsultorioAtribuido] = useState(""); 
   const [peso, setPeso] = useState("");
-  const [ecc, setEcc] = useState(""); // Campo de Escore de Condição Corporal
+  const [ecc, setEcc] = useState(""); 
   const [temperatura, setTemperatura] = useState("");
   const [frequenciaCardiaca, setFrequenciaCardiaca] = useState("");
   const [frequenciaRespiratoria, setFrequenciaRespiratoria] = useState("");
@@ -43,7 +43,6 @@ function Triagem() {
   const [classificacaoRisco, setClassificacaoRisco] = useState("VERDE");
   const [justificativa, setJustificativa] = useState("");
 
-  // Estado para armazenar as referências dinâmicas e o gabarito de ECC fornecidos pela IA
   const [refsDinamicas, setRefsDinamicas] = useState({
     pesoRef: "💡 Ref. Peso: Selecione o paciente...",
     eccRef: "💡 Ideal: 4 a 5 (Escala 1 a 9)",
@@ -60,24 +59,17 @@ function Triagem() {
 
   useEffect(() => {
     carregarDados(true);
-
-    const intervalo = setInterval(() => {
-      carregarDados(false);
-    }, 5000);
-
+    const intervalo = setInterval(() => carregarDados(false), 5000);
     return () => clearInterval(intervalo);
   }, []);
 
   useEffect(() => {
     if (mensagem.texto) {
-      const timer = setTimeout(() => {
-        setMensagem({ tipo: "", texto: "" });
-      }, 4000);
+      const timer = setTimeout(() => setMensagem({ tipo: "", texto: "" }), 4000);
       return () => clearTimeout(timer);
     }
   }, [mensagem]);
 
-  // Efeito para buscar as referências fisiológicas e de ECC da IA sempre que o animal mudar
   useEffect(() => {
     const buscarReferenciasDaIA = async () => {
       const animalAlvo = atendimentoSelecionado 
@@ -89,7 +81,6 @@ function Triagem() {
       try {
         const token = localStorage.getItem("token");
         const config = { headers: { Authorization: `Bearer ${token}` } };
-
         const payload = {
           especie: animalAlvo.especie,
           sub_especie: animalAlvo.sub_especie,
@@ -114,11 +105,9 @@ function Triagem() {
         console.warn("Erro ao buscar referências dinâmicas da IA:", err);
       }
     };
-
     buscarReferenciasDaIA();
   }, [atendimentoSelecionado, animalIdDireto, animais]);
 
-  // Efeito para calcular o ECC automaticamente comparando o Peso digitado com a faixa ideal da IA
   useEffect(() => {
     if (!peso || !refsDinamicas.pesoRef) {
       setEcc("");
@@ -150,39 +139,27 @@ function Triagem() {
 
   useEffect(() => {
     if ((atendimentoSelecionado || animalIdDireto) && (temperatura || queixaPrincipal)) {
-      const timer = setTimeout(() => {
-        sugerirClassificacaoIA();
-      }, 500);
+      const timer = setTimeout(() => sugerirClassificacaoIA(), 500);
       return () => clearTimeout(timer);
     }
   }, [temperatura, frequenciaCardiaca, frequenciaRespiratoria, tpcSegundos, mucosas, queixaPrincipal, animalIdDireto, atendimentoSelecionado]);
 
   const carregarDados = async (loaderPrincipal = false) => {
-    if (loaderPrincipal) {
-      setCarregando(true);
-    } else {
-      setAtualizandoSilencioso(true);
-    }
+    if (loaderPrincipal) setCarregando(true);
+    else setAtualizandoSilencioso(true);
 
     try {
       const token = localStorage.getItem("token");
       if (!token) return navigate("/");
-
       const config = { headers: { Authorization: `Bearer ${token}` } };
-
       const [resFila, resAnimais, resUsuarios] = await Promise.all([
         api.get("/consultas/fila-triagem", config),
         api.get("/animais/", config),
         api.get("/usuarios/", config),
       ]);
-
       setAnimais(resAnimais.data || []);
       setAtendimentosPendentes(resFila.data || []);
-
-      const listaUsuarios = resUsuarios.data || [];
-      const apenasVets = listaUsuarios.filter((u) => u.perfil === "VETERINARIO");
-      setVeterinarios(apenasVets);
-
+      setVeterinarios((resUsuarios.data || []).filter((u) => u.perfil === "VETERINARIO"));
     } catch (err) {
       console.error("Erro ao carregar dados de triagem:", err);
     } finally {
@@ -216,34 +193,20 @@ function Triagem() {
   const handleVeterinarioChange = (e) => {
     const vetId = e.target.value;
     setUsuarioIdVet(vetId);
-
     const vetSelecionado = veterinarios.find((v) => v.id === Number(vetId));
-    if (vetSelecionado && vetSelecionado.consultorio_padrao) {
-      setConsultorioAtribuido(vetSelecionado.consultorio_padrao);
-    } else {
-      setConsultorioAtribuido("Consultório 1");
-    }
+    setConsultorioAtribuido(vetSelecionado?.consultorio_padrao || "Consultório 1");
   };
 
   const chamarPaciente = async (consulta, e) => {
     e.stopPropagation();
     try {
       const token = localStorage.getItem("token");
-      await api.put(
-        `/consultas/${consulta.id}/chamar-triagem`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      ).catch(async () => {
+      await api.put(`/consultas/${consulta.id}/chamar-triagem`, {}, { headers: { Authorization: `Bearer ${token}` } }).catch(async () => {
         await api.put(`/consultas/${consulta.id}`, { status: "Chamando para Triagem" }, { headers: { Authorization: `Bearer ${token}` } });
       });
-      
-      setAtendimentosPendentes(prev => 
-        prev.map(item => item.id === consulta.id ? { ...item, status: "Chamando para Triagem" } : item)
-      );
-
+      setAtendimentosPendentes(prev => prev.map(item => item.id === consulta.id ? { ...item, status: "Chamando para Triagem" } : item));
       setMensagem({ tipo: "sucesso", texto: `📢 Chamando ${obterNomeAnimal(consulta.animal_id)} no painel para Triagem!` });
     } catch (err) {
-      console.error("Erro ao chamar paciente:", err);
       setMensagem({ tipo: "erro", texto: "Erro ao emitir chamada para o paciente." });
     }
   };
@@ -257,24 +220,16 @@ function Triagem() {
     setFrequenciaRespiratoria(consulta.frequencia_respiratoria || "");
     setUsuarioIdVet(consulta.usuario_id || "");
 
-    if (consulta.usuario_id) {
-      const vEncontrado = veterinarios.find(v => v.id === Number(consulta.usuario_id));
-      if (vEncontrado?.consultorio_padrao) {
-        setConsultorioAtribuido(vEncontrado.consultorio_padrao);
-      }
-    }
+    const vEncontrado = veterinarios.find(v => v.id === Number(consulta.usuario_id));
+    if (vEncontrado?.consultorio_padrao) setConsultorioAtribuido(vEncontrado.consultorio_padrao);
 
     try {
       const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      
       await api.put(`/consultas/${consulta.id}/iniciar-triagem`, {}, config).catch(async () => {
         await api.put(`/consultas/${consulta.id}`, { status: "Em Triagem" }, config);
       });
-      
-      setAtendimentosPendentes(prev => 
-        prev.map(item => item.id === consulta.id ? { ...item, status: "Em Triagem" } : item)
-      );
+      setAtendimentosPendentes(prev => prev.map(item => item.id === consulta.id ? { ...item, status: "Em Triagem" } : item));
     } catch (err) {
       console.warn("Aviso ao iniciar triagem:", err);
     }
@@ -284,7 +239,6 @@ function Triagem() {
     try {
       const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      
       const animalAlvo = atendimentoSelecionado 
         ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
         : animais.find(a => a.id === Number(animalIdDireto));
@@ -304,7 +258,7 @@ function Triagem() {
       };
 
       const res = await api.post("/triagem/avaliar-ia", payloadIA, config);
-      if (res.data && res.data.classificacao_risco) {
+      if (res.data?.classificacao_risco) {
         setClassificacaoRisco(res.data.classificacao_risco);
         setJustificativa(res.data.justificativa || "");
       }
@@ -314,30 +268,18 @@ function Triagem() {
   };
 
   const salvarTriagemExistente = async () => {
-    if (!queixaPrincipal) {
-      setMensagem({ tipo: "erro", texto: "Informe a queixa principal do paciente." });
-      return;
-    }
+    if (!queixaPrincipal) return setMensagem({ tipo: "erro", texto: "Informe a queixa principal do paciente." });
 
     try {
       setCarregando(true);
       const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
-
       const animalIdAlvo = atendimentoSelecionado.animal_id;
 
       if (animalIdAlvo && peso !== "" && peso !== null) {
         const animalEncontrado = animais.find((a) => a.id === Number(animalIdAlvo));
         if (animalEncontrado) {
-          try {
-            await api.put(
-              `/animais/${animalIdAlvo}`,
-              { ...animalEncontrado, peso: parseFloat(peso) },
-              config
-            );
-          } catch (errAnimal) {
-            console.warn("Aviso ao atualizar peso oficial:", errAnimal);
-          }
+          await api.put(`/animais/${animalIdAlvo}`, { ...animalEncontrado, peso: parseFloat(peso) }, config).catch(() => {});
         }
       }
 
@@ -359,7 +301,6 @@ function Triagem() {
       };
 
       await api.post("/triagem/", payload, config);
-
       setMensagem({ tipo: "sucesso", texto: "✅ Triagem concluída com sucesso!" });
       setAtendimentoSelecionado(null);
       limparFormulario();
@@ -373,10 +314,7 @@ function Triagem() {
 
   const salvarCheckinETriagemDireta = async (e) => {
     e.preventDefault();
-    if (!animalIdDireto || !queixaPrincipal) {
-      setMensagem({ tipo: "erro", texto: "Selecione o paciente e informe a queixa principal." });
-      return;
-    }
+    if (!animalIdDireto || !queixaPrincipal) return setMensagem({ tipo: "erro", texto: "Selecione o paciente e informe a queixa principal." });
 
     try {
       setCarregando(true);
@@ -401,7 +339,6 @@ function Triagem() {
       };
 
       await api.post("/triagem/checkin-direto", payload, config);
-
       setMensagem({ tipo: "sucesso", texto: "✅ Check-in e Triagem realizados com sucesso!" });
       setMostrarModalNovoCheckin(false);
       limparFormulario();
@@ -413,10 +350,10 @@ function Triagem() {
     }
   };
 
-  // Função auxiliar para renderizar os inputs de sinais vitais de forma unificada no formulário principal e no modal
+  // Formulário unificado compactado e com Mucosas dividindo espaço simetricamente em 2 colunas
   const renderFormularioSinaisVitais = () => (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginBottom: "6px" }}>
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>👨‍⚕️ Veterinário Responsável *</label>
           <select value={usuarioIdVet} onChange={handleVeterinarioChange} style={estiloInput} required>
@@ -441,7 +378,7 @@ function Triagem() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginBottom: "6px" }}>
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
           <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
@@ -472,6 +409,8 @@ function Triagem() {
           <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
           <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.tpc}</span>
         </div>
+        
+        {/* Mucosas posicionado simetricamente em 2 colunas, sem esticar */}
         <div style={{ gridColumn: "span 2" }}>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Mucosas</label>
           <select value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInput}>
@@ -591,15 +530,22 @@ function Triagem() {
 
         {atendimentoSelecionado && (
           <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
-            <h3 style={{ marginTop: 0, color: "#111827", fontSize: "15px", borderBottom: "1px solid #f3f4f6", paddingBottom: "6px", marginBottom: "10px" }}>
+            <h3 style={{ marginTop: 0, color: "#111827", fontSize: "15px", borderBottom: "1px solid #f3f4f6", paddingBottom: "6px", marginBottom: "8px" }}>
               🩺 Aferição de Sinais Vitais — {obterNomeAnimal(atendimentoSelecionado.animal_id)}
             </h3>
 
             {renderFormularioSinaisVitais()}
 
-            <div style={{ marginBottom: "8px" }}>
-              <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Queixa Principal *</label>
-              <textarea rows={2} value={queixaPrincipal} onChange={(e) => setQueixaPrincipal(e.target.value)} style={{ ...estiloInput, height: "auto", padding: "5px" }} placeholder="Relato do tutor..." />
+            {/* Queixa principal ajustada para 3 linhas fixas, sem barra de rolagem lateral */}
+            <div style={{ marginBottom: "6px" }}>
+              <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>Queixa Principal *</label>
+              <textarea 
+                rows={3} 
+                value={queixaPrincipal} 
+                onChange={(e) => setQueixaPrincipal(e.target.value)} 
+                style={{ ...estiloInput, height: "58px", padding: "6px", resize: "none" }} 
+                placeholder="Relato do tutor..." 
+              />
             </div>
 
             <div style={{ marginBottom: "10px" }}>
@@ -663,7 +609,7 @@ function Triagem() {
             </div>
 
             <form onSubmit={salvarCheckinETriagemDireta}>
-              <div style={{ marginBottom: "8px" }}>
+              <div style={{ marginBottom: "6px" }}>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>Paciente *</label>
                 <select value={animalIdDireto} onChange={(e) => setAnimalIdDireto(e.target.value)} required style={estiloInput}>
                   <option value="">Selecione o paciente...</option>
@@ -675,9 +621,16 @@ function Triagem() {
 
               {renderFormularioSinaisVitais()}
 
-              <div style={{ marginBottom: "8px" }}>
+              <div style={{ marginBottom: "6px" }}>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>Queixa Principal *</label>
-                <textarea rows={2} value={queixaPrincipal} onChange={(e) => setQueixaPrincipal(e.target.value)} required style={{ ...estiloInput, height: "auto", padding: "5px" }} placeholder="Relato do tutor..." />
+                <textarea 
+                  rows={3} 
+                  value={queixaPrincipal} 
+                  onChange={(e) => setQueixaPrincipal(e.target.value)} 
+                  required 
+                  style={{ ...estiloInput, height: "58px", padding: "6px", resize: "none" }} 
+                  placeholder="Relato do tutor..." 
+                />
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", marginTop: "10px" }}>
