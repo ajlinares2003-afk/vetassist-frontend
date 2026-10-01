@@ -32,6 +32,7 @@ function Triagem() {
   const [usuarioIdVet, setUsuarioIdVet] = useState(""); 
   const [consultorioAtribuido, setConsultorioAtribuido] = useState(""); 
   const [peso, setPeso] = useState("");
+  const [ecc, setEcc] = useState(""); // Campo de Escore de Condição Corporal
   const [temperatura, setTemperatura] = useState("");
   const [frequenciaCardiaca, setFrequenciaCardiaca] = useState("");
   const [frequenciaRespiratoria, setFrequenciaRespiratoria] = useState("");
@@ -42,9 +43,10 @@ function Triagem() {
   const [classificacaoRisco, setClassificacaoRisco] = useState("VERDE");
   const [justificativa, setJustificativa] = useState("");
 
-  // Estado para armazenar as referências dinâmicas fornecidas pela IA
+  // Estado para armazenar as referências dinâmicas e o gabarito de ECC fornecidos pela IA
   const [refsDinamicas, setRefsDinamicas] = useState({
     pesoRef: "💡 Ref. Peso: Selecione o paciente...",
+    eccRef: "💡 Ideal: 4 a 5 (Escala 1 a 9)",
     temp: "Normal: --",
     fc: "Aguardando paciente...",
     fr: "Aguardando paciente...",
@@ -75,7 +77,7 @@ function Triagem() {
     }
   }, [mensagem]);
 
-  // Efeito para buscar as referências fisiológicas da IA sempre que o animal mudar (via seleção na fila ou check-in direto)
+  // Efeito para buscar as referências fisiológicas e de ECC da IA sempre que o animal mudar
   useEffect(() => {
     const buscarReferenciasDaIA = async () => {
       const animalAlvo = atendimentoSelecionado 
@@ -100,6 +102,7 @@ function Triagem() {
         if (res.data) {
           setRefsDinamicas({
             pesoRef: res.data.peso_ref,
+            eccRef: res.data.ecc_ref || "💡 Ideal: 4 a 5 (Escala 1 a 9)",
             temp: res.data.temperatura,
             fc: res.data.fc,
             fr: res.data.fr,
@@ -114,6 +117,36 @@ function Triagem() {
 
     buscarReferenciasDaIA();
   }, [atendimentoSelecionado, animalIdDireto, animais]);
+
+  // Efeito para calcular o ECC automaticamente comparando o Peso digitado com a faixa ideal da IA
+  useEffect(() => {
+    if (!peso || !refsDinamicas.pesoRef) {
+      setEcc("");
+      return;
+    }
+
+    const pesoNum = parseFloat(peso);
+    const matches = refsDinamicas.pesoRef.match(/(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/);
+
+    if (matches && !isNaN(pesoNum)) {
+      const pesoMin = parseFloat(matches[1]);
+      const pesoMax = parseFloat(matches[2]);
+
+      if (pesoNum < pesoMin * 0.85) {
+        setEcc("1 a 2 (Muito Magro)");
+      } else if (pesoNum >= pesoMin * 0.85 && pesoNum < pesoMin) {
+        setEcc("3 (Abaixo do Peso)");
+      } else if (pesoNum >= pesoMin && pesoNum <= pesoMax) {
+        setEcc("4 a 5 (Ideal)");
+      } else if (pesoNum > pesoMax && pesoNum <= pesoMax * 1.20) {
+        setEcc("6 a 7 (Sobrepeso)");
+      } else {
+        setEcc("8 a 9 (Obeso)");
+      }
+    } else {
+      setEcc("Indeterminado");
+    }
+  }, [peso, refsDinamicas.pesoRef]);
 
   useEffect(() => {
     if ((atendimentoSelecionado || animalIdDireto) && (temperatura || queixaPrincipal)) {
@@ -168,6 +201,7 @@ function Triagem() {
     setUsuarioIdVet("");
     setConsultorioAtribuido("");
     setPeso("");
+    setEcc("");
     setTemperatura("");
     setFrequenciaCardiaca("");
     setFrequenciaRespiratoria("");
@@ -260,6 +294,7 @@ function Triagem() {
         especie: animalAlvo?.especie || "Felino",
         sub_especie: animalAlvo?.sub_especie || null,
         raca: animalAlvo?.raca || "",
+        ecc: ecc,
         queixa_principal: queixaPrincipal || "Consulta de rotina",
         temperatura: temperatura ? parseFloat(temperatura) : null,
         frequencia_cardiaca: frequenciaCardiaca ? parseInt(frequenciaCardiaca) : null,
@@ -311,6 +346,7 @@ function Triagem() {
         usuario_id: usuarioIdVet ? Number(usuarioIdVet) : null,
         consultorio: consultorioAtribuido || null,
         peso: peso ? parseFloat(peso) : null,
+        ecc: ecc,
         temperatura: temperatura ? parseFloat(temperatura) : null,
         frequencia_cardiaca: frequenciaCardiaca ? parseInt(frequenciaCardiaca) : null,
         frequencia_respiratoria: frequenciaRespiratoria ? parseInt(frequenciaRespiratoria) : null,
@@ -354,6 +390,7 @@ function Triagem() {
         queixa_principal: queixaPrincipal,
         classificacao_risco: classificacaoRisco,
         peso: peso ? parseFloat(peso) : null,
+        ecc: ecc,
         temperatura: temperatura ? parseFloat(temperatura) : null,
         frequencia_cardiaca: frequenciaCardiaca ? parseInt(frequenciaCardiaca) : null,
         frequencia_respiratoria: frequenciaRespiratoria ? parseInt(frequenciaRespiratoria) : null,
@@ -375,6 +412,80 @@ function Triagem() {
       setCarregando(false);
     }
   };
+
+  // Função auxiliar para renderizar os inputs de sinais vitais de forma unificada no formulário principal e no modal
+  const renderFormularioSinaisVitais = () => (
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+        <div>
+          <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>👨‍⚕️ Veterinário Responsável *</label>
+          <select value={usuarioIdVet} onChange={handleVeterinarioChange} style={estiloInput} required>
+            <option value="">Selecione o médico...</option>
+            {veterinarios.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.nome || v.email} {v.consultorio_padrao ? `(${v.consultorio_padrao})` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>🏥 Consultório Atribuído</label>
+          <input 
+            type="text" 
+            value={consultorioAtribuido} 
+            onChange={(e) => setConsultorioAtribuido(e.target.value)} 
+            style={{ ...estiloInput, backgroundColor: "#f9fafb", fontWeight: "600", color: "#1e1b4b" }} 
+            placeholder="Ex: Consultório 1"
+            required 
+          />
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+        <div>
+          <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
+          <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
+          <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refsDinamicas.pesoRef}</span>
+        </div>
+        <div>
+          <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>ECC (Condição Corporal)</label>
+          <input type="text" value={ecc} onChange={(e) => setEcc(e.target.value)} style={{ ...estiloInput, backgroundColor: ecc ? "#f0fdf4" : "white", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado..." />
+          <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refsDinamicas.eccRef}</span>
+        </div>
+        <div>
+          <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Temperatura (°C)</label>
+          <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloInput} placeholder="Ex: 38.5" />
+          <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.temp}</span>
+        </div>
+        <div>
+          <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FC (bpm)</label>
+          <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloInput} placeholder="Ex: 150" />
+          <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.fc}</span>
+        </div>
+        <div>
+          <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FR (mpm)</label>
+          <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloInput} placeholder="Ex: 25" />
+          <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.fr}</span>
+        </div>
+        <div>
+          <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>TPC (segundos)</label>
+          <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
+          <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.tpc}</span>
+        </div>
+        <div style={{ gridColumn: "span 2" }}>
+          <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Mucosas</label>
+          <select value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInput}>
+            <option value="Normocoradas">Normocoradas (Rosadas)</option>
+            <option value="Hipocoradas / Pálidas">Hipocoradas / Pálidas</option>
+            <option value="Cianóticas">Cianóticas (Roxas)</option>
+            <option value="Ictéricas">Ictéricas (Amareladas)</option>
+            <option value="Congestas / Hiperêmicas">Congestas / Vermelhas</option>
+          </select>
+          <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refsDinamicas.mucosasRef}</span>
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <Layout>
@@ -484,69 +595,7 @@ function Triagem() {
               🩺 Aferição de Sinais Vitais — {obterNomeAnimal(atendimentoSelecionado.animal_id)}
             </h3>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>👨‍⚕️ Veterinário Responsável *</label>
-                <select value={usuarioIdVet} onChange={handleVeterinarioChange} style={estiloInput} required>
-                  <option value="">Selecione o médico...</option>
-                  {veterinarios.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.nome || v.email} {v.consultorio_padrao ? `(${v.consultorio_padrao})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>🏥 Consultório Atribuído</label>
-                <input 
-                  type="text" 
-                  value={consultorioAtribuido} 
-                  onChange={(e) => setConsultorioAtribuido(e.target.value)} 
-                  style={{ ...estiloInput, backgroundColor: "#f9fafb", fontWeight: "600", color: "#1e1b4b" }} 
-                  placeholder="Ex: Consultório 1"
-                  required 
-                />
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
-                <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
-                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refsDinamicas.pesoRef}</span>
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Temperatura (°C)</label>
-                <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloInput} placeholder="Ex: 38.5" />
-                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.temp}</span>
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FC (bpm)</label>
-                <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloInput} placeholder="Ex: 150" />
-                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.fc}</span>
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FR (mpm)</label>
-                <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloInput} placeholder="Ex: 25" />
-                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.fr}</span>
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>TPC (segundos)</label>
-                <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
-                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.tpc}</span>
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Mucosas</label>
-                <select value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInput}>
-                  <option value="Normocoradas">Normocoradas (Rosadas)</option>
-                  <option value="Hipocoradas / Pálidas">Hipocoradas / Pálidas</option>
-                  <option value="Cianóticas">Cianóticas (Roxas)</option>
-                  <option value="Ictéricas">Ictéricas (Amareladas)</option>
-                  <option value="Congestas / Hiperêmicas">Congestas / Vermelhas</option>
-                </select>
-                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refsDinamicas.mucosasRef}</span>
-              </div>
-            </div>
+            {renderFormularioSinaisVitais()}
 
             <div style={{ marginBottom: "8px" }}>
               <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Queixa Principal *</label>
@@ -614,124 +663,21 @@ function Triagem() {
             </div>
 
             <form onSubmit={salvarCheckinETriagemDireta}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
-                <div>
-                  <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>Paciente *</label>
-                  <select value={animalIdDireto} onChange={(e) => setAnimalIdDireto(e.target.value)} required style={estiloInput}>
-                    <option value="">Selecione o paciente...</option>
-                    {animais.map((a) => (
-                      <option key={a.id} value={a.id}>{a.nome} ({a.especie || 'Pet'} - {a.codigo || `PET-${a.id}`})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>
-                    👨‍⚕️ Veterinário Responsável *
-                  </label>
-                  <select value={usuarioIdVet} onChange={handleVeterinarioChange} style={estiloInput} required>
-                    <option value="">Selecione o médico...</option>
-                    {veterinarios.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.nome || v.email} {v.consultorio_padrao ? `(${v.consultorio_padrao})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
               <div style={{ marginBottom: "8px" }}>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>
-                  🏥 Consultório Atribuído (Automático / Editável)
-                </label>
-                <input 
-                  type="text" 
-                  value={consultorioAtribuido} 
-                  onChange={(e) => setConsultorioAtribuido(e.target.value)} 
-                  style={{ ...estiloInput, backgroundColor: "#f9fafb", fontWeight: "600", color: "#1e1b4b" }} 
-                  placeholder="Ex: Consultório 1"
-                  required 
-                />
+                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>Paciente *</label>
+                <select value={animalIdDireto} onChange={(e) => setAnimalIdDireto(e.target.value)} required style={estiloInput}>
+                  <option value="">Selecione o paciente...</option>
+                  {animais.map((a) => (
+                    <option key={a.id} value={a.id}>{a.nome} ({a.especie || 'Pet'} - {a.codigo || `PET-${a.id}`})</option>
+                  ))}
+                </select>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
-                <div>
-                  <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
-                  <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
-                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refsDinamicas.pesoRef}</span>
-                </div>
-                <div>
-                  <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Temperatura (°C)</label>
-                  <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloInput} placeholder="Ex: 38.5" />
-                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.temp}</span>
-                </div>
-                <div>
-                  <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FC (bpm)</label>
-                  <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloInput} placeholder="Ex: 150" />
-                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.fc}</span>
-                </div>
-                <div>
-                  <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FR (mpm)</label>
-                  <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloInput} placeholder="Ex: 25" />
-                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.fr}</span>
-                </div>
-                <div>
-                  <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>TPC (segundos)</label>
-                  <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
-                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.tpc}</span>
-                </div>
-                <div>
-                  <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Mucosas</label>
-                  <select value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInput}>
-                    <option value="Normocoradas">Normocoradas (Rosadas)</option>
-                    <option value="Hipocoradas / Pálidas">Hipocoradas / Pálidas</option>
-                    <option value="Cianóticas">Cianóticas (Roxas)</option>
-                    <option value="Ictéricas">Ictéricas (Amareladas)</option>
-                    <option value="Congestas / Hiperêmicas">Congestas / Vermelhas</option>
-                  </select>
-                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refsDinamicas.mucosasRef}</span>
-                </div>
-              </div>
+              {renderFormularioSinaisVitais()}
 
               <div style={{ marginBottom: "8px" }}>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>Queixa Principal *</label>
                 <textarea rows={2} value={queixaPrincipal} onChange={(e) => setQueixaPrincipal(e.target.value)} required style={{ ...estiloInput, height: "auto", padding: "5px" }} placeholder="Relato do tutor..." />
-              </div>
-
-              <div style={{ marginBottom: "12px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                  <label style={{ fontSize: "11px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
-                  <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "2px 5px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "600", display: "flex", alignItems: "center", gap: "3px" }}>
-                    <MdAutoAwesome /> Avaliar IA
-                  </button>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "5px" }}>
-                  {Object.keys(CORES_MANCHESTER).map((cor) => {
-                    const item = CORES_MANCHESTER[cor];
-                    const selecionado = classificacaoRisco === cor;
-                    return (
-                      <button
-                        key={cor}
-                        type="button"
-                        onClick={() => setClassificacaoRisco(cor)}
-                        style={{
-                          padding: "5px 3px",
-                          borderRadius: "5px",
-                          border: selecionado ? `2px solid ${item.text}` : "1px solid #d1d5db",
-                          backgroundColor: selecionado ? item.bg : "#ffffff",
-                          color: item.text,
-                          fontWeight: "700",
-                          fontSize: "10px",
-                          cursor: "pointer",
-                          textAlign: "center"
-                        }}
-                      >
-                        {item.nome}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", marginTop: "10px" }}>
