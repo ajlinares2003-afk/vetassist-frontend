@@ -137,7 +137,7 @@ function Triagem() {
     }
   }, [peso, refsDinamicas.pesoRef]);
 
-  // Efeito inteligente para estimar o % de desidratação com base no TPC e Mucosas
+  // Cálculo automático do percentual de desidratação via IA
   useEffect(() => {
     const tpcNum = parseInt(tpcSegundos);
     if (isNaN(tpcNum)) {
@@ -371,10 +371,10 @@ function Triagem() {
     }
   };
 
-  // Formulário altamente compactado (padding menor e espaçamentos otimizados para evitar rolagem)
+  // Formulário ultra-compacto (gap reduzido para 3px para zerar a barra de rolagem)
   const renderFormularioSinaisVitais = () => (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px", marginBottom: "4px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "3px", marginBottom: "3px" }}>
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>👨‍⚕️ Veterinário Responsável *</label>
           <select value={usuarioIdVet} onChange={handleVeterinarioChange} style={estiloInput} required>
@@ -399,7 +399,7 @@ function Triagem() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px", marginBottom: "4px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "3px", marginBottom: "3px" }}>
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
           <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
@@ -431,7 +431,7 @@ function Triagem() {
           <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.tpc}</span>
         </div>
         
-        {/* Par simétrico: Mucosas e Desidratação calculada pela IA */}
+        {/* Mucosas e Desidratação com referência do percentual ideal (< 5%) */}
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Mucosas</label>
           <select value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInput}>
@@ -446,7 +446,7 @@ function Triagem() {
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Desidratação (%) — IA</label>
           <input type="number" value={desidratacao} onChange={(e) => setDesidratacao(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f0fdf4", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado..." />
-          <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 Baseado em TPC e Mucosas</span>
+          <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 Normal: &lt; 5% (Baseado em TPC e Mucosas)</span>
         </div>
       </div>
     </>
@@ -454,13 +454,13 @@ function Triagem() {
 
   return (
     <Layout>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
         <div>
-          <h1 style={{ display: "flex", alignItems: "center", gap: "6px", margin: 0, fontSize: "20px", color: "#1e1b4b" }}>
-            <MdMedicalServices color="#dc2626" size={24} />
+          <h1 style={{ display: "flex", alignItems: "center", gap: "6px", margin: 0, fontSize: "19px", color: "#1e1b4b" }}>
+            <MdMedicalServices color="#dc2626" size={22} />
             Check-in & Triagem (Protocolo Manchester)
           </h1>
-          <p style={{ color: "#6b7280", margin: "2px 0 0 0", fontSize: "11px" }}>
+          <p style={{ color: "#6b7280", margin: "1px 0 0 0", fontSize: "11px" }}>
             Recepção, entrada de pacientes e classificação de urgência clínica.
           </p>
         </div>
@@ -473,7 +473,7 @@ function Triagem() {
             onClick={() => carregarDados(true)}
             style={{ display: "flex", alignItems: "center", gap: "4px", backgroundColor: "#ffffff", border: "1px solid #d1d5db", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", color: "#374151", fontSize: "11px" }}
           >
-            <MdRefresh size={13} /> Atualizar
+            <MdRefresh size={12} /> Atualizar
           </button>
 
           <button
@@ -483,29 +483,29 @@ function Triagem() {
             }}
             style={{ display: "flex", alignItems: "center", gap: "4px", backgroundColor: "#4f46e5", color: "white", border: "none", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "11px" }}
           >
-            <MdAddCircle size={13} /> Novo Check-in & Triagem
+            <MdAddCircle size={12} /> Novo Check-in & Triagem
           </button>
         </div>
       </div>
 
       {mensagem.texto && (
-        <div style={{ padding: "6px 10px", borderRadius: "6px", marginBottom: "8px", backgroundColor: mensagem.tipo === "sucesso" ? "#dcfce7" : "#fee2e2", color: mensagem.tipo === "sucesso" ? "#166534" : "#991b1b", fontWeight: "600", fontSize: "11px" }}>
+        <div style={{ padding: "5px 10px", borderRadius: "6px", marginBottom: "6px", backgroundColor: mensagem.tipo === "sucesso" ? "#dcfce7" : "#fee2e2", color: mensagem.tipo === "sucesso" ? "#166534" : "#991b1b", fontWeight: "600", fontSize: "11px" }}>
           {mensagem.texto}
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: atendimentoSelecionado ? "1fr 1.4fr" : "1fr", gap: "12px" }}>
-        <div style={{ backgroundColor: "white", padding: "12px", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
-          <h3 style={{ marginTop: 0, color: "#111827", fontSize: "14px", marginBottom: "8px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: atendimentoSelecionado ? "1fr 1.4fr" : "1fr", gap: "10px" }}>
+        <div style={{ backgroundColor: "white", padding: "10px", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
+          <h3 style={{ marginTop: 0, color: "#111827", fontSize: "13px", marginBottom: "6px" }}>
             📋 Fila de Check-in para Triagem ({atendimentosPendentes.length} aguardando)
           </h3>
 
           {atendimentosPendentes.length === 0 ? (
-            <p style={{ color: "#9ca3af", fontSize: "12px", textAlign: "center", padding: "20px 0", fontStyle: "italic" }}>
+            <p style={{ color: "#9ca3af", fontSize: "12px", textAlign: "center", padding: "16px 0", fontStyle: "italic" }}>
               Nenhum paciente aguardando triagem. Clique em <strong>"Novo Check-in & Triagem"</strong> para dar entrada direta em um paciente!
             </p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
               {atendimentosPendentes.map((item) => {
                 const ehVacina = item.status === "AGUARDANDO_VACINA" || item.status === "Aguardando Vacina";
                 const estaSendoChamado = item.status === "Chamando para Triagem";
@@ -513,7 +513,7 @@ function Triagem() {
                   <div
                     key={item.id}
                     style={{
-                      padding: "8px",
+                      padding: "6px 8px",
                       borderRadius: "6px",
                       border: atendimentoSelecionado?.id === item.id ? "2px solid #4f46e5" : estaSendoChamado ? "2px solid #ef4444" : ehVacina ? "1px solid #ccfbf1" : "1px solid #e5e7eb",
                       backgroundColor: atendimentoSelecionado?.id === item.id ? "#f5f3ff" : estaSendoChamado ? "#fef2f2" : ehVacina ? "#f0fdf4" : "#f9fafb",
@@ -535,14 +535,14 @@ function Triagem() {
                     <div style={{ display: "flex", gap: "4px" }}>
                       <button 
                         onClick={(e) => chamarPaciente(item, e)}
-                        style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "4px 7px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "600", display: "flex", alignItems: "center", gap: "2px" }}
+                        style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "3px 6px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "600", display: "flex", alignItems: "center", gap: "2px" }}
                       >
-                        <MdCampaign size={12} /> Chamar
+                        <MdCampaign size={11} /> Chamar
                       </button>
 
                       <button 
                         onClick={() => selecionarParaTriagem(item)}
-                        style={{ backgroundColor: ehVacina ? "#0d9488" : "#4f46e5", color: "white", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "600" }}
+                        style={{ backgroundColor: ehVacina ? "#0d9488" : "#4f46e5", color: "white", border: "none", padding: "3px 7px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "600" }}
                       >
                         Iniciar Triagem
                       </button>
@@ -555,33 +555,33 @@ function Triagem() {
         </div>
 
         {atendimentoSelecionado && (
-          <div style={{ backgroundColor: "white", padding: "12px", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
-            <h3 style={{ marginTop: 0, color: "#111827", fontSize: "14px", borderBottom: "1px solid #f3f4f6", paddingBottom: "4px", marginBottom: "6px" }}>
+          <div style={{ backgroundColor: "white", padding: "10px", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
+            <h3 style={{ marginTop: 0, color: "#111827", fontSize: "13px", borderBottom: "1px solid #f3f4f6", paddingBottom: "4px", marginBottom: "5px" }}>
               🩺 Aferição de Sinais Vitais — {obterNomeAnimal(atendimentoSelecionado.animal_id)}
             </h3>
 
             {renderFormularioSinaisVitais()}
 
-            <div style={{ marginBottom: "5px" }}>
-              <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>Queixa Principal *</label>
+            <div style={{ marginBottom: "4px" }}>
+              <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "1px" }}>Queixa Principal *</label>
               <textarea 
                 rows={3} 
                 value={queixaPrincipal} 
                 onChange={(e) => setQueixaPrincipal(e.target.value)} 
-                style={{ ...estiloInput, height: "54px", padding: "4px 6px", resize: "none" }} 
+                style={{ ...estiloInput, height: "50px", padding: "4px 6px", resize: "none" }} 
                 placeholder="Relato do tutor..." 
               />
             </div>
 
-            <div style={{ marginBottom: "8px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3px" }}>
+            <div style={{ marginBottom: "6px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2px" }}>
                 <label style={{ fontSize: "11px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
-                <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "2px 5px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "600", display: "flex", alignItems: "center", gap: "2px" }}>
+                <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "2px 4px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "600", display: "flex", alignItems: "center", gap: "2px" }}>
                   <MdAutoAwesome /> Avaliar com IA
                 </button>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "4px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "3px" }}>
                 {Object.keys(CORES_MANCHESTER).map((cor) => {
                   const item = CORES_MANCHESTER[cor];
                   const selecionado = classificacaoRisco === cor;
@@ -591,7 +591,7 @@ function Triagem() {
                       type="button"
                       onClick={() => setClassificacaoRisco(cor)}
                       style={{
-                        padding: "4px 2px",
+                        padding: "3px 2px",
                         borderRadius: "5px",
                         border: selecionado ? `2px solid ${item.text}` : "1px solid #d1d5db",
                         backgroundColor: selecionado ? item.bg : "#ffffff",
@@ -610,10 +610,10 @@ function Triagem() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
-              <button onClick={() => setAtendimentoSelecionado(null)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "5px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "11px" }}>
+              <button onClick={() => setAtendimentoSelecionado(null)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "11px" }}>
                 Cancelar
               </button>
-              <button onClick={salvarTriagemExistente} disabled={carregando} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "5px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "11px" }}>
+              <button onClick={salvarTriagemExistente} disabled={carregando} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "4px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "11px" }}>
                 {carregando ? "Enviando..." : "Finalizar Triagem"}
               </button>
             </div>
@@ -623,19 +623,19 @@ function Triagem() {
 
       {mostrarModalNovoCheckin && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(3px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "10px" }}>
-          <div style={{ backgroundColor: "white", padding: "14px 18px", borderRadius: "12px", maxWidth: "860px", width: "100%", maxHeight: "94vh", overflowY: "auto", boxSizing: "border-box" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: "6px", marginBottom: "8px" }}>
-              <h3 style={{ margin: 0, color: "#111827", fontSize: "15px" }}>
+          <div style={{ backgroundColor: "white", padding: "12px 16px", borderRadius: "12px", maxWidth: "840px", width: "100%", maxHeight: "92vh", overflowY: "auto", boxSizing: "border-box" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: "4px", marginBottom: "6px" }}>
+              <h3 style={{ margin: 0, color: "#111827", fontSize: "14px" }}>
                 🏥 Novo Check-in & Triagem Direta
               </h3>
               <button onClick={() => setMostrarModalNovoCheckin(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
-                <MdClose size={18} color="#6b7280" />
+                <MdClose size={16} color="#6b7280" />
               </button>
             </div>
 
             <form onSubmit={salvarCheckinETriagemDireta}>
-              <div style={{ marginBottom: "4px" }}>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>Paciente *</label>
+              <div style={{ marginBottom: "3px" }}>
+                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "1px" }}>Paciente *</label>
                 <select value={animalIdDireto} onChange={(e) => setAnimalIdDireto(e.target.value)} required style={estiloInput}>
                   <option value="">Selecione o paciente...</option>
                   {animais.map((a) => (
@@ -646,23 +646,23 @@ function Triagem() {
 
               {renderFormularioSinaisVitais()}
 
-              <div style={{ marginBottom: "4px" }}>
-                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "2px" }}>Queixa Principal *</label>
+              <div style={{ marginBottom: "3px" }}>
+                <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "1px" }}>Queixa Principal *</label>
                 <textarea 
                   rows={3} 
                   value={queixaPrincipal} 
                   onChange={(e) => setQueixaPrincipal(e.target.value)} 
                   required 
-                  style={{ ...estiloInput, height: "54px", padding: "4px 6px", resize: "none" }} 
+                  style={{ ...estiloInput, height: "50px", padding: "4px 6px", resize: "none" }} 
                   placeholder="Relato do tutor..." 
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", marginTop: "8px" }}>
-                <button type="button" onClick={() => setMostrarModalNovoCheckin(false)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "5px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "11px" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", marginTop: "6px" }}>
+                <button type="button" onClick={() => setMostrarModalNovoCheckin(false)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "11px" }}>
                   Cancelar
                 </button>
-                <button type="submit" disabled={carregando} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "5px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "11px" }}>
+                <button type="submit" disabled={carregando} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "4px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "11px" }}>
                   {carregando ? "Processando..." : "Confirmar Check-in & Triagem"}
                 </button>
               </div>
@@ -676,7 +676,7 @@ function Triagem() {
 
 const estiloInput = {
   width: "100%",
-  height: "30px",
+  height: "28px",
   padding: "0 6px",
   border: "1px solid #d1d5db",
   borderRadius: "5px",
