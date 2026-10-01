@@ -42,6 +42,16 @@ function Triagem() {
   const [classificacaoRisco, setClassificacaoRisco] = useState("VERDE");
   const [justificativa, setJustificativa] = useState("");
 
+  // Estado para armazenar as referências dinâmicas fornecidas pela IA
+  const [refsDinamicas, setRefsDinamicas] = useState({
+    pesoRef: "💡 Ref. Peso: Selecione o paciente...",
+    temp: "Normal: --",
+    fc: "Aguardando paciente...",
+    fr: "Aguardando paciente...",
+    tpc: "Até 2s",
+    mucosasRef: "💡 Normocoradas"
+  });
+
   const [mensagem, setMensagem] = useState({ tipo: "", texto: "" });
   const [carregando, setCarregando] = useState(false);
   const [atualizandoSilencioso, setAtualizandoSilencioso] = useState(false);
@@ -64,6 +74,46 @@ function Triagem() {
       return () => clearTimeout(timer);
     }
   }, [mensagem]);
+
+  // Efeito para buscar as referências fisiológicas da IA sempre que o animal mudar (via seleção na fila ou check-in direto)
+  useEffect(() => {
+    const buscarReferenciasDaIA = async () => {
+      const animalAlvo = atendimentoSelecionado 
+        ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
+        : animais.find(a => a.id === Number(animalIdDireto));
+
+      if (!animalAlvo) return;
+
+      try {
+        const token = localStorage.getItem("token");
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+
+        const payload = {
+          especie: animalAlvo.especie,
+          sub_especie: animalAlvo.sub_especie,
+          raca: animalAlvo.raca,
+          porte: animalAlvo.porte,
+          idade: animalAlvo.idade
+        };
+
+        const res = await api.post("/triagem/referencias-ia", payload, config);
+        if (res.data) {
+          setRefsDinamicas({
+            pesoRef: res.data.peso_ref,
+            temp: res.data.temperatura,
+            fc: res.data.fc,
+            fr: res.data.fr,
+            tpc: res.data.tpc,
+            mucosasRef: res.data.mucosas
+          });
+        }
+      } catch (err) {
+        console.warn("Erro ao buscar referências dinâmicas da IA:", err);
+      }
+    };
+
+    buscarReferenciasDaIA();
+  }, [atendimentoSelecionado, animalIdDireto, animais]);
 
   useEffect(() => {
     if ((atendimentoSelecionado || animalIdDireto) && (temperatura || queixaPrincipal)) {
@@ -112,73 +162,6 @@ function Triagem() {
     const a = animais.find((item) => item.id === animalId);
     return a ? `${a.nome} (${a.codigo || `PET-${a.id}`})` : `-`;
   };
-
-  // Análise inteligente e dinâmica das referências considerando Espécie, Sub-espécie e Raça (Coelhos, Répteis, Felinos, etc.)
-  const obterReferenciasEspecie = () => {
-    const animalAlvo = atendimentoSelecionado 
-      ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
-      : animais.find(a => a.id === Number(animalIdDireto));
-    
-    const esp = (animalAlvo?.especie || "").toLowerCase();
-    const subEsp = (animalAlvo?.sub_especie || "").toLowerCase();
-    const raca = (animalAlvo?.raca || "").toLowerCase();
-    const tempNum = parseFloat(temperatura);
-
-    const ehCoelho = esp.includes("coelho") || esp.includes("lagomorfo") || subEsp.includes("coelho") || raca.includes("dwarf") || raca.includes("lop") || raca.includes("netherland");
-
-    if (ehCoelho) {
-      return { 
-        pesoRef: "💡 Ref. Peso: 0.9 - 2.5 kg (Porte Mini/Anão)",
-        temp: "Normal: 38.5°C - 40.0°C", 
-        fc: "180 - 300 bpm (Normal em coelhos)", 
-        fr: "30 - 60 mpm (Normal em coelhos)",
-        tpc: "Até 2s",
-        mucosasRef: "💡 Normocoradas (Rosadas e úmidas)"
-      };
-    } else if (esp.includes("réptil") || esp.includes("reptil") || esp.includes("iguana") || esp.includes("tartaruga")) {
-      let fcEstimada = "60 - 100 bpm (Repouso)";
-      let frEstimada = "10 - 30 mpm (Repouso)";
-
-      if (!isNaN(tempNum)) {
-        if (tempNum < 26) {
-          fcEstimada = "30 - 50 bpm (Hipotermia)";
-          frEstimada = "5 - 12 mpm (Hipotermia / Baixo metabolismo)";
-        } else if (tempNum > 37) {
-          fcEstimada = "90 - 130 bpm (Hipertermia)";
-          frEstimada = "30 - 45 mpm (Hipertermia / Taquipneia)";
-        }
-      }
-
-      return { 
-        pesoRef: "💡 Ref. Peso: 1.0 - 4.0 kg (Adulto/Subadulto)",
-        temp: "Normal: 28°C - 37°C", 
-        fc: fcEstimada, 
-        fr: frEstimada,
-        tpc: "Até 3s",
-        mucosasRef: "💡 Oral: Rosadas e úmidas (sem cianose)"
-      };
-    } else if (esp.includes("felino") || esp.includes("gato")) {
-      return { 
-        pesoRef: "💡 Ref. Peso: 3.0 - 5.0 kg (Adulto padrão)",
-        temp: "Normal: 38.1°C - 39.2°C", 
-        fc: "120 - 220 bpm", 
-        fr: "20 - 42 mpm",
-        tpc: "Até 2s",
-        mucosasRef: "💡 Normocoradas (Rosadas e úmidas)"
-      };
-    } else {
-      return { 
-        pesoRef: "💡 Ref. Peso: Variável por raça/idade",
-        temp: "Normal: 38.3°C - 39.2°C", 
-        fc: "70 - 160 bpm", 
-        fr: "15 - 30 mpm",
-        tpc: "Até 2s",
-        mucosasRef: "💡 Normocoradas (Rosadas e úmidas)"
-      };
-    }
-  };
-
-  const refs = obterReferenciasEspecie();
 
   const limparFormulario = () => {
     setAnimalIdDireto("");
@@ -530,27 +513,27 @@ function Triagem() {
               <div>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
                 <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
-                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refs.pesoRef}</span>
+                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refsDinamicas.pesoRef}</span>
               </div>
               <div>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Temperatura (°C)</label>
                 <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloInput} placeholder="Ex: 38.5" />
-                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refs.temp}</span>
+                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.temp}</span>
               </div>
               <div>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FC (bpm)</label>
                 <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloInput} placeholder="Ex: 150" />
-                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refs.fc}</span>
+                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.fc}</span>
               </div>
               <div>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FR (mpm)</label>
                 <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloInput} placeholder="Ex: 25" />
-                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refs.fr}</span>
+                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.fr}</span>
               </div>
               <div>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>TPC (segundos)</label>
                 <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
-                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refs.tpc}</span>
+                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.tpc}</span>
               </div>
               <div>
                 <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Mucosas</label>
@@ -561,7 +544,7 @@ function Triagem() {
                   <option value="Ictéricas">Ictéricas (Amareladas)</option>
                   <option value="Congestas / Hiperêmicas">Congestas / Vermelhas</option>
                 </select>
-                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refs.mucosasRef}</span>
+                <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refsDinamicas.mucosasRef}</span>
               </div>
             </div>
 
@@ -675,27 +658,27 @@ function Triagem() {
                 <div>
                   <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Peso (kg)</label>
                   <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
-                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refs.pesoRef}</span>
+                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refsDinamicas.pesoRef}</span>
                 </div>
                 <div>
                   <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Temperatura (°C)</label>
                   <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloInput} placeholder="Ex: 38.5" />
-                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refs.temp}</span>
+                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.temp}</span>
                 </div>
                 <div>
                   <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FC (bpm)</label>
                   <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloInput} placeholder="Ex: 150" />
-                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refs.fc}</span>
+                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.fc}</span>
                 </div>
                 <div>
                   <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FR (mpm)</label>
                   <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloInput} placeholder="Ex: 25" />
-                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refs.fr}</span>
+                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.fr}</span>
                 </div>
                 <div>
                   <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>TPC (segundos)</label>
                   <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
-                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refs.tpc}</span>
+                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.tpc}</span>
                 </div>
                 <div>
                   <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Mucosas</label>
@@ -706,7 +689,7 @@ function Triagem() {
                     <option value="Ictéricas">Ictéricas (Amareladas)</option>
                     <option value="Congestas / Hiperêmicas">Congestas / Vermelhas</option>
                   </select>
-                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refs.mucosasRef}</span>
+                  <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>{refsDinamicas.mucosasRef}</span>
                 </div>
               </div>
 
