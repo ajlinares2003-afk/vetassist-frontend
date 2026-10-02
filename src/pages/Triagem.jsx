@@ -40,13 +40,14 @@ function Triagem() {
   const [justificativa, setJustificativa] = useState("");
 
   const [refsDinamicas, setRefsDinamicas] = useState({
-    pesoRef: "💡 Ref. Peso: Selecione o paciente...",
-    eccRef: "💡 Ideal: 4 a 5 (Escala 1 a 9)",
-    temp: "Normal: --",
-    fc: "Aguardando paciente...",
-    fr: "Aguardando paciente...",
-    tpc: "Até 2s",
-    mucosasRef: "💡 Normocoradas"
+      pesoRef: "💡 Ref. Peso: Selecione o paciente...",
+      eccRef: "💡 Ideal: 4 a 5 (Escala 1 a 9)",
+      temp: "Normal: --",
+      fc: "Aguardando paciente...",
+      fr: "Aguardando paciente...",
+      tpc: "Até 2s",
+      mucosasRef: "💡 Normocoradas",
+      fonteRef: "📚 Fonte: Aguardando diretrizes científicas..."
   });
 
   const [mensagem, setMensagem] = useState({ tipo: "", texto: "" });
@@ -82,6 +83,7 @@ function Triagem() {
           sub_especie: animalAlvo.sub_especie,
           raca: animalAlvo.raca,
           porte: animalAlvo.porte,
+          sexo: animalAlvo.sexo,
           idade: animalAlvo.idade
         };
 
@@ -94,7 +96,8 @@ function Triagem() {
             fc: res.data.fc,
             fr: res.data.fr,
             tpc: res.data.tpc,
-            mucosasRef: res.data.mucosas
+            mucosasRef: res.data.mucosas,
+            fonteRef: res.data.fonte_ref || "📚 Fonte: Literatura especializada em medicina zoológica."
           });
         }
       } catch (err) {
@@ -403,6 +406,22 @@ function Triagem() {
           <input type="number" value={desidratacao} onChange={(e) => setDesidratacao(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f0fdf4", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado..." />
           <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 Normal: &lt; 5% (Baseado em TPC e Mucosas)</span>
         </div>
+      </div>
+
+      {/* 📚 Card Dedicado de Rastreabilidade Bibliográfica */}
+      <div style={{ 
+        backgroundColor: "#f8fafc", 
+        border: "1px solid #e2e8f0", 
+        padding: "6px 10px", 
+        borderRadius: "6px", 
+        marginBottom: "6px",
+        display: "flex",
+        alignItems: "center",
+        gap: "6px"
+      }}>
+        <span style={{ fontSize: "11px", color: "#475569", fontStyle: "italic" }}>
+          {refsDinamicas.fonteRef}
+        </span>
       </div>
     </>
   );
