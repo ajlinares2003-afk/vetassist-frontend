@@ -10,7 +10,7 @@ const SUB_ESPECIES_POR_ESPECIE = {
   "Coelho / Lagomorfo": ["Coelho Mini Lop", "Coelho Netherland Dwarf", "Coelho Cabeça-de-Leão", "Coelho Nova Zelândia"],
   Réptil: ["Iguana", "Tartaruga", "Jabuti", "Serpente", "Gecko"],
   Canino: ["Cão Doméstico"],
-  Felino: ["Gato Doméstico"],
+  Felino: ["Gato Doméstico","Felino Exôtico"],
   Outros: []
 };
 
