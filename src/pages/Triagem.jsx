@@ -255,6 +255,12 @@ function Triagem() {
   };
 
   const sugerirClassificacaoIA = async () => {
+    // 🛡️ BLINDAGEM: Se os campos vitais principais estiverem vazios, não dispara a análise automática da IA
+    if (!temperatura && !frequenciaCardiaca) {
+      setJustificativa("Aguardando o preenchimento dos sinais vitais para análise semiológica da IA.");
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
