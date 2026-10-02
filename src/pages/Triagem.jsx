@@ -407,22 +407,6 @@ function Triagem() {
           <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 Normal: &lt; 5% (Baseado em TPC e Mucosas)</span>
         </div>
       </div>
-
-      {/* 📚 Card Dedicado de Rastreabilidade Bibliográfica (Adicionado) */}
-      <div style={{ 
-        backgroundColor: "#f8fafc", 
-        border: "1px solid #e2e8f0", 
-        padding: "6px 10px", 
-        borderRadius: "6px", 
-        marginBottom: "6px",
-        display: "flex",
-        alignItems: "center",
-        gap: "6px"
-      }}>
-        <span style={{ fontSize: "11px", color: "#475569", fontStyle: "italic", fontWeight: "500" }}>
-          {refsDinamicas.fonteRef}
-        </span>
-      </div>
     </>
   );
 
@@ -526,7 +510,7 @@ function Triagem() {
 
             {renderFormularioSinaisVitais()}
 
-            <div style={{ marginBottom: "4px" }}>
+            <div style={{ marginBottom: "6px" }}>
               <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "1px" }}>Queixa Principal *</label>
               <textarea 
                 rows={3} 
@@ -535,6 +519,10 @@ function Triagem() {
                 style={{ ...estiloInput, height: "50px", padding: "4px 6px", resize: "none" }} 
                 placeholder="Relato do tutor..." 
               />
+              {/* 📚 Fonte de pesquisa abaixo da queixa principal no mesmo padrão azul com asterisco */}
+              <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "2px", fontStyle: "italic", fontWeight: "500" }}>
+                * {refsDinamicas.fonteRef}
+              </span>
             </div>
 
             <div style={{ marginBottom: "6px" }}>
@@ -545,7 +533,7 @@ function Triagem() {
                 </button>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "3px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "3px", marginBottom: "4px" }}>
                 {Object.keys(CORES_MANCHESTER).map((cor) => {
                   const item = CORES_MANCHESTER[cor];
                   const selecionado = classificacaoRisco === cor;
@@ -571,6 +559,13 @@ function Triagem() {
                   );
                 })}
               </div>
+
+              {/* Justificativa da IA para a classificação de risco */}
+              {justificativa && (
+                <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", padding: "5px 8px", borderRadius: "5px", fontSize: "10px", color: "#334151" }}>
+                  <strong>🤖 Justificativa Clínica da IA:</strong> {justificativa}
+                </div>
+              )}
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
