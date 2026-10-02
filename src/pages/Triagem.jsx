@@ -408,7 +408,7 @@ function Triagem() {
         </div>
       </div>
 
-      {/* 📚 Card Dedicado de Rastreabilidade Bibliográfica */}
+      {/* 📚 Card Dedicado de Rastreabilidade Bibliográfica (Adicionado) */}
       <div style={{ 
         backgroundColor: "#f8fafc", 
         border: "1px solid #e2e8f0", 
@@ -419,7 +419,7 @@ function Triagem() {
         alignItems: "center",
         gap: "6px"
       }}>
-        <span style={{ fontSize: "11px", color: "#475569", fontStyle: "italic" }}>
+        <span style={{ fontSize: "11px", color: "#475569", fontStyle: "italic", fontWeight: "500" }}>
           {refsDinamicas.fonteRef}
         </span>
       </div>
