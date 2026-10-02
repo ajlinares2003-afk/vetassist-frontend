@@ -157,13 +157,6 @@ function Triagem() {
     }
   }, [tpcSegundos, mucosas]);
 
-  useEffect(() => {
-    if (atendimentoSelecionado && (temperatura || queixaPrincipal)) {
-      const timer = setTimeout(() => sugerirClassificacaoIA(), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [temperatura, frequenciaCardiaca, frequenciaRespiratoria, tpcSegundos, mucosas, queixaPrincipal, atendimentoSelecionado]);
-
   const carregarDados = async (loaderPrincipal = false) => {
     if (loaderPrincipal) setCarregando(true);
     else setAtualizandoSilencioso(true);
@@ -255,9 +248,8 @@ function Triagem() {
   };
 
   const sugerirClassificacaoIA = async () => {
-    // 🛡️ BLINDAGEM: Se os campos vitais principais estiverem vazios, não dispara a análise automática da IA
     if (!temperatura && !frequenciaCardiaca) {
-      setJustificativa("Aguardando o preenchimento dos sinais vitais para análise semiológica da IA.");
+      setMensagem({ tipo: "erro", texto: "Por favor, preencha pelo menos a temperatura e a frequência cardíaca antes de avaliar com a IA." });
       return;
     }
 
@@ -566,7 +558,7 @@ function Triagem() {
                 })}
               </div>
 
-              {/* Justificativa da IA para a classificação de risco */}
+              {/* Justificativa da IA para a classificação de risco (só aparece se houver análise solicitada) */}
               {justificativa && (
                 <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", padding: "5px 8px", borderRadius: "5px", fontSize: "10px", color: "#334151" }}>
                   <strong>🤖 Justificativa Clínica da IA:</strong> {justificativa}
