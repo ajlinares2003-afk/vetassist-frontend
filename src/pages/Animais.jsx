@@ -156,7 +156,6 @@ function Animais() {
 
       const subEspecieFinal = subEspecieSelect === "Outro" ? subEspecieOutro.trim() : subEspecieSelect;
 
-      // Regra automática: se for Ave ou Réptil, define castrado como "Não"
       let castradoFinal = castrado;
       if (especie === "Ave" || especie === "Réptil") {
         castradoFinal = "Não";
@@ -523,7 +522,9 @@ function Animais() {
             {animaisFiltrados.length > 0 ? (
               animaisFiltrados.map((animal, index) => (
                 <tr key={animal.id} style={{ backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb", borderBottom: "1px solid #f3f4f6", fontSize: "14px" }}>
-                  <td style={{ padding: "14px", fontWeight: "bold", color: "#4f46e5" }}>{animal.codigo || `PET-${String(animal.id).padStart(4, "0")}`}</td>
+                  <td style={{ padding: "14px", fontWeight: "bold", color: "#4f46e5", whiteSpace: "nowrap" }}>
+                    {animal.codigo || `PET-${String(animal.id).padStart(4, "0")}`}
+                  </td>
                   <td style={{ padding: "14px", fontWeight: "600", color: "#1f2937" }}>{animal.nome}</td>
                   <td style={{ padding: "14px", color: "#4b5563" }}>{obterNomeTutor(animal.tutor_id)}</td>
                   <td style={{ padding: "14px", color: "#4b5563" }}>
