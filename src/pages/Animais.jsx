@@ -156,6 +156,12 @@ function Animais() {
 
       const subEspecieFinal = subEspecieSelect === "Outro" ? subEspecieOutro.trim() : subEspecieSelect;
 
+      // Regra automática: se for Ave ou Réptil, define castrado como "Não"
+      let castradoFinal = castrado;
+      if (especie === "Ave" || especie === "Réptil") {
+        castradoFinal = "Não";
+      }
+
       const novoAnimal = {
         codigo: codigo.trim() ? codigo.trim() : undefined,
         nome,
@@ -166,7 +172,7 @@ function Animais() {
         idade: parseFloat(idade),
         tutor_id: Number(tutorId),
         status,
-        castrado: castrado || null,
+        castrado: castradoFinal || null,
         cor: cor.trim() || null,
         porte: porte || null,
       };
@@ -358,9 +364,13 @@ function Animais() {
               <select
                 value={especie}
                 onChange={(e) => {
-                  setEspecie(e.target.value);
+                  const novaEspecie = e.target.value;
+                  setEspecie(novaEspecie);
                   setSubEspecieSelect("");
                   setSubEspecieOutro("");
+                  if (novaEspecie === "Ave" || novaEspecie === "Réptil") {
+                    setCastrado("Não");
+                  }
                 }}
                 style={estiloInput}
               >
@@ -410,8 +420,9 @@ function Animais() {
               <label style={estiloLabel}>Sexo *</label>
               <select value={sexo} onChange={(e) => setSexo(e.target.value)} style={estiloInput}>
                 <option value="">Selecione o Sexo</option>
-                <option value="M">Macho</option>
-                <option value="F">Fêmea</option>
+                <option value="Macho">Macho</option>
+                <option value="Fêmea">Fêmea</option>
+                <option value="Indefinido">Indefinido</option>
               </select>
             </div>
 
@@ -433,7 +444,12 @@ function Animais() {
 
             <div>
               <label style={estiloLabel}>Castrado?</label>
-              <select value={castrado} onChange={(e) => setCastrado(e.target.value)} style={estiloInput}>
+              <select 
+                value={castrado} 
+                onChange={(e) => setCastrado(e.target.value)} 
+                style={estiloInput}
+                disabled={especie === "Ave" || especie === "Réptil"}
+              >
                 <option value="">Selecione</option>
                 <option value="Sim">Sim</option>
                 <option value="Não">Não</option>
