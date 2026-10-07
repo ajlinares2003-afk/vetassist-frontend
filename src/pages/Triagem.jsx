@@ -84,7 +84,8 @@ function Triagem() {
           raca: animalAlvo.raca,
           porte: animalAlvo.porte,
           sexo: animalAlvo.sexo,
-          idade: animalAlvo.idade
+          idade: animalAlvo.idade,
+          nome_cientifico: animalAlvo.nome_cientifico // 👈 Adicionado para enviar o binômio científico
         };
 
         const res = await api.post("/triagem/referencias-ia", payload, config);
