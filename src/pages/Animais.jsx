@@ -10,7 +10,7 @@ const SUB_ESPECIES_POR_ESPECIE = {
   "Coelho / Lagomorfo": ["Coelho Mini Lop", "Coelho Netherland Dwarf", "Coelho Cabeça-de-Leão", "Coelho Nova Zelândia"],
   Réptil: ["Iguana", "Tartaruga", "Jabuti", "Serpente", "Gecko"],
   Canino: ["Cão Doméstico"],
-  Felino: ["Gato Doméstico","Felino Exôtico"],
+  Felino: ["Gato Doméstico", "Felino Exôtico"],
   Outros: []
 };
 
@@ -269,6 +269,7 @@ function Animais() {
     const especieAnimal = (animal.especie || "").toLowerCase();
     const subEspecieAnimal = (animal.sub_especie || animal.subEspécie || "").toLowerCase();
     const racaAnimal = (animal.raca || "").toLowerCase();
+    const nomecientificoAnimal = (animal.nome_cientifico || "").toLowerCase();
     const nomeTutor = obterNomeTutor(animal.tutor_id).toLowerCase();
 
     return (
@@ -277,6 +278,7 @@ function Animais() {
       especieAnimal.includes(termo) ||
       subEspecieAnimal.includes(termo) ||
       racaAnimal.includes(termo) ||
+      nomecientificoAnimal.includes(termo) ||
       nomeTutor.includes(termo)
     );
   });
@@ -477,7 +479,7 @@ function Animais() {
       <div style={{ marginBottom: "16px" }}>
         <input
           type="text"
-          placeholder="🔍 Pesquisar paciente por nome, código, tutor, espécie, sub-espécie ou raça..."
+          placeholder="🔍 Pesquisar paciente por nome, código, tutor, espécie, sub-espécie, raça ou nome científico..."
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           style={{ width: "100%", height: "44px", padding: "0 16px", border: "1px solid #d1d5db", borderRadius: "10px", fontSize: "14px", outline: "none", backgroundColor: "#ffffff", boxSizing: "border-box" }}
@@ -509,7 +511,12 @@ function Animais() {
                   <td style={{ padding: "14px", fontWeight: "600", color: "#1f2937" }}>{animal.nome}</td>
                   <td style={{ padding: "14px", color: "#4b5563" }}>{obterNomeTutor(animal.tutor_id)}</td>
                   <td style={{ padding: "14px", color: "#4b5563" }}>
-                    {animal.especie} {animal.sub_espécie ? `(${animal.sub_espécie})` : animal.sub_especie ? `(${animal.sub_especie})` : ""}
+                    <div>{animal.especie} {animal.sub_especie ? `(${animal.sub_especie})` : ""}</div>
+                    {animal.nome_cientifico && (
+                      <div style={{ fontSize: "11px", fontStyle: "italic", color: "#6b7280", marginTop: "2px" }}>
+                        {animal.nome_cientifico}
+                      </div>
+                    )}
                   </td>
                   <td style={{ padding: "14px", color: "#4b5563" }}>{animal.raca}</td>
                   <td style={{ padding: "14px", color: "#4b5563" }}>{animal.porte || "-"} / {animal.cor || "-"}</td>
@@ -522,7 +529,7 @@ function Animais() {
 
                   <td style={{ padding: "14px", display: "flex", justifyContent: "center", gap: "8px" }}>
                     <button onClick={() => editarAnimal(animal)} style={{ backgroundColor: "#fef3c7", color: "#b45309", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>✏️ Editar</button>
-                    <button onClick={() => setAnimalParaExcluir(animal)} style={{ backgroundColor: "#fee2e2", color: "#b91c1c", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>🗑️️ Excluir</button>
+                    <button onClick={() => setAnimalParaExcluir(animal)} style={{ backgroundColor: "#fee2e2", color: "#b91c1c", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>🗑 Excluir</button>
                   </td>
                 </tr>
               ))
