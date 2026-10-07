@@ -5,12 +5,17 @@ import api from "../api/api";
 import Layout from "../components/Layout";
 
 const SUB_ESPECIES_POR_ESPECIE = {
+  Canino: ["Cão Doméstico"],
+  Felino: ["Gato Doméstico", "Felino Exótico"],
+  Equino: ["Cavalo Puros-Sangue", "Pônei", "Cavalo Quarto de Milha", "Cavalo Campolina", "Mangalarga"],
+  Bovino: ["Nelore", "Angus", "Holandês", "Girolando", "Jersey", "Brahma"],
+  Suíno: ["Landrace", "Large White", "Duroc", "Pietrain", "Suíno Caipira"],
+  Ovino: ["Dorper", "Santa Inês", "Suffolk", "Merino", "Texel"],
+  Caprino: ["Boer", "Saanen", "Alpine", "Anglo-Nubiana", "Canindé"],
+  "Coelho / Lagomorfo": ["Coelho Mini Lop", "Coelho Netherland Dwarf", "Coelho Cabeça-de-Leão", "Coelho Nova Zelândia"],
   Ave: ["Galinha", "Pato", "Periquito", "Papagaio", "Pombo", "Águia", "Pardal", "Calopsita"],
   Roedor: ["Hamster", "Porquinho-da-Índia", "Chinchila", "Gerbil", "Rato Doméstico"],
-  "Coelho / Lagomorfo": ["Coelho Mini Lop", "Coelho Netherland Dwarf", "Coelho Cabeça-de-Leão", "Coelho Nova Zelândia"],
   Réptil: ["Iguana", "Tartaruga", "Jabuti", "Serpente", "Gecko"],
-  Canino: ["Cão Doméstico"],
-  Felino: ["Gato Doméstico", "Felino Exôtico"],
   Outros: []
 };
 
@@ -376,6 +381,11 @@ function Animais() {
                 <option value="">Selecione a Espécie</option>
                 <option value="Canino">Canino</option>
                 <option value="Felino">Felino</option>
+                <option value="Equino">Equino</option>
+                <option value="Bovino">Bovino</option>
+                <option value="Suíno">Suíno</option>
+                <option value="Ovino">Ovino</option>
+                <option value="Caprino">Caprino</option>
                 <option value="Coelho / Lagomorfo">Coelho / Lagomorfo</option>
                 <option value="Ave">Ave</option>
                 <option value="Roedor">Roedor</option>
