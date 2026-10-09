@@ -537,7 +537,7 @@ function Triagem() {
         </div>
       </div>
 
-      {/* LINHA 3: DESIDRATAÇÃO (1/4) + QUEIXA PRINCIPAL (3/4) */}
+      {/* LINHA 3 */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "16px", alignItems: "start" }}>
         <div>
           <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>Desidratação (%) — IA</label>
@@ -602,7 +602,7 @@ function Triagem() {
         </div>
       )}
 
-      {/* RENDERIZAÇÃO ALTERNADA: FORMULÁRIO DE TRIAGEM OU FILA DE CHECK-IN */}
+      {/* RENDERIZAÇÃO ALTERNADA: FORMULÁRIO DE TRIAGEM OU TABELA DE FILA DE CHECK-IN */}
       {atendimentoSelecionado ? (
         <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
           
@@ -694,64 +694,106 @@ function Triagem() {
           </div>
         </div>
       ) : (
-        /* FILA DE CHECK-IN EXIBIDA SE NENHUM PACIENTE ESTIVER SELECIONADO */
-        <div style={{ backgroundColor: "white", padding: "20px", borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-          <h3 style={{ marginTop: 0, color: "#111827", fontSize: "15px", marginBottom: "14px" }}>
-            📋 Fila de Check-in para Triagem ({atendimentosPendentes.length} aguardando)
-          </h3>
+        /* TABELA DE FILA DE CHECK-IN PADRONIZADA COM O ESTILO DA TELA DE ATENDIMENTOS */
+        <div style={{ backgroundColor: "white", borderRadius: "12px", overflow: "hidden", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
+            <thead>
+              <tr style={{ backgroundColor: "#4f46e5", color: "white" }}>
+                <th style={{ padding: "12px 16px", fontWeight: "700", width: "12%" }}>Código</th>
+                <th style={{ padding: "12px 16px", fontWeight: "700", width: "18%" }}>Paciente</th>
+                <th style={{ padding: "12px 16px", fontWeight: "700", width: "42%" }}>Queixa Principal</th>
+                <th style={{ padding: "12px 16px", fontWeight: "700", width: "13%", textAlign: "center" }}>Status</th>
+                <th style={{ padding: "12px 16px", fontWeight: "700", width: "15%", textAlign: "center" }}>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {atendimentosPendentes.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: "32px", textAlign: "center", color: "#9ca3af", fontStyle: "italic" }}>
+                    Nenhum paciente aguardando triagem no momento. Os pacientes aparecerão aqui assim que realizarem o check-in na recepção.
+                  </td>
+                </tr>
+              ) : (
+                atendimentosPendentes.map((item, idx) => {
+                  const ehVacina = item.status === "AGUARDANDO_VACINA" || item.status === "Aguardando Vacina";
+                  const estaSendoChamado = item.status === "Chamando para Triagem";
 
-          {atendimentosPendentes.length === 0 ? (
-            <p style={{ color: "#9ca3af", fontSize: "13px", textAlign: "center", padding: "32px 0", fontStyle: "italic" }}>
-              Nenhum paciente aguardando triagem no momento. Os pacientes aparecerão aqui assim que realizarem o check-in na recepção.
-            </p>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "12px" }}>
-              {atendimentosPendentes.map((item) => {
-                const ehVacina = item.status === "AGUARDANDO_VACINA" || item.status === "Aguardando Vacina";
-                const estaSendoChamado = item.status === "Chamando para Triagem";
-                return (
-                  <div
-                    key={item.id}
-                    style={{
-                      padding: "14px",
-                      borderRadius: "8px",
-                      border: estaSendoChamado ? "2px solid #ef4444" : ehVacina ? "1px solid #ccfbf1" : "1px solid #e5e7eb",
-                      backgroundColor: estaSendoChamado ? "#fef2f2" : ehVacina ? "#f0fdf4" : "#f9fafb",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center"
-                    }}
-                  >
-                    <div>
-                      <strong style={{ color: ehVacina ? "#0f766e" : "#1f2937", display: "block", fontSize: "13px" }}>
-                        {ehVacina ? "💉 " : "🐾 "} {obterNomeAnimal(item.animal_id)}
-                        {estaSendoChamado && <span style={{ fontSize: "10px", backgroundColor: "#fee2e2", color: "#991b1b", padding: "1px 5px", borderRadius: "4px", marginLeft: "6px", fontWeight: "bold" }}>📢 Chamando...</span>}
-                      </strong>
-                      <span style={{ fontSize: "11px", color: "#6b7280", display: "block", marginTop: "3px" }}>
-                        Check-in: {item.codigo || `CNS-${item.id}`} {item.queixa_principal ? `| Motivo: ${item.queixa_principal}` : ""}
-                      </span>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <button 
-                        onClick={(e) => chamarPaciente(item, e)}
-                        style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}
-                      >
-                        <MdCampaign size={14} /> Chamar
-                      </button>
-
-                      <button 
-                        onClick={() => selecionarParaTriagem(item)}
-                        style={{ backgroundColor: ehVacina ? "#0d9488" : "#4f46e5", color: "white", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}
-                      >
-                        Iniciar Triagem
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  return (
+                    <tr
+                      key={item.id}
+                      style={{
+                        borderBottom: "1px solid #f3f4f6",
+                        backgroundColor: estaSendoChamado ? "#fef2f2" : idx % 2 === 0 ? "#ffffff" : "#f9fafb",
+                        transition: "background-color 0.15s ease",
+                      }}
+                    >
+                      <td style={{ padding: "14px 16px", fontWeight: "600", color: "#4f46e5", verticalAlign: "middle" }}>
+                        {item.codigo || `CNS-${String(item.id).padStart(4, "0")}`}
+                      </td>
+                      <td style={{ padding: "14px 16px", fontWeight: "600", color: "#1f2937", verticalAlign: "middle" }}>
+                        {obterNomeAnimal(item.animal_id)}
+                      </td>
+                      <td style={{ padding: "14px 16px", color: "#4b5563", verticalAlign: "middle", lineHeight: "1.4" }}>
+                        {item.queixa_principal || "-"}
+                      </td>
+                      <td style={{ padding: "14px 16px", textAlign: "center", verticalAlign: "middle" }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "4px 10px",
+                            borderRadius: "12px",
+                            fontSize: "11px",
+                            fontWeight: "600",
+                            backgroundColor: estaSendoChamado ? "#fee2e2" : ehVacina ? "#ccfbf1" : "#e0e7ff",
+                            color: estaSendoChamado ? "#991b1b" : ehVacina ? "#0f766e" : "#3730a3",
+                          }}
+                        >
+                          {estaSendoChamado ? "📢 Chamando..." : ehVacina ? "💉 Vacina" : "Aguardando"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "14px 16px", textAlign: "center", verticalAlign: "middle" }}>
+                        <div style={{ display: "flex", justifyContent: "center", gap: "6px" }}>
+                          <button
+                            onClick={(e) => chamarPaciente(item, e)}
+                            style={{
+                              backgroundColor: "#0284c7",
+                              color: "white",
+                              border: "none",
+                              padding: "6px 10px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "11px",
+                              fontWeight: "600",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}
+                          >
+                            <MdCampaign size={14} /> Chamar
+                          </button>
+                          <button
+                            onClick={() => selecionarParaTriagem(item)}
+                            style={{
+                              backgroundColor: ehVacina ? "#0d9488" : "#4f46e5",
+                              color: "white",
+                              border: "none",
+                              padding: "6px 12px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "11px",
+                              fontWeight: "600"
+                            }}
+                          >
+                            Iniciar Triagem
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       )}
     </Layout>
