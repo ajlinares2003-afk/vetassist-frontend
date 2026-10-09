@@ -55,6 +55,17 @@ const renderAlertaSinal = (alerta) =>
 
 const estiloRef = { fontSize: "11px", lineHeight: 1.35, color: "#0369a1", display: "block", marginTop: "6px" };
 
+// Nome do tutor: tenta os nomes de campo mais comuns retornados por /animais/
+const obterTutorAnimal = (a) => {
+  if (!a) return "";
+  const candidatos = [
+    a.tutor_nome, a.nome_tutor, a.tutor?.nome, typeof a.tutor === "string" ? a.tutor : null,
+    a.proprietario_nome, a.proprietario?.nome, typeof a.proprietario === "string" ? a.proprietario : null,
+    a.dono_nome, a.cliente_nome, a.cliente?.nome,
+  ];
+  return String(candidatos.find((c) => c && String(c).trim()) || "").trim();
+};
+
 function Consultas() {
   const navigate = useNavigate();
   const [consultas, setConsultas] = useState([]);
@@ -209,18 +220,6 @@ function Consultas() {
       setUsuarios(apenasVets);
     } catch (error) {
       console.error("Erro ao carregar usuários:", error);
-    }
-  };
-
-  const handleAnimalChange = (e) => {
-    const idSelecionado = e.target.value;
-    setAnimalId(idSelecionado);
-    if (idSelecionado && !consultaEditando) {
-      const animalEncontrado = animais.find((a) => a.id === Number(idSelecionado));
-      if (animalEncontrado) {
-        if (animalEncontrado.peso) setPesoAtendimento(animalEncontrado.peso);
-        setIdadeAtendimento(animalEncontrado.idade ?? "");
-      }
     }
   };
 
@@ -575,6 +574,13 @@ function Consultas() {
     </div>
   );
 
+  const animalSelecionado = animais.find((a) => a.id === Number(animalId));
+  const rotuloPaciente = animalSelecionado
+    ? [animalSelecionado.codigo || `PET-${animalSelecionado.id}`, animalSelecionado.nome, animalSelecionado.raca, obterTutorAnimal(animalSelecionado)]
+        .filter(Boolean)
+        .join(" - ")
+    : animalId ? "Carregando paciente..." : "Nenhum paciente selecionado";
+
   const refsPendentes = Boolean(animalId && refs?.fonte_ref && /pendente/i.test(refs.fonte_ref));
   const analiseDesabilitada = carregandoCopiloto || !queixaPrincipal.trim();
 
@@ -627,11 +633,15 @@ function Consultas() {
                   <input id="cns-codigo" type="text" value={codigo} onChange={(e) => setCodigo(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f9fafb" }} />
                 </div>
                 <div>
-                  <label htmlFor="cns-paciente" style={estiloLabel}>Paciente *</label>
-                  <select id="cns-paciente" value={animalId} onChange={handleAnimalChange} style={estiloInput}>
-                    <option value="">Selecione o Paciente</option>
-                    {animais.map((a) => (<option key={a.id} value={a.id}>{a.nome} ({a.codigo || `PET-${a.id}`})</option>))}
-                  </select>
+                  <div id="cns-paciente-rotulo" style={estiloLabel}>Paciente</div>
+                  <div
+                    role="textbox"
+                    aria-readonly="true"
+                    aria-labelledby="cns-paciente-rotulo"
+                    style={{ ...estiloInput, height: "auto", minHeight: "42px", display: "flex", alignItems: "center", padding: "8px 12px", backgroundColor: "#f9fafb", color: "#111827", fontWeight: 600, lineHeight: 1.35, cursor: "default" }}
+                  >
+                    {rotuloPaciente}
+                  </div>
                 </div>
               </div>
 
