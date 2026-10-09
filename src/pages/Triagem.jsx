@@ -17,6 +17,53 @@ const CORES_MANCHESTER = {
   AZUL: { nome: "Não Urgente", bg: "#e0f2fe", text: "#0369a1", border: "#7dd3fc", badge: "🔵 240 min" },
 };
 
+// ---------- Alertas de sinais vitais ----------
+const normalizarTexto = (t) =>
+  String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+// Lê "[Repouso: 38.0 - 39.2 °C | Clínica: 38.0 - 39.2 °C]" vindo do backend
+const extrairFaixas = (texto) => {
+  const t = String(texto || "");
+  const num = "(\\d+(?:[.,]\\d+)?)";
+  const pegar = (rotulo) => {
+    const m = t.match(new RegExp(rotulo + "\\s*:\\s*" + num + "\\s*-\\s*" + num, "i"));
+    return m ? [parseFloat(m[1].replace(",", ".")), parseFloat(m[2].replace(",", "."))] : null;
+  };
+  return { repouso: pegar("Repouso"), clinica: pegar("Cl[ií]nica") };
+};
+
+// nivel: "alto"/"baixo" (fora do limite clínico, vermelho) | "atencao" (fora do repouso, âmbar)
+const avaliarSinal = (valor, refTexto, unidade, dica = "") => {
+  const v = parseFloat(valor);
+  if (isNaN(v)) return null;
+  const { repouso, clinica } = extrairFaixas(refTexto);
+  const lim = clinica || repouso;
+  if (!lim) return null;
+  if (v > lim[1]) return { nivel: "alto", texto: `Acima do limite clínico (≤ ${lim[1]} ${unidade})${dica}` };
+  if (v < lim[0]) return { nivel: "baixo", texto: `Abaixo do limite clínico (≥ ${lim[0]} ${unidade})${dica}` };
+  if (repouso && v > repouso[1]) return { nivel: "atencao", texto: `Acima da faixa de repouso (≤ ${repouso[1]} ${unidade})${dica}` };
+  if (repouso && v < repouso[0]) return { nivel: "atencao", texto: `Abaixo da faixa de repouso (≥ ${repouso[0]} ${unidade})${dica}` };
+  return null;
+};
+
+const CORES_ALERTA = {
+  alto: { cor: "#b91c1c", borda: "#fca5a5", bg: "#fef2f2", icone: "🔴" },
+  baixo: { cor: "#b91c1c", borda: "#fca5a5", bg: "#fef2f2", icone: "🔴" },
+  atencao: { cor: "#b45309", borda: "#fcd34d", bg: "#fffbeb", icone: "⚠️" },
+};
+
+const renderAlertaSinal = (alerta) =>
+  alerta ? (
+    <span style={{ fontSize: "9px", display: "block", marginTop: "1px", fontWeight: "700", color: CORES_ALERTA[alerta.nivel].cor }}>
+      {CORES_ALERTA[alerta.nivel].icone} {alerta.texto}
+    </span>
+  ) : null;
+
+const estiloAlerta = (alerta) =>
+  alerta
+    ? { ...estiloInput, border: `1px solid ${CORES_ALERTA[alerta.nivel].borda}`, backgroundColor: CORES_ALERTA[alerta.nivel].bg, color: CORES_ALERTA[alerta.nivel].cor, fontWeight: "700" }
+    : estiloInput;
+
 function Triagem() {
   const navigate = useNavigate();
 
@@ -38,6 +85,7 @@ function Triagem() {
   const [queixaPrincipal, setQueixaPrincipal] = useState("");
   const [classificacaoRisco, setClassificacaoRisco] = useState("VERDE");
   const [justificativa, setJustificativa] = useState("");
+  const [manterClassificacao, setManterClassificacao] = useState(false);
 
   const [refsDinamicas, setRefsDinamicas] = useState({
       pesoRef: "💡 Ref. Peso: Selecione o paciente...",
@@ -63,6 +111,10 @@ function Triagem() {
     const intervalo = setInterval(() => carregarDados(false), 5000);
     return () => clearInterval(intervalo);
   }, []);
+
+  useEffect(() => {
+    setManterClassificacao(false);
+  }, [atendimentoSelecionado]);
 
   useEffect(() => {
     if (mensagem.texto) {
@@ -328,6 +380,10 @@ function Triagem() {
         }
       }
 
+      if (sugerirUrgente && !window.confirm(`Sinais vitais alterados (${sinaisAlterados.join(", ")}) + sintomas relatados, mas a classificação está como "${CORES_MANCHESTER[classificacaoRisco]?.nome}". Finalizar assim mesmo?`)) {
+        return;
+      }
+
       const payload = {
         consulta_id: atendimentoSelecionado.id,
         usuario_id: usuarioIdVet ? Number(usuarioIdVet) : null,
@@ -356,6 +412,30 @@ function Triagem() {
       setCarregando(false);
     }
   };
+
+  // ---- Alertas derivados (referências vêm do backend como texto) ----
+  const alertaTemp = avaliarSinal(temperatura, refsDinamicas.temp, "°C", " — reavaliar após repouso");
+  const alertaFC = avaliarSinal(frequenciaCardiaca, refsDinamicas.fc, "bpm");
+  const alertaFR = avaliarSinal(frequenciaRespiratoria, refsDinamicas.fr, "ir/min");
+
+  const alertaDesidratacao = (() => {
+    if (desidratacao === "" || parseInt(desidratacao) !== 0) return null;
+    const q = normalizarTexto(queixaPrincipal);
+    const sugereHidrico = /(bebe\w* mais|mais agua|polidipsia|urin\w* (com )?mais|poliuria|vomit|diarre|nao (bebe|quer beber))/.test(q);
+    return sugereHidrico
+      ? { nivel: "atencao", texto: "Avaliar consumo hídrico relatado (TPC/mucosas podem não refletir)" }
+      : null;
+  })();
+
+  const sinaisAlterados = [
+    ["Temp", alertaTemp], ["FC", alertaFC], ["FR", alertaFR],
+  ].filter(([, a]) => a && (a.nivel === "alto" || a.nivel === "baixo")).map(([nome]) => nome);
+
+  const sugerirUrgente =
+    sinaisAlterados.length >= 2 &&
+    queixaPrincipal.trim().length > 0 &&
+    ["VERDE", "AZUL"].includes(classificacaoRisco) &&
+    !manterClassificacao;
 
   const renderFormularioSinaisVitais = () => (
     <>
@@ -397,18 +477,21 @@ function Triagem() {
         </div>
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Temperatura (°C)</label>
-          <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloInput} placeholder="Ex: 38.5" />
+          <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloAlerta(alertaTemp)} placeholder="Ex: 38.5" />
           <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.temp}</span>
+          {renderAlertaSinal(alertaTemp)}
         </div>
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FC (bpm)</label>
-          <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloInput} placeholder="Ex: 150" />
+          <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloAlerta(alertaFC)} placeholder="Ex: 150" />
           <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.fc}</span>
+          {renderAlertaSinal(alertaFC)}
         </div>
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>FR (mpm)</label>
-          <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloInput} placeholder="Ex: 25" />
+          <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloAlerta(alertaFR)} placeholder="Ex: 25" />
           <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 {refsDinamicas.fr}</span>
+          {renderAlertaSinal(alertaFR)}
         </div>
         <div>
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>TPC (segundos)</label>
@@ -431,6 +514,7 @@ function Triagem() {
           <label style={{ fontSize: "11px", fontWeight: "600", color: "#374151" }}>Desidratação (%) — IA</label>
           <input type="number" value={desidratacao} onChange={(e) => setDesidratacao(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f0fdf4", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado..." />
           <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "1px" }}>💡 Normal: &lt; 5% (Baseado em TPC e Mucosas)</span>
+          {renderAlertaSinal(alertaDesidratacao)}
         </div>
       </div>
     </>
@@ -592,6 +676,20 @@ function Triagem() {
                   );
                 })}
               </div>
+
+              {sugerirUrgente && (
+                <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", padding: "5px 8px", borderRadius: "5px", fontSize: "10px", color: "#92400e", marginBottom: "4px" }}>
+                  <strong>⚠️ Confirmar classificação:</strong> com sinais vitais alterados ({sinaisAlterados.join(", ")}) + sintomas relatados → considerar <strong>Urgente</strong> ou superior.
+                  <div style={{ display: "flex", gap: "4px", marginTop: "3px" }}>
+                    <button type="button" onClick={() => setClassificacaoRisco("AMARELO")} style={{ backgroundColor: "#fef9c3", color: "#a16207", border: "1px solid #fde047", padding: "2px 6px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "700" }}>
+                      Alterar para Urgente
+                    </button>
+                    <button type="button" onClick={() => setManterClassificacao(true)} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", padding: "2px 6px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "600" }}>
+                      Manter {CORES_MANCHESTER[classificacaoRisco]?.nome}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Justificativa da IA para a classificação de risco (só aparece se houver análise solicitada) */}
               {justificativa && (
