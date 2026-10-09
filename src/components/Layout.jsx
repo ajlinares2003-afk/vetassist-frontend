@@ -15,7 +15,7 @@ import {
   MdLocalHospital,
   MdAttachMoney,
   MdCalendarToday,
-  MdSmartToy // <-- Ícone importado corretamente aqui
+  MdSmartToy
 } from "react-icons/md";
 
 function Layout({ children }) {
@@ -32,19 +32,12 @@ function Layout({ children }) {
     navigate("/login");
   };
 
-  const getNomeConsulta = () => {
-    if (perfilUsuario === "RECEPCAO") return "Check-in";
-    return "Atendimento";
-  };
-
-const menuConfig = [
+  const menuConfig = [
     { nome: "Dashboard", rota: "/dashboard", icone: <MdDashboard size={20} />, perfis: ["ADMIN", "RECEPCAO", "TRIAGEM", "VETERINARIO"] },
     { nome: "Tutores", rota: "/tutores", icone: <FaUserTie size={18} />, perfis: ["ADMIN", "RECEPCAO", "VETERINARIO"] },
     { nome: "Animais", rota: "/animais", icone: <MdPets size={20} />, perfis: ["ADMIN", "RECEPCAO", "VETERINARIO"] },
-    
     { nome: "Check-in", rota: "/checkin", icone: <MdEvent size={20} />, perfis: ["ADMIN", "RECEPCAO"] },
     { nome: "Atendimentos", rota: "/consultas", icone: <MdMedicalServices size={20} />, perfis: ["ADMIN", "VETERINARIO"] },
-
     { nome: "Agenda", rota: "/agenda", icone: <MdCalendarToday size={20} />, perfis: ["ADMIN", "RECEPCAO", "VETERINARIO"] },
     { nome: "Triagem / Fila", rota: "/triagem", icone: <MdHealthAndSafety size={20} />, perfis: ["ADMIN", "TRIAGEM", "VETERINARIO"] },
     { nome: "Internação / UTI", rota: "/internacao", icone: <MdHotel size={20} />, perfis: ["ADMIN", "VETERINARIO", "TRIAGEM", "RECEPCAO"] },
@@ -155,9 +148,17 @@ const menuConfig = [
         </button>
       </aside>
 
-      {/* ÁREA DE CONTEÚDO COM MARGEM ESQUERDA SEGURA */}
+      {/* ÁREA DE CONTEÚDO COM CONTAINER DE LARGURA MÁXIMA CONTROLADA (MAX 1280PX) */}
       <div style={{ marginLeft: "240px", flex: 1, display: "flex", flexDirection: "column", minWidth: 0, boxSizing: "border-box" }}>
-        <main style={{ padding: "32px 40px", boxSizing: "border-box", width: "100%" }}>
+        <main 
+          style={{ 
+            padding: "24px 32px", 
+            boxSizing: "border-box", 
+            width: "100%", 
+            maxWidth: "1280px", 
+            margin: "0 auto" 
+          }}
+        >
           {children}
         </main>
       </div>
