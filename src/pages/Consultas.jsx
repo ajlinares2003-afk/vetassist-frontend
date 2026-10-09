@@ -34,14 +34,26 @@ const CORES_ALERTA = {
   atencao: { cor: "#b45309", borda: "#fcd34d", bg: "#fffbeb", icone: "⚠️" },
 };
 
+const ICONE_ALERTA = { alto: "↑", baixo: "↓", atencao: "!" };
+
 const renderAlertaSinal = (alerta) =>
   alerta ? (
-    <span style={{ fontSize: "10px", display: "block", marginTop: "3px", fontWeight: "500", color: CORES_ALERTA[alerta.nivel].cor }}>
-      {CORES_ALERTA[alerta.nivel].icone} {alerta.texto}
+    <span
+      role="status"
+      style={{
+        display: "flex", alignItems: "flex-start", gap: "6px", marginTop: "8px",
+        padding: "4px 8px", borderRadius: "6px", backgroundColor: "#ffffff",
+        border: `1px solid ${CORES_ALERTA[alerta.nivel].borda}`,
+        fontSize: "11px", lineHeight: 1.35, fontWeight: 600,
+        color: CORES_ALERTA[alerta.nivel].cor,
+      }}
+    >
+      <span aria-hidden="true" style={{ fontWeight: 800, fontSize: "13px", lineHeight: 1.1 }}>{ICONE_ALERTA[alerta.nivel]}</span>
+      <span>{alerta.texto}</span>
     </span>
   ) : null;
 
-const estiloRef = { fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" };
+const estiloRef = { fontSize: "11px", lineHeight: 1.35, color: "#0369a1", display: "block", marginTop: "6px" };
 
 function Consultas() {
   const navigate = useNavigate();
@@ -83,6 +95,7 @@ function Consultas() {
   const [carregandoCopiloto, setCarregandoCopiloto] = useState(false);
   const [etapaProgressoIA, setEtapaProgressoIA] = useState("");
   const [arquivosExames, setArquivosExames] = useState([]);
+  const [previewsExames, setPreviewsExames] = useState([]);
 
   const [refs, setRefs] = useState(null);
   const [buscandoRefs, setBuscandoRefs] = useState(false);
@@ -118,6 +131,13 @@ function Consultas() {
       clearTimeout(timer2);
     };
   }, [carregandoCopiloto]);
+
+  // Miniaturas dos exames anexados (imagens); libera a memória ao trocar/remover
+  useEffect(() => {
+    const urls = arquivosExames.map((f) => (f.type && f.type.startsWith("image/") ? URL.createObjectURL(f) : null));
+    setPreviewsExames(urls);
+    return () => urls.forEach((u) => u && URL.revokeObjectURL(u));
+  }, [arquivosExames]);
 
   // Referências vitais já salvas na Biblioteca de parâmetros oficiais (leitura rápida, sem IA)
   useEffect(() => {
@@ -534,6 +554,42 @@ function Consultas() {
 
   const temIndicacaoReal = indicacaoCirurgia || forcarCirurgia;
 
+  const estiloPainel = { border: "1px solid #e5e7eb", borderRadius: "10px", padding: "16px", backgroundColor: "#ffffff", minWidth: 0 };
+  const estiloTituloPainel = { margin: "0 0 14px 0", color: "#111827", fontSize: "15px", fontWeight: 700 };
+  const estiloLabelVital = { display: "block", fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "6px" };
+  const estiloInputVital = { ...estiloInput, height: "38px" };
+  const estiloAlertaVital = (alerta) => ({ ...estiloAlerta(alerta), height: "38px" });
+
+  const renderCardVital = (id, rotulo, campo, referencia, alerta) => (
+    <div
+      style={{
+        border: `1px solid ${alerta ? CORES_ALERTA[alerta.nivel].borda : "#e5e7eb"}`,
+        backgroundColor: alerta ? CORES_ALERTA[alerta.nivel].bg : "#f8fafc",
+        borderRadius: "10px", padding: "10px 12px", minWidth: 0,
+      }}
+    >
+      <label htmlFor={id} style={estiloLabelVital}>{rotulo}</label>
+      {campo}
+      <span style={estiloRef}>{referencia}</span>
+      {renderAlertaSinal(alerta)}
+    </div>
+  );
+
+  const refsPendentes = Boolean(animalId && refs?.fonte_ref && /pendente/i.test(refs.fonte_ref));
+  const analiseDesabilitada = carregandoCopiloto || !queixaPrincipal.trim();
+
+  const removerArquivoExame = (idx) => setArquivosExames((prev) => prev.filter((_, i) => i !== idx));
+
+  const tituloCirurgia = indicacaoCirurgia
+    ? "Indicação cirúrgica detectada pela IA."
+    : forcarCirurgia
+      ? "Indicação cirúrgica definida manualmente."
+      : "Sem indicação cirúrgica automática detectada.";
+  const detalheCirurgia = justificativaCirurgica
+    || (temIndicacaoReal
+      ? "Ao salvar, o status do atendimento passa para “Aguardando Cirurgia”."
+      : "Paciente sem indicação cirúrgica urgente no momento.");
+
   return (
     <Layout>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -546,118 +602,148 @@ function Consultas() {
       {mensagemErro && <div style={{ backgroundColor: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px", marginBottom: "15px", fontWeight: "500" }}>{mensagemErro}</div>}
 
       {mostrarFormulario && (
-        <div style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", marginBottom: "25px", border: "1px solid #e5e7eb" }}>
-          
-          <h3 style={{ margin: "0 0 16px 0", color: "#111827", fontSize: "16px" }}>
-            📋 Dados do Paciente e Parâmetros Vitais
-          </h3>
+        <div className="cns-form" style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", marginBottom: "25px", border: "1px solid #e5e7eb" }}>
+          <style>{`
+            @keyframes spin { to { transform: rotate(360deg); } }
+            .cns-topo { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: stretch; margin-bottom: 20px; }
+            .cns-vitais { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+            .cns-ia-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+            .cns-form input:focus-visible,
+            .cns-form select:focus-visible,
+            .cns-form textarea:focus-visible { border-color: #4f46e5 !important; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3) !important; }
+            .cns-form button:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
+            @media (max-width: 1100px) { .cns-topo { grid-template-columns: minmax(0, 1fr); } }
+            @media (max-width: 720px) { .cns-ia-grid { grid-template-columns: minmax(0, 1fr); } }
+          `}</style>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "18px", marginBottom: "18px" }}>
-            <div>
-              <label style={estiloLabel}>Código</label>
-              <input type="text" value={codigo} onChange={(e) => setCodigo(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f9fafb" }} />
-            </div>
+          {/* LINHA SUPERIOR: SINAIS VITAIS (esquerda) | ANOTAÇÕES CLÍNICAS (direita) */}
+          <div className="cns-topo">
+            <section style={estiloPainel} aria-label="Paciente e sinais vitais">
+              <h3 style={estiloTituloPainel}>Paciente e sinais vitais</h3>
 
-            <div>
-              <label style={estiloLabel}>Paciente *</label>
-              <select value={animalId} onChange={handleAnimalChange} style={estiloInput}>
-                <option value="">Selecione o Paciente</option>
-                {animais.map((a) => (<option key={a.id} value={a.id}>{a.nome} ({a.codigo || `PET-${a.id}`})</option>))}
-              </select>
-            </div>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(110px, 1fr) minmax(0, 2fr)", gap: "12px", marginBottom: "14px" }}>
+                <div>
+                  <label htmlFor="cns-codigo" style={estiloLabel}>Código</label>
+                  <input id="cns-codigo" type="text" value={codigo} onChange={(e) => setCodigo(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f9fafb" }} />
+                </div>
+                <div>
+                  <label htmlFor="cns-paciente" style={estiloLabel}>Paciente *</label>
+                  <select id="cns-paciente" value={animalId} onChange={handleAnimalChange} style={estiloInput}>
+                    <option value="">Selecione o Paciente</option>
+                    {animais.map((a) => (<option key={a.id} value={a.id}>{a.nome} ({a.codigo || `PET-${a.id}`})</option>))}
+                  </select>
+                </div>
+              </div>
 
-            <div>
-              <label style={estiloLabel}>Peso Atual (Kg)</label>
-              <input type="number" step="0.1" value={pesoAtendimento} onChange={(e) => setPesoAtendimento(e.target.value)} style={estiloInput} />
-              <span style={estiloRef}>{refTxt("peso_ref")}</span>
-            </div>
+              <div className="cns-vitais">
+                {renderCardVital(
+                  "cns-peso", "Peso atual (kg)",
+                  <input id="cns-peso" type="number" step="0.1" value={pesoAtendimento} onChange={(e) => setPesoAtendimento(e.target.value)} style={estiloInputVital} />,
+                  refTxt("peso_ref")
+                )}
+                {renderCardVital(
+                  "cns-temp", "Temperatura (°C)",
+                  <input id="cns-temp" type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloAlertaVital(alertaTemp)} />,
+                  refTxt("temperatura"), alertaTemp
+                )}
+                {renderCardVital(
+                  "cns-fc", "Freq. cardíaca (bpm)",
+                  <input id="cns-fc" type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloAlertaVital(alertaFC)} />,
+                  refTxt("fc"), alertaFC
+                )}
+                {renderCardVital(
+                  "cns-fr", "Freq. respiratória (mpm)",
+                  <input id="cns-fr" type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloAlertaVital(alertaFR)} />,
+                  refTxt("fr"), alertaFR
+                )}
+                {renderCardVital(
+                  "cns-tpc", "TPC (segundos)",
+                  <input id="cns-tpc" type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInputVital} />,
+                  refTxt("tpc")
+                )}
+                {renderCardVital(
+                  "cns-mucosas", "Mucosas",
+                  <select id="cns-mucosas" value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInputVital}>
+                    <option value="Normocoradas">Normocoradas (Rosadas)</option>
+                    <option value="Hipocoradas / Pálidas">Hipocoradas / Pálidas</option>
+                    <option value="Cianóticas">Cianóticas</option>
+                    <option value="Ictéricas">Ictéricas</option>
+                  </select>,
+                  refTxt("mucosas")
+                )}
+              </div>
 
-            <div>
-              <label style={estiloLabel}>Temperatura (°C)</label>
-              <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloAlerta(alertaTemp)} />
-              <span style={estiloRef}>💡 {refTxt("temperatura")}</span>
-              {renderAlertaSinal(alertaTemp)}
-            </div>
-
-            <div>
-              <label style={estiloLabel}>Freq. Cardíaca (bpm)</label>
-              <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloAlerta(alertaFC)} />
-              <span style={estiloRef}>💡 {refTxt("fc")}</span>
-              {renderAlertaSinal(alertaFC)}
-            </div>
-
-            <div>
-              <label style={estiloLabel}>Freq. Respiratória (mpm)</label>
-              <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloAlerta(alertaFR)} />
-              <span style={estiloRef}>💡 {refTxt("fr")}</span>
-              {renderAlertaSinal(alertaFR)}
-            </div>
-
-            <div>
-              <label style={estiloLabel}>TPC (segundos)</label>
-              <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} />
-              <span style={estiloRef}>💡 {refTxt("tpc")}</span>
-            </div>
-
-            <div>
-              <label style={estiloLabel}>Mucosas</label>
-              <select value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInput}>
-                <option value="Normocoradas">Normocoradas (Rosadas)</option>
-                <option value="Hipocoradas / Pálidas">Hipocoradas / Pálidas</option>
-                <option value="Cianóticas">Cianóticas</option>
-                <option value="Ictéricas">Ictéricas</option>
-              </select>
-              <span style={estiloRef}>{refTxt("mucosas")}</span>
-            </div>
-          </div>
-
-          {animalId && refs && (
-            <div style={{ fontSize: "11px", color: "#64748b", marginTop: "-8px", marginBottom: "18px" }}>
-              {refs.fonte_ref}
-              {(refs.nome_cientifico || refs.faixa_etaria) && (
-                <span style={{ display: "block", marginTop: "2px" }}>
-                  🧬 {refs.nome_cientifico || "nome científico pendente"}
-                  {refs.faixa_etaria ? ` · faixa etária: ${refs.faixa_etaria}` : ""}
-                </span>
+              {animalId && refs && (
+                <div style={{ fontSize: "11px", lineHeight: 1.45, color: "#475569", marginTop: "12px" }}>
+                  {refs.fonte_ref}
+                  {(refs.nome_cientifico || refs.faixa_etaria) && (
+                    <span style={{ display: "block", marginTop: "2px" }}>
+                      🧬 {refs.nome_cientifico || "nome científico pendente"}
+                      {refs.faixa_etaria ? ` · faixa etária: ${refs.faixa_etaria}` : ""}
+                    </span>
+                  )}
+                </div>
               )}
-            </div>
-          )}
+            </section>
 
-          <div style={{ marginBottom: "25px", display: "grid", gap: "14px" }}>
-            <div>
-              <label style={estiloLabel}>Queixa Principal / Motivo</label>
-              <textarea 
-                rows={2} 
-                value={queixaPrincipal} 
-                onChange={(e) => setQueixaPrincipal(e.target.value)} 
-                style={{ ...estiloInput, height: "auto", minHeight: "68px", padding: "10px 12px", resize: "vertical" }} 
-              />
-            </div>
+            <section style={{ ...estiloPainel, display: "flex", flexDirection: "column" }} aria-label="Anotações clínicas">
+              <h3 style={estiloTituloPainel}>Anotações clínicas</h3>
 
-            <div>
-              <label style={estiloLabel}>Exame Físico / Achados Clínicos</label>
-              <textarea rows={3} value={exameFisico} onChange={(e) => setExameFisico(e.target.value)} style={{ ...estiloInput, height: "auto", padding: "10px" }} />
-            </div>
+              <div style={{ display: "flex", flexDirection: "column", flex: 1, marginBottom: "14px" }}>
+                <label htmlFor="cns-queixa" style={estiloLabel}>Queixa principal / motivo</label>
+                <textarea
+                  id="cns-queixa"
+                  value={queixaPrincipal}
+                  onChange={(e) => setQueixaPrincipal(e.target.value)}
+                  style={{ ...estiloInput, height: "auto", flex: 1, minHeight: "110px", padding: "10px 12px", resize: "vertical", lineHeight: 1.45 }}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                <label htmlFor="cns-exame" style={estiloLabel}>Exame físico / achados clínicos</label>
+                <textarea
+                  id="cns-exame"
+                  value={exameFisico}
+                  onChange={(e) => setExameFisico(e.target.value)}
+                  style={{ ...estiloInput, height: "auto", flex: 1, minHeight: "110px", padding: "10px 12px", resize: "vertical", lineHeight: 1.45 }}
+                />
+              </div>
+            </section>
           </div>
 
           {/* COPILOTO CLÍNICO & ANÁLISE DE EXAMES */}
-          <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "16px", marginBottom: "24px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+          <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "16px", marginBottom: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginBottom: "6px" }}>
               <h4 style={{ margin: 0, color: "#166534", display: "flex", alignItems: "center", gap: "6px", fontSize: "15px" }}>
                 <MdPsychology size={20} /> Copiloto Clínico & Análise de Exames (VetAssist AI)
               </h4>
-              <button 
-                type="button" 
-                onClick={consultarCopilotoComAnexo} 
-                disabled={carregandoCopiloto} 
-                style={{ backgroundColor: carregandoCopiloto ? "#9ca3af" : "#15803d", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: carregandoCopiloto ? "not-allowed" : "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}
-              >
-                <MdAutoAwesome size={16} /> {carregandoCopiloto ? "Analisando..." : "Analisar Atendimento + Exame"}
-              </button>
+              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                {refsPendentes && (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", backgroundColor: "#fffbeb", color: "#92400e", border: "1px solid #fcd34d", borderRadius: "999px", padding: "4px 10px", fontSize: "12px", fontWeight: 600 }}>
+                    <span aria-hidden="true">!</span> Referências pendentes de validação veterinária
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={consultarCopilotoComAnexo}
+                  disabled={analiseDesabilitada}
+                  title={!queixaPrincipal.trim() ? "Preencha a queixa principal para analisar" : undefined}
+                  style={{ backgroundColor: analiseDesabilitada ? "#9ca3af" : "#15803d", color: "white", border: "none", padding: "9px 16px", borderRadius: "8px", cursor: analiseDesabilitada ? "not-allowed" : "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px", boxShadow: analiseDesabilitada ? "none" : "0 1px 3px rgba(21, 128, 61, 0.4)" }}
+                >
+                  <MdAutoAwesome size={16} /> {carregandoCopiloto ? "Analisando..." : "Analisar atendimento + exame"}
+                </button>
+              </div>
             </div>
 
+            <p style={{ margin: "0 0 14px 0", fontSize: "12px", color: "#475569", lineHeight: 1.45 }}>
+              {!queixaPrincipal.trim()
+                ? "Preencha a queixa principal para liberar a análise. "
+                : ""}
+              A análise da IA é apoio à decisão e precisa ser validada pelo veterinário responsável.
+            </p>
+
             {carregandoCopiloto && (
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", backgroundColor: "#ecfdf5", border: "1px solid #6ee7b7", padding: "12px 16px", borderRadius: "8px", marginBottom: "14px" }}>
+              <div role="status" style={{ display: "flex", alignItems: "center", gap: "12px", backgroundColor: "#ecfdf5", border: "1px solid #6ee7b7", padding: "12px 16px", borderRadius: "8px", marginBottom: "14px" }}>
                 <div style={{ width: "20px", height: "20px", border: "3px solid #10b981", borderTop: "3px solid transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
                 <div>
                   <div style={{ fontSize: "13px", fontWeight: "bold", color: "#065f46" }}>O Copiloto Clínico está analisando o caso...</div>
@@ -666,85 +752,81 @@ function Consultas() {
               </div>
             )}
 
-            <div style={{ fontSize: "12px", color: "#374151", marginBottom: "6px", fontWeight: "500" }}>
-              📎 Anexar Raio-X, Ultrassom ou Laudo (Múltiplas Imagens ou PDFs) para a IA analisar:
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px", marginBottom: "14px", backgroundColor: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px dashed #15803d", width: "100%", minHeight: "55px", maxHeight: "95px", overflowY: "auto", boxSizing: "border-box" }}>
-              <label style={{ fontSize: "13px", color: "#15803d", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
-                <MdAttachFile size={16} /> Selecionar Arquivos de Exames / Laudos
-                <input 
-                  type="file" 
-                  multiple 
-                  onChange={(e) => setArquivosExames(Array.from(e.target.files))} 
-                  style={{ display: "none" }} 
-                />
-              </label>
-              {arquivosExames.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "4px" }}>
-                  {arquivosExames.map((arq, idx) => (
-                    <span key={idx} style={{ fontSize: "11px", color: "#166534", fontWeight: "500" }}>📄 {arq.name}</span>
-                  ))}
-                  <button 
-                    type="button" 
-                    onClick={() => setArquivosExames([])} 
-                    style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "11px", fontWeight: "bold", textAlign: "left", padding: 0 }}
-                  >
-                    Remover todos
-                  </button>
+            <div className="cns-ia-grid">
+              {/* ANEXOS */}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: "12px", color: "#374151", marginBottom: "6px", fontWeight: "600" }}>
+                  Exames e laudos para a IA analisar (Raio-X, ultrassom, imagens ou PDFs)
                 </div>
-              )}
-            </div>
+                <div style={{ backgroundColor: "#ffffff", padding: "10px 12px", borderRadius: "8px", border: "1px dashed #15803d", boxSizing: "border-box", minHeight: "112px" }}>
+                  <label style={{ fontSize: "13px", color: "#15803d", fontWeight: "600", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", margin: 0 }}>
+                    <MdAttachFile size={16} /> Selecionar arquivos
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,application/pdf"
+                      onChange={(e) => {
+                        const novos = Array.from(e.target.files || []);
+                        setArquivosExames((prev) => [...prev, ...novos]);
+                        e.target.value = "";
+                      }}
+                      style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
+                    />
+                  </label>
 
-            <div style={{ fontSize: "12px", color: "#374151", marginBottom: "4px", fontWeight: "500" }}>
-              🩺 Suspeita Diagnóstica (Preenchido pela IA ou Editável)
-            </div>
-            <textarea 
-              rows={2} 
-              value={suspeitaDiagnostica} 
-              onChange={(e) => setSuspeitaDiagnostica(e.target.value)} 
-              style={{ ...estiloInput, height: "auto", padding: "10px", borderColor: "#15803d", backgroundColor: "#ffffff", marginBottom: "14px" }} 
-              placeholder="A suspeita diagnóstica aparecerá aqui após a análise..."
-            />
-
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", padding: "10px 14px", borderRadius: "8px", marginBottom: "14px" }}>
-              <input 
-                type="checkbox" 
-                checked={solicitarExamesPreventivos} 
-                onChange={(e) => setSolicitarExamesPreventivos(e.target.checked)} 
-                style={{ width: "16px", height: "16px", cursor: "pointer" }} 
-              />
-              <label style={{ fontSize: "13px", color: "#166534", fontWeight: "600", cursor: "pointer", margin: 0 }}>
-                💡 Tutor solicitou exames preventivos / Check-up de rotina nesta visita
-              </label>
-            </div>
-
-            {/* CAIXA DE STATUS DE INDICAÇÃO CIRÚRGICA */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: temIndicacaoReal ? "#dcfce7" : "#f8fafc", border: `1px solid ${temIndicacaoReal ? "#86efac" : "#e2e8f0"}`, padding: "12px 14px", borderRadius: "8px", marginBottom: "14px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "18px" }}>{temIndicacaoReal ? "🔪" : "➕"}</span>
-                <div>
-                  <div style={{ fontSize: "13px", fontWeight: "bold", color: temIndicacaoReal ? "#166534" : "#334155" }}>
-                    {temIndicacaoReal ? "Indicação Cirúrgica Detetada pela IA." : "Sem indicação cirúrgica automática detetada."}
-                  </div>
-                  <div style={{ fontSize: "12px", color: temIndicacaoReal ? "#14532d" : "#64748b", marginTop: "2px" }}>
-                    {justificativaCirurgica || (temIndicacaoReal ? "Encaminhar para cirurgia de descompressão (hemilaminectomia ou corpectomia) se confirmada compressão significativa." : "Paciente sem indicação cirúrgica urgente no momento.")}
-                  </div>
+                  {arquivosExames.length === 0 ? (
+                    <div style={{ fontSize: "12px", color: "#64748b", marginTop: "6px" }}>Nenhum arquivo anexado.</div>
+                  ) : (
+                    <>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "10px" }}>
+                        {arquivosExames.map((arq, idx) => (
+                          <div key={`${arq.name}-${idx}`} style={{ position: "relative", width: "72px" }} title={arq.name}>
+                            <div style={{ width: "72px", height: "72px", borderRadius: "8px", border: "1px solid #bbf7d0", backgroundColor: "#f0fdf4", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: 700, color: "#166534" }}>
+                              {previewsExames[idx]
+                                ? <img src={previewsExames[idx]} alt={arq.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                : (arq.type === "application/pdf" ? "PDF" : "Arquivo")}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removerArquivoExame(idx)}
+                              aria-label={`Remover ${arq.name}`}
+                              style={{ position: "absolute", top: "-6px", right: "-6px", width: "20px", height: "20px", borderRadius: "50%", border: "1px solid #fca5a5", backgroundColor: "#ffffff", color: "#b91c1c", cursor: "pointer", fontSize: "11px", lineHeight: 1, padding: 0 }}
+                            >
+                              ✕
+                            </button>
+                            <div style={{ fontSize: "11px", color: "#166534", marginTop: "3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{arq.name}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setArquivosExames([])}
+                        style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", fontSize: "12px", fontWeight: "bold", padding: 0, marginTop: "8px" }}
+                      >
+                        Remover todos
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <input 
-                  type="checkbox" 
-                  checked={forcarCirurgia} 
-                  onChange={(e) => setForcarCirurgia(e.target.checked)} 
-                  style={{ width: "16px", height: "16px", cursor: "pointer" }} 
+
+              {/* SUSPEITA DIAGNÓSTICA */}
+              <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
+                <label htmlFor="cns-suspeita" style={{ fontSize: "12px", color: "#374151", marginBottom: "6px", fontWeight: "600" }}>
+                  Suspeita diagnóstica (preenchida pela IA, editável)
+                </label>
+                <textarea
+                  id="cns-suspeita"
+                  value={suspeitaDiagnostica}
+                  onChange={(e) => setSuspeitaDiagnostica(e.target.value)}
+                  style={{ ...estiloInput, height: "auto", flex: 1, minHeight: "112px", padding: "10px", borderColor: "#15803d", backgroundColor: "#ffffff", resize: "vertical", lineHeight: 1.45 }}
+                  placeholder="A suspeita diagnóstica aparecerá aqui após a análise..."
                 />
-                <label style={{ fontSize: "12px", fontWeight: "600", color: "#334155", cursor: "pointer" }}>Forçar Cirurgia</label>
               </div>
             </div>
 
             {sugestoesCopiloto && (
-              <div style={{ padding: "16px", backgroundColor: "#ffffff", borderRadius: "8px", border: "1px solid #d1d5db" }}>
+              <div style={{ padding: "16px", backgroundColor: "#ffffff", borderRadius: "8px", border: "1px solid #d1d5db", marginTop: "14px" }}>
                 <div style={{ fontSize: "14px", fontWeight: "bold", color: "#166534", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
                   🤖 Parecer Detalhado do Copiloto:
                 </div>
@@ -753,11 +835,48 @@ function Consultas() {
                 </div>
               </div>
             )}
+
+            {/* RODAPÉ DO BLOCO DE IA: OPÇÕES E INDICAÇÃO CIRÚRGICA */}
+            <div className="cns-ia-grid" style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px solid #bbf7d0", alignItems: "stretch" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#ffffff", border: "1px solid #bbf7d0", padding: "10px 14px", borderRadius: "8px" }}>
+                <input
+                  id="cns-preventivos"
+                  type="checkbox"
+                  checked={solicitarExamesPreventivos}
+                  onChange={(e) => setSolicitarExamesPreventivos(e.target.checked)}
+                  style={{ width: "16px", height: "16px", cursor: "pointer", flexShrink: 0 }}
+                />
+                <label htmlFor="cns-preventivos" style={{ fontSize: "13px", color: "#166534", fontWeight: "600", cursor: "pointer", margin: 0 }}>
+                  Tutor solicitou exames preventivos / check-up de rotina nesta visita
+                </label>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", backgroundColor: temIndicacaoReal ? "#dcfce7" : "#ffffff", border: `1px solid ${temIndicacaoReal ? "#86efac" : "#e2e8f0"}`, padding: "10px 14px", borderRadius: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: "200px" }}>
+                  <span style={{ fontSize: "18px" }} aria-hidden="true">{temIndicacaoReal ? "🔪" : "➕"}</span>
+                  <div>
+                    <div style={{ fontSize: "13px", fontWeight: "bold", color: temIndicacaoReal ? "#166534" : "#334155" }}>{tituloCirurgia}</div>
+                    <div style={{ fontSize: "12px", color: temIndicacaoReal ? "#14532d" : "#64748b", marginTop: "2px", lineHeight: 1.4 }}>{detalheCirurgia}</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <input
+                    id="cns-forcar-cirurgia"
+                    type="checkbox"
+                    checked={forcarCirurgia}
+                    onChange={(e) => setForcarCirurgia(e.target.checked)}
+                    style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                  />
+                  <label htmlFor="cns-forcar-cirurgia" style={{ fontSize: "12px", fontWeight: "600", color: "#334155", cursor: "pointer" }}>Forçar cirurgia</label>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "24px", paddingTop: "16px", borderTop: "1px solid #f3f4f6" }}>
-            <button type="button" onClick={() => { limparFormulario(); setMostrarFormulario(false); }} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Fechar</button>
-            <button type="button" onClick={salvarConsulta} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 22px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Salvar Atendimento</button>
+          {/* BARRA DE AÇÕES */}
+          <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap", gap: "10px", marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
+            <button type="button" onClick={() => { limparFormulario(); setMostrarFormulario(false); }} style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Fechar</button>
+            <button type="button" onClick={salvarConsulta} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "700", boxShadow: "0 2px 4px rgba(22, 163, 74, 0.35)" }}>Salvar atendimento</button>
           </div>
         </div>
       )}
@@ -765,10 +884,25 @@ function Consultas() {
       {/* TABELA DE CONSULTAS */}
       {!mostrarFormulario && (
         <>
-          <div style={{ display: "flex", gap: "8px", backgroundColor: "#e2e8f0", padding: "4px", borderRadius: "10px", marginBottom: "16px", width: "fit-content" }}>
-            <button onClick={() => setAbaAtiva("ativos")} style={{ backgroundColor: abaAtiva === "ativos" ? "#4f46e5" : "transparent", color: abaAtiva === "ativos" ? "white" : "#475569", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>🟢 Ativos</button>
-            <button onClick={() => setAbaAtiva("finalizados")} style={{ backgroundColor: abaAtiva === "finalizados" ? "#4f46e5" : "transparent", color: abaAtiva === "finalizados" ? "white" : "#475569", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>✅ Finalizados</button>
-            <button onClick={() => setAbaAtiva("todos")} style={{ backgroundColor: abaAtiva === "todos" ? "#4f46e5" : "transparent", color: abaAtiva === "todos" ? "white" : "#475569", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>📋 Todos</button>
+          <div role="tablist" aria-label="Filtro de atendimentos" style={{ display: "flex", gap: "6px", backgroundColor: "#e2e8f0", padding: "4px", borderRadius: "10px", marginBottom: "16px", width: "fit-content", maxWidth: "100%", flexWrap: "wrap" }}>
+            {[
+              { id: "ativos", rotulo: "🟢 Ativos" },
+              { id: "finalizados", rotulo: "✅ Finalizados" },
+              { id: "todos", rotulo: "📋 Todos" },
+            ].map((aba) => {
+              const ativa = abaAtiva === aba.id;
+              return (
+                <button
+                  key={aba.id}
+                  role="tab"
+                  aria-selected={ativa}
+                  onClick={() => setAbaAtiva(aba.id)}
+                  style={{ backgroundColor: ativa ? "#4f46e5" : "transparent", color: ativa ? "#ffffff" : "#334155", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "13px", boxShadow: ativa ? "0 2px 5px rgba(79, 70, 229, 0.4)" : "none" }}
+                >
+                  {aba.rotulo}
+                </button>
+              );
+            })}
           </div>
 
           <div style={{ overflowX: "auto", backgroundColor: "white", borderRadius: "12px", border: "1px solid #e5e7eb" }}>
