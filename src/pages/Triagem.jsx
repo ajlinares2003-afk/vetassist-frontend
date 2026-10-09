@@ -10,11 +10,11 @@ import api from "../api/api";
 import Layout from "../components/Layout";
 
 const CORES_MANCHESTER = {
-  VERMELHO: { nome: "Emergência", bg: "#fee2e2", text: "#991b1b", border: "#fca5a5", badge: "🔴 0 min" },
-  LARANJA: { nome: "Muito Urgente", bg: "#ffedd5", text: "#c2410c", border: "#fdba74", badge: "🟠 10 min" },
-  AMARELO: { nome: "Urgente", bg: "#fef9c3", text: "#a16207", border: "#fde047", badge: "🟡 60 min" },
-  VERDE: { nome: "Pouco Urgente", bg: "#dcfce7", text: "#15803d", border: "#86efac", badge: "🟢 120 min" },
-  AZUL: { nome: "Não Urgente", bg: "#e0f2fe", text: "#0369a1", border: "#7dd3fc", badge: "🔵 240 min" },
+  VERMELHO: { nome: "Emergência", bg: "#fee2e2", text: "#991b1b", border: "#fca5a5", badge: "🔴 0 min", inactiveBg: "#fff5f5" },
+  LARANJA: { nome: "Muito Urgente", bg: "#ffedd5", text: "#c2410c", border: "#fdba74", badge: "🟠 10 min", inactiveBg: "#fff7ed" },
+  AMARELO: { nome: "Urgente", bg: "#fef9c3", text: "#a16207", border: "#fde047", badge: "🟡 60 min", inactiveBg: "#fefce8" },
+  VERDE: { nome: "Pouco Urgente", bg: "#dcfce7", text: "#15803d", border: "#86efac", badge: "🟢 120 min", inactiveBg: "#f0fdf4" },
+  AZUL: { nome: "Não Urgente", bg: "#e0f2fe", text: "#0369a1", border: "#7dd3fc", badge: "🔵 240 min", inactiveBg: "#f0f9ff" },
 };
 
 // ---------- Alertas de sinais vitais ----------
@@ -50,7 +50,6 @@ const CORES_ALERTA = {
   atencao: { cor: "#b45309", borda: "#fcd34d", bg: "#fffbeb", icone: "⚠️" },
 };
 
-// Fonte ajustada para 10px e fontWeight 500 para igualar com as frases de referência
 const renderAlertaSinal = (alerta) =>
   alerta ? (
     <span style={{ fontSize: "10px", display: "block", marginTop: "3px", fontWeight: "500", color: CORES_ALERTA[alerta.nivel].cor }}>
@@ -560,8 +559,8 @@ function Triagem() {
             style={{ ...estiloInput, height: "70px", padding: "8px 10px", resize: "vertical" }} 
             placeholder="Relato do tutor..." 
           />
-          <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px", fontStyle: "italic", fontWeight: "500" }}>
-            * {refsDinamicas.fonteRef}
+          <span style={{ fontSize: "10px", color: "#64748b", display: "block", marginTop: "4px", fontStyle: "normal" }}>
+            * ⚠️ <strong>PENDENTE</strong> de validação veterinária. {refsDinamicas.fonteRef}
           </span>
           {(refsDinamicas.nomeCientifico || refsDinamicas.faixaEtaria) && (
             <span style={{ fontSize: "10px", color: "#6b7280", display: "block", marginTop: "2px" }}>
@@ -612,7 +611,7 @@ function Triagem() {
         
         {/* FORMULÁRIO DE TRIAGEM */}
         {atendimentoSelecionado ? (
-          <div style={{ backgroundColor: "white", padding: "20px", borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
             
             {/* TÍTULO COM O CÓDIGO, NOME, RAÇA E TUTOR */}
             <h3 style={{ marginTop: 0, color: "#1e1b4b", fontSize: "16px", borderBottom: "1px solid #f3f4f6", paddingBottom: "10px", marginBottom: "16px", fontWeight: "700" }}>
@@ -621,15 +620,16 @@ function Triagem() {
 
             {renderFormularioSinaisVitais()}
 
-            <div style={{ marginBottom: "16px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+            <div style={{ marginBottom: "20px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                 <label style={{ fontSize: "12px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
                 <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
                   <MdAutoAwesome /> Avaliar com IA
                 </button>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "10px" }}>
+              {/* BOTÕES DE PROTOCOLO MANCHESTER COM ESTILO PREMIUM */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "14px" }}>
                 {Object.keys(CORES_MANCHESTER).map((cor) => {
                   const item = CORES_MANCHESTER[cor];
                   const selecionado = classificacaoRisco === cor;
@@ -639,15 +639,17 @@ function Triagem() {
                       type="button"
                       onClick={() => setClassificacaoRisco(cor)}
                       style={{
-                        padding: "8px 4px",
+                        padding: "10px 4px",
                         borderRadius: "6px",
-                        border: selecionado ? `2px solid ${item.text}` : "1px solid #d1d5db",
-                        backgroundColor: selecionado ? item.bg : "#ffffff",
+                        border: selecionado ? `2px solid ${item.text}` : `1px solid ${item.border}`,
+                        backgroundColor: selecionado ? item.bg : item.inactiveBg,
                         color: item.text,
-                        fontWeight: "700",
+                        fontWeight: selecionado ? "700" : "600",
                         fontSize: "12px",
                         cursor: "pointer",
-                        textAlign: "center"
+                        textAlign: "center",
+                        boxShadow: selecionado ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
+                        transition: "all 0.15s ease-in-out"
                       }}
                     >
                       {item.nome}
@@ -657,25 +659,25 @@ function Triagem() {
               </div>
 
               {mostrarBannerUrgente && (
-                <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", padding: "10px 12px", borderRadius: "6px", fontSize: "11px", color: "#92400e", marginBottom: "10px" }}>
+                <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", padding: "12px 14px", borderRadius: "8px", fontSize: "11px", color: "#92400e", marginBottom: "12px" }}>
                   <strong>⚠️ {autoUrgente !== null && classificacaoRisco === "AMARELO" ? "Classificado automaticamente como Urgente:" : "Sugestão: Urgente —"}</strong>{" "}
                   {sinaisAlterados.join(", ")} acima do limite clínico + {sintomasGatilho.join(", ")} relatado(s) na queixa.
-                  <div style={{ display: "flex", gap: "6px", marginTop: "6px" }}>
+                  <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
                     {autoUrgente !== null && classificacaoRisco === "AMARELO" ? (
                       <>
-                        <button type="button" onClick={() => setManterClassificacao(true)} style={{ backgroundColor: "#fef9c3", color: "#a16207", border: "1px solid #fde047", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "11px", fontWeight: "700" }}>
+                        <button type="button" onClick={() => setManterClassificacao(true)} style={{ backgroundColor: "#fef9c3", color: "#a16207", border: "1px solid #fde047", padding: "5px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "700" }}>
                           Manter Urgente
                         </button>
-                        <button type="button" onClick={() => { setClassificacaoRisco(autoUrgente); setManterClassificacao(true); }} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}>
+                        <button type="button" onClick={() => { setClassificacaoRisco(autoUrgente); setManterClassificacao(true); }} style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "5px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}>
                           Desfazer ({CORES_MANCHESTER[autoUrgente]?.nome})
                         </button>
                       </>
                     ) : (
                       <>
-                        <button type="button" onClick={() => setClassificacaoRisco("AMARELO")} style={{ backgroundColor: "#fef9c3", color: "#a16207", border: "1px solid #fde047", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "11px", fontWeight: "700" }}>
+                        <button type="button" onClick={() => setClassificacaoRisco("AMARELO")} style={{ backgroundColor: "#fef9c3", color: "#a16207", border: "1px solid #fde047", padding: "5px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "700" }}>
                           Alterar para Urgente
                         </button>
-                        <button type="button" onClick={() => setManterClassificacao(true)} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}>
+                        <button type="button" onClick={() => setManterClassificacao(true)} style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "5px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}>
                           Manter {CORES_MANCHESTER[classificacaoRisco]?.nome}
                         </button>
                       </>
@@ -691,7 +693,7 @@ function Triagem() {
               )}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", borderTop: "1px solid #f3f4f6", paddingTop: "14px" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", borderTop: "1px solid #f3f4f6", paddingTop: "16px", marginTop: "12px" }}>
               <button onClick={() => setAtendimentoSelecionado(null)} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "none", padding: "8px 18px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "12px" }}>
                 Cancelar
               </button>
