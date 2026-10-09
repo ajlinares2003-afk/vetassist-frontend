@@ -50,9 +50,10 @@ const CORES_ALERTA = {
   atencao: { cor: "#b45309", borda: "#fcd34d", bg: "#fffbeb", icone: "⚠️" },
 };
 
+// Fonte ajustada para 10px e fontWeight 500 para igualar com as frases de referência
 const renderAlertaSinal = (alerta) =>
   alerta ? (
-    <span style={{ fontSize: "11px", display: "block", marginTop: "2px", fontWeight: "700", color: CORES_ALERTA[alerta.nivel].cor }}>
+    <span style={{ fontSize: "10px", display: "block", marginTop: "3px", fontWeight: "500", color: CORES_ALERTA[alerta.nivel].cor }}>
       {CORES_ALERTA[alerta.nivel].icone} {alerta.texto}
     </span>
   ) : null;
@@ -467,7 +468,7 @@ function Triagem() {
 
   const renderFormularioSinaisVitais = () => (
     <>
-      {/* GRID SIMÉTRICO: 2 LINHAS COM 4 COLUNAS IGUAIS CADA */}
+      {/* LINHA 1 E LINHA 2 DOS SINAIS VITAIS */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "16px" }}>
         
         {/* LINHA 1 */}
@@ -538,12 +539,38 @@ function Triagem() {
         </div>
       </div>
 
-      {/* DESIDRATAÇÃO DISPOSTA COM DEMAIS SINAIS VITAIS EM LARGURA MÁXIMA DE 25% */}
-      <div style={{ marginBottom: "16px", maxWidth: "25%" }}>
-        <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>Desidratação (%) — IA</label>
-        <input type="number" value={desidratacao} onChange={(e) => setDesidratacao(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f0fdf4", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado..." />
-        <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>💡 Normal: &lt; 5% (TPC/Mucosas)</span>
-        {renderAlertaSinal(alertaDesidratacao)}
+      {/* LINHA 3: DESIDRATAÇÃO (1/4) + QUEIXA PRINCIPAL (3/4) NA MESMA LINHA */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "16px", alignItems: "start" }}>
+        
+        {/* DESIDRATAÇÃO */}
+        <div>
+          <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>Desidratação (%) — IA</label>
+          <input type="number" value={desidratacao} onChange={(e) => setDesidratacao(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f0fdf4", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado..." />
+          <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>💡 Normal: &lt; 5% (TPC/Mucosas)</span>
+          {renderAlertaSinal(alertaDesidratacao)}
+        </div>
+
+        {/* QUEIXA PRINCIPAL Ocupando 3 Colunas */}
+        <div style={{ gridColumn: "span 3" }}>
+          <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "4px" }}>Queixa Principal *</label>
+          <textarea 
+            rows={3} 
+            value={queixaPrincipal} 
+            onChange={(e) => setQueixaPrincipal(e.target.value)} 
+            style={{ ...estiloInput, height: "70px", padding: "8px 10px", resize: "vertical" }} 
+            placeholder="Relato do tutor..." 
+          />
+          <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px", fontStyle: "italic", fontWeight: "500" }}>
+            * {refsDinamicas.fonteRef}
+          </span>
+          {(refsDinamicas.nomeCientifico || refsDinamicas.faixaEtaria) && (
+            <span style={{ fontSize: "10px", color: "#6b7280", display: "block", marginTop: "2px" }}>
+              🧬 {refsDinamicas.nomeCientifico || "nome científico pendente"}
+              {refsDinamicas.faixaEtaria ? ` · faixa etária: ${refsDinamicas.faixaEtaria}` : ""}
+              {buscandoRefs ? " · buscando..." : ""}
+            </span>
+          )}
+        </div>
       </div>
     </>
   );
@@ -593,27 +620,6 @@ function Triagem() {
             </h3>
 
             {renderFormularioSinaisVitais()}
-
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "4px" }}>Queixa Principal *</label>
-              <textarea 
-                rows={3} 
-                value={queixaPrincipal} 
-                onChange={(e) => setQueixaPrincipal(e.target.value)} 
-                style={{ ...estiloInput, height: "70px", padding: "8px 10px", resize: "vertical" }} 
-                placeholder="Relato do tutor..." 
-              />
-              <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px", fontStyle: "italic", fontWeight: "500" }}>
-                * {refsDinamicas.fonteRef}
-              </span>
-              {(refsDinamicas.nomeCientifico || refsDinamicas.faixaEtaria) && (
-                <span style={{ fontSize: "10px", color: "#6b7280", display: "block", marginTop: "2px" }}>
-                  🧬 {refsDinamicas.nomeCientifico || "nome científico pendente"}
-                  {refsDinamicas.faixaEtaria ? ` · faixa etária: ${refsDinamicas.faixaEtaria}` : ""}
-                  {buscandoRefs ? " · buscando..." : ""}
-                </span>
-              )}
-            </div>
 
             <div style={{ marginBottom: "16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
