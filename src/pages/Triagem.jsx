@@ -86,6 +86,7 @@ function Triagem() {
   const [classificacaoRisco, setClassificacaoRisco] = useState("VERDE");
   const [justificativa, setJustificativa] = useState("");
   const [manterClassificacao, setManterClassificacao] = useState(false);
+  const [autoUrgente, setAutoUrgente] = useState(null); // cor anterior, se o sistema subiu para Urgente
 
   const [refsDinamicas, setRefsDinamicas] = useState({
       pesoRef: "💡 Ref. Peso: Selecione o paciente...",
@@ -114,6 +115,7 @@ function Triagem() {
 
   useEffect(() => {
     setManterClassificacao(false);
+    setAutoUrgente(null);
   }, [atendimentoSelecionado]);
 
   useEffect(() => {
@@ -367,6 +369,10 @@ function Triagem() {
   const salvarTriagemExistente = async () => {
     if (!queixaPrincipal) return setMensagem({ tipo: "erro", texto: "Informe a queixa principal do paciente." });
 
+    if (sugerirUrgente && !window.confirm(`Sinais acima do limite (${sinaisAlterados.join(", ")}) + ${sintomasGatilho.join(", ")}, mas a classificação está como "${CORES_MANCHESTER[classificacaoRisco]?.nome}". Finalizar assim mesmo?`)) {
+      return;
+    }
+
     try {
       setCarregando(true);
       const token = localStorage.getItem("token");
@@ -378,10 +384,6 @@ function Triagem() {
         if (animalEncontrado) {
           await api.put(`/animais/${animalIdAlvo}`, { ...animalEncontrado, peso: parseFloat(peso) }, config).catch(() => {});
         }
-      }
-
-      if (sugerirUrgente && !window.confirm(`Sinais vitais alterados (${sinaisAlterados.join(", ")}) + sintomas relatados, mas a classificação está como "${CORES_MANCHESTER[classificacaoRisco]?.nome}". Finalizar assim mesmo?`)) {
-        return;
       }
 
       const payload = {
@@ -427,15 +429,38 @@ function Triagem() {
       : null;
   })();
 
+  // Sinais ACIMA do limite clínico (Temp, FC ou FR)
   const sinaisAlterados = [
     ["Temp", alertaTemp], ["FC", alertaFC], ["FR", alertaFR],
-  ].filter(([, a]) => a && (a.nivel === "alto" || a.nivel === "baixo")).map(([nome]) => nome);
+  ].filter(([, a]) => a && a.nivel === "alto").map(([nome]) => nome);
 
-  const sugerirUrgente =
-    sinaisAlterados.length >= 2 &&
-    queixaPrincipal.trim().length > 0 &&
-    ["VERDE", "AZUL"].includes(classificacaoRisco) &&
-    !manterClassificacao;
+  // Sintomas gatilho na queixa: inapetência / letargia / polidipsia / vômito
+  const SINTOMAS_GATILHO = [
+    ["inapetência", /(inapet|anorexi|sem apetite|nao (quer )?comer|nao comeu|recus\w* (a )?(racao|comida|alimento))/],
+    ["letargia", /(letarg|apatic|prostrad|desanimad|abatid|mais quiet|muito quiet|quietinh)/],
+    ["polidipsia", /(polidips|bebe\w* mais|mais agua|muita agua|sede excessiva)/],
+    ["vômito", /(vomit|regurgit)/],
+  ];
+  const queixaNorm = normalizarTexto(queixaPrincipal);
+  const sintomasGatilho = SINTOMAS_GATILHO.filter(([, re]) => re.test(queixaNorm)).map(([nome]) => nome);
+
+  // (Temp > limite OU FC > limite OU FR > limite) E (sintoma gatilho) → sugerir URGENTE
+  const gatilhoUrgente = sinaisAlterados.length > 0 && sintomasGatilho.length > 0;
+  const classificacaoBaixa = ["VERDE", "AZUL"].includes(classificacaoRisco);
+
+  // usado na confirmação ao finalizar (classificação ainda baixa e sem decisão do veterinário)
+  const sugerirUrgente = gatilhoUrgente && classificacaoBaixa && !manterClassificacao;
+  const mostrarBannerUrgente =
+    gatilhoUrgente && !manterClassificacao &&
+    (classificacaoBaixa || (autoUrgente !== null && classificacaoRisco === "AMARELO"));
+
+  // Aplica automaticamente "Urgente" uma única vez por atendimento
+  useEffect(() => {
+    if (gatilhoUrgente && !manterClassificacao && autoUrgente === null && classificacaoBaixa) {
+      setAutoUrgente(classificacaoRisco);
+      setClassificacaoRisco("AMARELO");
+    }
+  }, [gatilhoUrgente, manterClassificacao, autoUrgente, classificacaoBaixa, classificacaoRisco]);
 
   const renderFormularioSinaisVitais = () => (
     <>
@@ -677,16 +702,30 @@ function Triagem() {
                 })}
               </div>
 
-              {sugerirUrgente && (
+              {mostrarBannerUrgente && (
                 <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", padding: "5px 8px", borderRadius: "5px", fontSize: "10px", color: "#92400e", marginBottom: "4px" }}>
-                  <strong>⚠️ Confirmar classificação:</strong> com sinais vitais alterados ({sinaisAlterados.join(", ")}) + sintomas relatados → considerar <strong>Urgente</strong> ou superior.
+                  <strong>⚠️ {autoUrgente !== null && classificacaoRisco === "AMARELO" ? "Classificado automaticamente como Urgente:" : "Sugestão: Urgente —"}</strong>{" "}
+                  {sinaisAlterados.join(", ")} acima do limite clínico + {sintomasGatilho.join(", ")} relatado(s) na queixa.
                   <div style={{ display: "flex", gap: "4px", marginTop: "3px" }}>
-                    <button type="button" onClick={() => setClassificacaoRisco("AMARELO")} style={{ backgroundColor: "#fef9c3", color: "#a16207", border: "1px solid #fde047", padding: "2px 6px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "700" }}>
-                      Alterar para Urgente
-                    </button>
-                    <button type="button" onClick={() => setManterClassificacao(true)} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", padding: "2px 6px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "600" }}>
-                      Manter {CORES_MANCHESTER[classificacaoRisco]?.nome}
-                    </button>
+                    {autoUrgente !== null && classificacaoRisco === "AMARELO" ? (
+                      <>
+                        <button type="button" onClick={() => setManterClassificacao(true)} style={{ backgroundColor: "#fef9c3", color: "#a16207", border: "1px solid #fde047", padding: "2px 6px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "700" }}>
+                          Manter Urgente
+                        </button>
+                        <button type="button" onClick={() => { setClassificacaoRisco(autoUrgente); setManterClassificacao(true); }} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", padding: "2px 6px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "600" }}>
+                          Desfazer ({CORES_MANCHESTER[autoUrgente]?.nome})
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" onClick={() => setClassificacaoRisco("AMARELO")} style={{ backgroundColor: "#fef9c3", color: "#a16207", border: "1px solid #fde047", padding: "2px 6px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "700" }}>
+                          Alterar para Urgente
+                        </button>
+                        <button type="button" onClick={() => setManterClassificacao(true)} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", padding: "2px 6px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontWeight: "600" }}>
+                          Manter {CORES_MANCHESTER[classificacaoRisco]?.nome}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
