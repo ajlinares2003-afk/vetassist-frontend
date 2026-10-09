@@ -276,15 +276,15 @@ function Checkin() {
       {/* Modal de Novo Check-in Ampliada */}
       {mostrarModal && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "20px" }}>
-          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "14px", maxWidth: "680px", width: "100%", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" }}>
+          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "14px", maxWidth: "780px", width: "100%", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" }}>
             <h3 style={{ marginTop: 0, color: "#1e1b4b", fontSize: "20px", marginBottom: "20px", borderBottom: "1px solid #f3f4f6", paddingBottom: "12px" }}>
               📋 Novo Check-in de Paciente
             </h3>
             
             <form onSubmit={realizarCheckin}>
               
-              {/* LINHA DE DUAS COLUNAS: BUSCA RÁPIDA E SELEÇÃO DE PACIENTE COM RAÇA */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+              {/* LINHA DE DUAS COLUNAS: PROPORÇÃO 1fr PARA BUSCA E 1.8fr PARA O PACIENTE */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.8fr", gap: "16px", marginBottom: "16px" }}>
                 <div>
                   <label style={estiloLabel}>Busca Rápida (Pet ou Tutor)</label>
                   <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
@@ -310,7 +310,7 @@ function Checkin() {
                       const raca = a.raca ? ` - ${a.raca}` : "";
                       return (
                         <option key={a.id} value={a.id}>
-                          {a.nome} ({especie}{raca}) — Tutor: {nomeTutor}
+                          {a.nome} ({especie}${raca}) — Tutor: {nomeTutor}
                         </option>
                       );
                     })}
