@@ -263,7 +263,6 @@ function Triagem() {
     return a ? `${a.nome} (${a.codigo || `PET-${a.id}`})` : `-`;
   };
 
-  // Monta a string completa de identificação no cabeçalho
   const obterHeaderDetalhado = (consulta) => {
     if (!consulta) return "";
     const a = animais.find((item) => item.id === consulta.animal_id);
@@ -468,9 +467,11 @@ function Triagem() {
 
   const renderFormularioSinaisVitais = () => (
     <>
-      {/* LINHA 1: VETERINÁRIO RESPONSÁVEL COM LARGURA COMPACTA (MAX 380PX) */}
-      <div style={{ marginBottom: "16px" }}>
-        <div style={{ maxWidth: "380px" }}>
+      {/* GRID SIMÉTRICO: 2 LINHAS COM 4 COLUNAS IGUAIS CADA */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "16px" }}>
+        
+        {/* LINHA 1 */}
+        <div>
           <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>
             👨‍⚕️ Veterinário Responsável *
           </label>
@@ -483,10 +484,7 @@ function Triagem() {
             ))}
           </select>
         </div>
-      </div>
 
-      {/* LINHA 2: MATRIZ DE SINAIS VITAIS REDISTRIBUÍDA EM 4 COLUNAS IGUAIS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "16px" }}>
         <div>
           <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>Peso (kg)</label>
           <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} style={estiloInput} placeholder="Ex: 3.5" />
@@ -506,6 +504,7 @@ function Triagem() {
           {renderAlertaSinal(alertaTemp)}
         </div>
 
+        {/* LINHA 2 */}
         <div>
           <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>FC (bpm)</label>
           <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloAlerta(alertaFC)} placeholder="Ex: 150" />
@@ -537,13 +536,14 @@ function Triagem() {
           </select>
           <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>{refsDinamicas.mucosasRef}</span>
         </div>
+      </div>
 
-        <div>
-          <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>Desidratação (%) — IA</label>
-          <input type="number" value={desidratacao} onChange={(e) => setDesidratacao(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f0fdf4", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado..." />
-          <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>💡 Normal: &lt; 5% (TPC/Mucosas)</span>
-          {renderAlertaSinal(alertaDesidratacao)}
-        </div>
+      {/* DESIDRATAÇÃO DISPOSTA COM DEMAIS SINAIS VITAIS EM LARGURA MÁXIMA DE 25% */}
+      <div style={{ marginBottom: "16px", maxWidth: "25%" }}>
+        <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>Desidratação (%) — IA</label>
+        <input type="number" value={desidratacao} onChange={(e) => setDesidratacao(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f0fdf4", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado..." />
+        <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>💡 Normal: &lt; 5% (TPC/Mucosas)</span>
+        {renderAlertaSinal(alertaDesidratacao)}
       </div>
     </>
   );
