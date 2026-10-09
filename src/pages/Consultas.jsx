@@ -355,6 +355,11 @@ function Consultas() {
     return a ? `${a.nome} (${a.codigo || `PET-${a.id}`})` : `-`;
   };
 
+  const obterPesoFormatado = (c) => {
+    const val = c.peso_atendimento ?? c.peso ?? (animais.find(a => a.id === c.animal_id)?.peso);
+    return val !== undefined && val !== null && val !== "" ? `${val} kg` : "-";
+  };
+
   const renderBadgeTemperatura = (temp) => {
     if (!temp && temp !== 0) return "-";
     const valor = Number(temp);
@@ -610,7 +615,7 @@ function Consultas() {
               </label>
             </div>
 
-            {/* CAIXA DE STATUS DE INDICAÇÃO CIRÚRGICA ATUALIZADA */}
+            {/* CAIXA DE STATUS DE INDICAÇÃO CIRÚRGICA */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: temIndicacaoReal ? "#dcfce7" : "#f8fafc", border: `1px solid ${temIndicacaoReal ? "#86efac" : "#e2e8f0"}`, padding: "12px 14px", borderRadius: "8px", marginBottom: "14px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <span style={{ fontSize: "18px" }}>{temIndicacaoReal ? "🔪" : "➕"}</span>
@@ -682,7 +687,7 @@ function Consultas() {
                       <td style={{ padding: "14px", fontWeight: "bold", color: "#4f46e5", whiteSpace: "nowrap" }}>{c.codigo || `CNS-${c.id}`}</td>
                       <td style={{ padding: "14px", fontWeight: "600", whiteSpace: "nowrap" }}>{obterNomeAnimal(c.animal_id)}</td>
                       <td style={{ padding: "14px", color: "#4b5563", textAlign: "left" }}>{c.queixa_principal}</td>
-                      <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{c.peso_atendimento ?? c.peso ? `${c.peso_atendimento ?? c.peso} kg` : "-"}</td>
+                      <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{obterPesoFormatado(c)}</td>
                       <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeTemperatura(c.temperatura)}</td>
                       <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeStatus(c.status)}</td>
                       <td style={{ padding: "14px", display: "flex", justifyContent: "center", gap: "6px", whiteSpace: "nowrap" }}>
@@ -721,7 +726,7 @@ function Consultas() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "16px", fontSize: "14px", color: "#374151" }}>
               <div><strong>Paciente:</strong> {obterNomeAnimal(consultaDetalhes.animal_id)}</div>
               <div><strong>Status:</strong> {consultaDetalhes.status}</div>
-              <div><strong>Peso:</strong> {consultaDetalhes.peso_atendimento ?? consultaDetalhes.peso ? `${consultaDetalhes.peso_atendimento ?? consultaDetalhes.peso} kg` : "-"}</div>
+              <div><strong>Peso:</strong> {obterPesoFormatado(consultaDetalhes)}</div>
               <div><strong>Temperatura:</strong> {consultaDetalhes.temperatura ? `${consultaDetalhes.temperatura} °C` : "-"}</div>
             </div>
             <div style={{ marginBottom: "14px" }}>
