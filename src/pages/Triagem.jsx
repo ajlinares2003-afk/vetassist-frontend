@@ -47,8 +47,12 @@ function Triagem() {
       fr: "Aguardando paciente...",
       tpc: "Até 2s",
       mucosasRef: "💡 Normocoradas",
-      fonteRef: "📚 Fonte: Aguardando diretrizes científicas..."
+      fonteRef: "📚 Fonte: Aguardando diretrizes científicas...",
+      pesoAplicavel: true,
+      faixaEtaria: "",
+      nomeCientifico: ""
   });
+  const [buscandoRefs, setBuscandoRefs] = useState(false);
 
   const [mensagem, setMensagem] = useState({ tipo: "", texto: "" });
   const [carregando, setCarregando] = useState(false);
@@ -67,48 +71,71 @@ function Triagem() {
     }
   }, [mensagem]);
 
+  // Depende só do ANIMAL selecionado. (Antes dependia de `animais`, que é recarregado a cada 5 s
+  // pelo polling: a busca/pesquisa da IA rodava de novo a cada ciclo.)
+  const animalIdSelecionado = atendimentoSelecionado?.animal_id ?? null;
+
   useEffect(() => {
+    if (!animalIdSelecionado) return;
+    let cancelado = false;
+
     const buscarReferenciasDaIA = async () => {
-      const animalAlvo = atendimentoSelecionado 
-        ? animais.find(a => a.id === atendimentoSelecionado.animal_id)
-        : null;
-
-      if (!animalAlvo) return;
-
+      setBuscandoRefs(true);
+      setRefsDinamicas((prev) => ({
+        ...prev,
+        pesoRef: "💡 Buscando referências...",
+        temp: "Buscando nas fontes oficiais...",
+        fc: "Buscando nas fontes oficiais...",
+        fr: "Buscando nas fontes oficiais...",
+        fonteRef: "🔎 Consultando fontes oficiais (pode levar até ~1 min na 1ª vez deste perfil)...",
+      }));
       try {
         const token = localStorage.getItem("token");
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-        const payload = {
-          especie: animalAlvo.especie,
-          sub_especie: animalAlvo.sub_especie,
-          raca: animalAlvo.raca,
-          porte: animalAlvo.porte,
-          sexo: animalAlvo.sexo,
-          idade: animalAlvo.idade,
-          nome_cientifico: animalAlvo.nome_cientifico // 👈 Adicionado para enviar o binômio científico
-        };
-
-        const res = await api.post("/triagem/referencias-ia", payload, config);
-        if (res.data) {
-          setRefsDinamicas({
-            pesoRef: res.data.peso_ref,
-            eccRef: res.data.ecc_ref || "💡 Ideal: 4 a 5 (Escala 1 a 9)",
-            temp: res.data.temperatura,
-            fc: res.data.fc,
-            fr: res.data.fr,
-            tpc: res.data.tpc,
-            mucosasRef: res.data.mucosas,
-            fonteRef: res.data.fonte_ref || "📚 Fonte: Literatura especializada em medicina zoológica."
-          });
-        }
+        // timeout maior: a pesquisa na web da IA demora mais que as demais chamadas
+        const config = { headers: { Authorization: `Bearer ${token}` }, timeout: 180000 };
+        // O backend lê espécie, sub-espécie, raça, porte, sexo, idade e nome científico do cadastro.
+        const res = await api.post("/triagem/referencias-ia", { animal_id: animalIdSelecionado }, config);
+        if (cancelado || !res.data) return;
+        setRefsDinamicas({
+          pesoRef: res.data.peso_ref,
+          eccRef: res.data.ecc_ref || "💡 Ideal: 4 a 5 (Escala 1 a 9)",
+          temp: res.data.temperatura,
+          fc: res.data.fc,
+          fr: res.data.fr,
+          tpc: res.data.tpc,
+          mucosasRef: res.data.mucosas,
+          fonteRef: res.data.fonte_ref || "📚 Fonte: Literatura especializada em medicina zoológica.",
+          pesoAplicavel: res.data.peso_ref_aplicavel !== false,
+          faixaEtaria: res.data.faixa_etaria || "",
+          nomeCientifico: res.data.nome_cientifico || "",
+        });
       } catch (err) {
         console.warn("Erro ao buscar referências dinâmicas da IA:", err);
+        if (!cancelado) {
+          setRefsDinamicas((prev) => ({
+            ...prev,
+            pesoRef: "⚠️ Ref. Peso: indisponível",
+            temp: "Referência indisponível. Consulte o veterinário",
+            fc: "Referência indisponível. Consulte o veterinário",
+            fr: "Referência indisponível. Consulte o veterinário",
+            fonteRef: "⚠️ Não foi possível buscar as referências agora. Consulte o veterinário.",
+            pesoAplicavel: false,
+          }));
+        }
+      } finally {
+        if (!cancelado) setBuscandoRefs(false);
       }
     };
     buscarReferenciasDaIA();
-  }, [atendimentoSelecionado, animais]);
+    return () => { cancelado = true; };
+  }, [animalIdSelecionado]);
 
   useEffect(() => {
+    // Filhote: a faixa de peso é a do adulto, então o ECC por peso não se aplica.
+    if (!refsDinamicas.pesoAplicavel) {
+      setEcc("Avaliar clinicamente (filhote)");
+      return;
+    }
     if (!peso || !refsDinamicas.pesoRef) {
       setEcc("");
       return;
@@ -135,7 +162,7 @@ function Triagem() {
     } else {
       setEcc("Indeterminado");
     }
-  }, [peso, refsDinamicas.pesoRef]);
+  }, [peso, refsDinamicas.pesoRef, refsDinamicas.pesoAplicavel]);
 
   // Cálculo automático do percentual de desidratação via IA
   useEffect(() => {
@@ -522,6 +549,13 @@ function Triagem() {
               <span style={{ fontSize: "9px", color: "#0284c7", display: "block", marginTop: "2px", fontStyle: "italic", fontWeight: "500" }}>
                 * {refsDinamicas.fonteRef}
               </span>
+              {(refsDinamicas.nomeCientifico || refsDinamicas.faixaEtaria) && (
+                <span style={{ fontSize: "9px", color: "#6b7280", display: "block", marginTop: "1px" }}>
+                  🧬 {refsDinamicas.nomeCientifico || "nome científico pendente"}
+                  {refsDinamicas.faixaEtaria ? ` · faixa etária: ${refsDinamicas.faixaEtaria}` : ""}
+                  {buscandoRefs ? " · buscando..." : ""}
+                </span>
+              )}
             </div>
 
             <div style={{ marginBottom: "6px" }}>
