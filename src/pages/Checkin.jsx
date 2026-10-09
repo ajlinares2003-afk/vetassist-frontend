@@ -13,7 +13,7 @@ function Checkin() {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [consultaParaExcluir, setConsultaParaExcluir] = useState(null);
 
-  // Estados do Formulário de Check-in (Peso removido)
+  // Estados do Formulário de Check-in
   const [animalId, setAnimalId] = useState("");
   const [buscaPaciente, setBuscaPaciente] = useState(""); // Campo de busca rápida
   const [usuarioId, setUsuarioId] = useState("");
@@ -63,8 +63,10 @@ function Checkin() {
     
     const t = tutores.find((tutor) => tutor.id === a.tutor_id);
     const nomeTutor = t ? t.nome : "Tutor não vinculado";
+    const especie = a.especie || "Pet";
+    const raca = a.raca ? ` - ${a.raca}` : "";
 
-    return `${a.nome} (${a.especie || "Pet"}) — Tutor: ${nomeTutor}`;
+    return `${a.nome} (${especie}${raca}) — Tutor: ${nomeTutor}`;
   };
 
   // Filtragem dos animais com base no texto digitado (pesquisa por nome do pet ou do tutor)
@@ -271,47 +273,53 @@ function Checkin() {
         </div>
       )}
 
-      {/* Modal de Novo Check-in */}
+      {/* Modal de Novo Check-in Ampliada */}
       {mostrarModal && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "20px" }}>
-          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "14px", maxWidth: "500px", width: "100%" }}>
-            <h3 style={{ marginTop: 0, color: "#1e1b4b", fontSize: "20px", marginBottom: "16px" }}>Novo Check-in de Paciente</h3>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "20px" }}>
+          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "14px", maxWidth: "680px", width: "100%", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" }}>
+            <h3 style={{ marginTop: 0, color: "#1e1b4b", fontSize: "20px", marginBottom: "20px", borderBottom: "1px solid #f3f4f6", paddingBottom: "12px" }}>
+              📋 Novo Check-in de Paciente
+            </h3>
             
             <form onSubmit={realizarCheckin}>
               
-              {/* CAMPO DE BUSCA RÁPIDA DE PACIENTE / TUTOR */}
-              <div style={{ marginBottom: "10px" }}>
-                <label style={estiloLabel}>Busca Rápida (Nome do Pet ou Tutor)</label>
-                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <MdSearch size={20} color="#9ca3af" style={{ position: "absolute", left: "10px" }} />
-                  <input
-                    type="text"
-                    placeholder="Digite para filtrar o paciente ou tutor..."
-                    value={buscaPaciente}
-                    onChange={(e) => setBuscaPaciente(e.target.value)}
-                    style={{ ...estiloInput, paddingLeft: "36px" }}
-                  />
+              {/* LINHA DE DUAS COLUNAS: BUSCA RÁPIDA E SELEÇÃO DE PACIENTE COM RAÇA */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                <div>
+                  <label style={estiloLabel}>Busca Rápida (Pet ou Tutor)</label>
+                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                    <MdSearch size={20} color="#9ca3af" style={{ position: "absolute", left: "10px" }} />
+                    <input
+                      type="text"
+                      placeholder="Filtrar por nome..."
+                      value={buscaPaciente}
+                      onChange={(e) => setBuscaPaciente(e.target.value)}
+                      style={{ ...estiloInput, paddingLeft: "36px" }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={estiloLabel}>Paciente & Tutor *</label>
+                  <select value={animalId} onChange={(e) => setAnimalId(e.target.value)} style={estiloInput} required>
+                    <option value="">Selecione ({animaisFiltrados.length} encontrados)...</option>
+                    {animaisFiltrados.map((a) => {
+                      const t = tutores.find((tutor) => tutor.id === a.tutor_id);
+                      const nomeTutor = t ? t.nome : "Sem Tutor";
+                      const especie = a.especie || "Pet";
+                      const raca = a.raca ? ` - ${a.raca}` : "";
+                      return (
+                        <option key={a.id} value={a.id}>
+                          {a.nome} ({especie}{raca}) — Tutor: {nomeTutor}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
               </div>
 
-              <div style={{ marginBottom: "14px" }}>
-                <label style={estiloLabel}>Paciente & Tutor *</label>
-                <select value={animalId} onChange={(e) => setAnimalId(e.target.value)} style={estiloInput} required>
-                  <option value="">Selecione o paciente cadastrado ({animaisFiltrados.length} encontrados)...</option>
-                  {animaisFiltrados.map((a) => {
-                    const t = tutores.find((tutor) => tutor.id === a.tutor_id);
-                    const nomeTutor = t ? t.nome : "Sem Tutor";
-                    return (
-                      <option key={a.id} value={a.id}>
-                        {a.nome} ({a.especie || "Pet"}) — Tutor: {nomeTutor}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-
               {/* SELEÇÃO APENAS DE ENFERMEIRO / TRIAGEM */}
-              <div style={{ marginBottom: "14px" }}>
+              <div style={{ marginBottom: "16px" }}>
                 <label style={estiloLabel}>Enfermeiro(a) / Triagem (Opcional)</label>
                 <select value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)} style={estiloInput}>
                   <option value="">Selecione o enfermeiro responsável...</option>
@@ -323,17 +331,18 @@ function Checkin() {
                 </select>
               </div>
 
-              <div style={{ marginBottom: "20px" }}>
+              {/* MOTIVO DA VISITA */}
+              <div style={{ marginBottom: "22px" }}>
                 <label style={estiloLabel}>Motivo da Visita / Queixa Principal *</label>
                 <textarea
-                  rows={5}
+                  rows={4}
                   placeholder="Descreva o motivo da visita ou queixa principal..."
                   value={queixaPrincipal}
                   onChange={(e) => setQueixaPrincipal(e.target.value)}
                   style={{
                     ...estiloInput,
                     height: "auto",
-                    minHeight: "110px",
+                    minHeight: "100px",
                     padding: "10px 12px",
                     resize: "vertical"
                   }}
@@ -341,9 +350,10 @@ function Checkin() {
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-                <button type="button" onClick={() => setMostrarModal(false)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Cancelar</button>
-                <button type="submit" disabled={carregando} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>{carregando ? "Salvando..." : "Concluir Check-in"}</button>
+              {/* BOTÕES DE AÇÃO */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", borderTop: "1px solid #f3f4f6", paddingTop: "16px" }}>
+                <button type="button" onClick={() => setMostrarModal(false)} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Cancelar</button>
+                <button type="submit" disabled={carregando} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 22px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>{carregando ? "Salvando..." : "Concluir Check-in"}</button>
               </div>
             </form>
           </div>
