@@ -148,15 +148,13 @@ function Layout({ children }) {
         </button>
       </aside>
 
-      {/* ÁREA DE CONTEÚDO COM CONTAINER DE LARGURA MÁXIMA CONTROLADA (MAX 1280PX) */}
+      {/* ÁREA DE CONTEÚDO FLUIDA QUE OCUPA 100% DA LARGURA DISPONÍVEL */}
       <div style={{ marginLeft: "240px", flex: 1, display: "flex", flexDirection: "column", minWidth: 0, boxSizing: "border-box" }}>
         <main 
           style={{ 
             padding: "24px 32px", 
             boxSizing: "border-box", 
-            width: "100%", 
-            maxWidth: "1280px", 
-            margin: "0 auto" 
+            width: "100%"
           }}
         >
           {children}
