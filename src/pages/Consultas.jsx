@@ -4,6 +4,45 @@ import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdDelete, 
 import api from "../api/api";
 import Layout from "../components/Layout";
 
+// ---------- Referências vitais e alertas (mesmo padrão da Triagem) ----------
+const extrairFaixas = (texto) => {
+  const t = String(texto || "");
+  const num = "(\\d+(?:[.,]\\d+)?)";
+  const pegar = (rotulo) => {
+    const m = t.match(new RegExp(rotulo + "\\s*:\\s*" + num + "\\s*-\\s*" + num, "i"));
+    return m ? [parseFloat(m[1].replace(",", ".")), parseFloat(m[2].replace(",", "."))] : null;
+  };
+  return { repouso: pegar("Repouso"), clinica: pegar("Cl[ií]nica") };
+};
+
+const avaliarSinal = (valor, refTexto, unidade, dica = "") => {
+  const v = parseFloat(valor);
+  if (isNaN(v)) return null;
+  const { repouso, clinica } = extrairFaixas(refTexto);
+  const lim = clinica || repouso;
+  if (!lim) return null;
+  if (v > lim[1]) return { nivel: "alto", texto: `Acima do limite clínico (≤ ${lim[1]} ${unidade})${dica}` };
+  if (v < lim[0]) return { nivel: "baixo", texto: `Abaixo do limite clínico (≥ ${lim[0]} ${unidade})${dica}` };
+  if (repouso && v > repouso[1]) return { nivel: "atencao", texto: `Acima da faixa de repouso (≤ ${repouso[1]} ${unidade})${dica}` };
+  if (repouso && v < repouso[0]) return { nivel: "atencao", texto: `Abaixo da faixa de repouso (≥ ${repouso[0]} ${unidade})${dica}` };
+  return null;
+};
+
+const CORES_ALERTA = {
+  alto: { cor: "#b91c1c", borda: "#fca5a5", bg: "#fef2f2", icone: "🔴" },
+  baixo: { cor: "#b91c1c", borda: "#fca5a5", bg: "#fef2f2", icone: "🔴" },
+  atencao: { cor: "#b45309", borda: "#fcd34d", bg: "#fffbeb", icone: "⚠️" },
+};
+
+const renderAlertaSinal = (alerta) =>
+  alerta ? (
+    <span style={{ fontSize: "10px", display: "block", marginTop: "3px", fontWeight: "500", color: CORES_ALERTA[alerta.nivel].cor }}>
+      {CORES_ALERTA[alerta.nivel].icone} {alerta.texto}
+    </span>
+  ) : null;
+
+const estiloRef = { fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" };
+
 function Consultas() {
   const navigate = useNavigate();
   const [consultas, setConsultas] = useState([]);
@@ -45,6 +84,9 @@ function Consultas() {
   const [etapaProgressoIA, setEtapaProgressoIA] = useState("");
   const [arquivosExames, setArquivosExames] = useState([]);
 
+  const [refs, setRefs] = useState(null);
+  const [buscandoRefs, setBuscandoRefs] = useState(false);
+
   const [busca, setBusca] = useState("");
   const [mensagemErro, setMensagemErro] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
@@ -76,6 +118,32 @@ function Consultas() {
       clearTimeout(timer2);
     };
   }, [carregandoCopiloto]);
+
+  // Referências vitais já salvas na Biblioteca de parâmetros oficiais (leitura rápida, sem IA)
+  useEffect(() => {
+    if (!animalId) {
+      setRefs(null);
+      return;
+    }
+    let cancelado = false;
+    const buscarReferenciasSalvas = async () => {
+      setBuscandoRefs(true);
+      try {
+        const token = localStorage.getItem("token");
+        const res = await api.get(`/triagem/referencias-salvas/${animalId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!cancelado) setRefs(res.data || null);
+      } catch (err) {
+        console.warn("Erro ao buscar referências salvas:", err);
+        if (!cancelado) setRefs(null);
+      } finally {
+        if (!cancelado) setBuscandoRefs(false);
+      }
+    };
+    buscarReferenciasSalvas();
+    return () => { cancelado = true; };
+  }, [animalId]);
 
   const tratarSessaoExpirada = () => {
     localStorage.removeItem("token");
@@ -270,6 +338,7 @@ function Consultas() {
     setSolicitarExamesPreventivos(false);
     setSugestoesCopiloto("");
     setArquivosExames([]);
+    setRefs(null);
     setMensagemErro("");
   };
 
@@ -449,6 +518,20 @@ function Consultas() {
   const estiloInput = { width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "14px", outline: "none", backgroundColor: "#ffffff", boxSizing: "border-box" };
   const estiloLabel = { display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" };
 
+  const estiloAlerta = (alerta) =>
+    alerta
+      ? { ...estiloInput, border: `1px solid ${CORES_ALERTA[alerta.nivel].borda}`, backgroundColor: CORES_ALERTA[alerta.nivel].bg, color: CORES_ALERTA[alerta.nivel].cor, fontWeight: "700" }
+      : estiloInput;
+
+  const refTxt = (campo) =>
+    buscandoRefs ? "Buscando referência..." :
+    !animalId ? "Selecione o paciente..." :
+    refs ? refs[campo] : "Referência indisponível. Consulte o veterinário";
+
+  const alertaTemp = avaliarSinal(temperatura, refs?.temperatura, "°C", " — reavaliar após repouso");
+  const alertaFC = avaliarSinal(frequenciaCardiaca, refs?.fc, "bpm");
+  const alertaFR = avaliarSinal(frequenciaRespiratoria, refs?.fr, "ir/min");
+
   const temIndicacaoReal = indicacaoCirurgia || forcarCirurgia;
 
   return (
@@ -486,26 +569,34 @@ function Consultas() {
             <div>
               <label style={estiloLabel}>Peso Atual (Kg)</label>
               <input type="number" step="0.1" value={pesoAtendimento} onChange={(e) => setPesoAtendimento(e.target.value)} style={estiloInput} />
+              <span style={estiloRef}>{refTxt("peso_ref")}</span>
             </div>
 
             <div>
               <label style={estiloLabel}>Temperatura (°C)</label>
-              <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloInput} />
+              <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloAlerta(alertaTemp)} />
+              <span style={estiloRef}>💡 {refTxt("temperatura")}</span>
+              {renderAlertaSinal(alertaTemp)}
             </div>
 
             <div>
               <label style={estiloLabel}>Freq. Cardíaca (bpm)</label>
-              <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloInput} />
+              <input type="number" value={frequenciaCardiaca} onChange={(e) => setFrequenciaCardiaca(e.target.value)} style={estiloAlerta(alertaFC)} />
+              <span style={estiloRef}>💡 {refTxt("fc")}</span>
+              {renderAlertaSinal(alertaFC)}
             </div>
 
             <div>
               <label style={estiloLabel}>Freq. Respiratória (mpm)</label>
-              <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloInput} />
+              <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloAlerta(alertaFR)} />
+              <span style={estiloRef}>💡 {refTxt("fr")}</span>
+              {renderAlertaSinal(alertaFR)}
             </div>
 
             <div>
               <label style={estiloLabel}>TPC (segundos)</label>
               <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} />
+              <span style={estiloRef}>💡 {refTxt("tpc")}</span>
             </div>
 
             <div>
@@ -516,8 +607,21 @@ function Consultas() {
                 <option value="Cianóticas">Cianóticas</option>
                 <option value="Ictéricas">Ictéricas</option>
               </select>
+              <span style={estiloRef}>{refTxt("mucosas")}</span>
             </div>
           </div>
+
+          {animalId && refs && (
+            <div style={{ fontSize: "11px", color: "#64748b", marginTop: "-8px", marginBottom: "18px" }}>
+              {refs.fonte_ref}
+              {(refs.nome_cientifico || refs.faixa_etaria) && (
+                <span style={{ display: "block", marginTop: "2px" }}>
+                  🧬 {refs.nome_cientifico || "nome científico pendente"}
+                  {refs.faixa_etaria ? ` · faixa etária: ${refs.faixa_etaria}` : ""}
+                </span>
+              )}
+            </div>
+          )}
 
           <div style={{ marginBottom: "25px", display: "grid", gap: "14px" }}>
             <div>
