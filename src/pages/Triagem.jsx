@@ -119,7 +119,7 @@ function Triagem() {
             fc: "Referência indisponível. Consulte o veterinário",
             fr: "Referência indisponível. Consulte o veterinário",
             fonteRef: "⚠️ Não foi possível buscar as referências agora. Consulte o veterinário.",
-            pesoAplicavel: false,
+            pesoAplicavel: true,
           }));
         }
       } finally {
