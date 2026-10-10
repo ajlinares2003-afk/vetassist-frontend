@@ -117,6 +117,27 @@ const TIPO_USO_COR = {
 };
 const CATEGORIA_EXAME_ROTULO = { LABORATORIAL: "Exames laboratoriais", IMAGEM: "Exames de imagem", OUTRO: "Outros exames" };
 
+// Título da janela de impressão = nome sugerido ao salvar em PDF. Ex.: "Receita Tody_PET-0040"
+const tituloDocumento = (prefixo, animal, segundaVia = false) => {
+  const limpo = (v) => String(v || "").replace(/[\\/:*?"<>|]+/g, "").trim();
+  const partes = [limpo(animal?.nome), limpo(animal ? (animal.codigo || `PET-${animal.id}`) : "")].filter(Boolean);
+  return `${prefixo} ${partes.join("_")}${segundaVia ? " (reimpressão)" : ""}`.trim();
+};
+
+// Possivelmente sujeitos a controle especial (Portaria SVS/MS 344/98). Mantenha em sincronia com
+// POSSIVELMENTE_CONTROLADOS de routers/atendimento_ia.py. O veterinário pode marcar/desmarcar à mão.
+const REGEX_CONTROLADOS = /(tramadol|morfina|metadona|fentanil|cetamina|ketamina|diazepam|midazolam|fenobarbital|codeina|petidina|meperidina|buprenorfina)/;
+const semAcento = (v) => String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const ehControlado = (i) =>
+  typeof i.controladoManual === "boolean"
+    ? i.controladoManual
+    : Boolean(i.controlado) || REGEX_CONTROLADOS.test(semAcento(i.medicamento)) || /controle especial/i.test(i.observacoes || "");
+// Garante que o texto impresso/salvo diga que o item é controlado
+const observacoesFinais = (i) => {
+  const o = String(i.observacoes || "").trim();
+  return ehControlado(i) && !/controle especial/i.test(o) ? [o, "Medicamento de controle especial."].filter(Boolean).join(" ") : o;
+};
+
 const novoId = () => Math.random().toString(36).slice(2, 10);
 
 // Escapa texto antes de colocar no HTML da janela de impressão
@@ -144,6 +165,9 @@ const CSS_IMPRESSAO = `
   .urg{color:#b91c1c;font-weight:700;font-size:11px}
   .assin{margin:70px auto 0;width:300px;text-align:center;border-top:1px solid #111827;padding-top:6px;font-size:13px;font-weight:700}
   .assin small{display:block;font-weight:400;font-size:12px;margin-top:2px}
+  .quebra{page-break-after:always} .quebra:last-child{page-break-after:auto}
+  .via{text-align:right;font-size:11px;font-weight:700;color:#374151;margin-bottom:6px}
+  .ctrl{border:2px solid #b91c1c;color:#b91c1c;text-align:center;font-weight:700;font-size:13px;padding:6px;border-radius:6px;margin-bottom:10px;letter-spacing:.4px}
   .aviso{margin-top:28px;text-align:center;font-size:10px;color:#6b7280}
   @media print{body{padding:16px 20px}}
 `;
@@ -153,6 +177,7 @@ function Consultas() {
   const [consultas, setConsultas] = useState([]);
   const [animais, setAnimais] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
+  const [tutores, setTutores] = useState([]);
   const [consultaEditando, setConsultaEditando] = useState(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [consultaDetalhes, setConsultaDetalhes] = useState(null);
@@ -233,6 +258,7 @@ function Consultas() {
     carregarConsultas();
     carregarAnimais();
     carregarUsuarios();
+    carregarTutores();
   }, []);
 
   useEffect(() => {
@@ -319,6 +345,21 @@ function Consultas() {
       console.error("Erro ao carregar animais:", error);
     }
   };
+
+  const carregarTutores = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const response = await api.get("/tutores/", { headers: { Authorization: `Bearer ${token}` } });
+      setTutores(response.data || []);
+    } catch (error) {
+      console.error("Erro ao carregar tutores:", error);
+    }
+  };
+
+  // O animal só traz tutor_id: o nome vem da lista de tutores
+  const nomeDoTutor = (a) =>
+    obterTutorAnimal(a) || (a ? String(tutores.find((t) => t.id === a.tutor_id)?.nome || "").trim() : "");
 
   const carregarUsuarios = async () => {
     try {
@@ -575,12 +616,12 @@ function Consultas() {
     const codigoPet = a ? (a.codigo || `PET-${a.id}`) : "";
     const pesoTxt = peso !== "" && peso !== null && peso !== undefined ? `${peso} kg` : "-";
     return `
-      <h1>VetAssist AI — ${esc(titulo)}${ctx.segundaVia ? " (2ª via)" : ""}</h1>
+      <h1>VetAssist AI — ${esc(titulo)}${ctx.segundaVia ? " (reimpressão)" : ""}</h1>
       <div class="sub">DOCUMENTO VÁLIDO SOMENTE COM ASSINATURA E CRMV DO MÉDICO-VETERINÁRIO</div><hr/>
       <div class="pac">
         <div><strong>Paciente:</strong> ${esc(a?.nome || "-")} (${esc(codigoPet)})<br/>
           <strong>Espécie/Raça:</strong> ${esc([a?.especie, a?.raca].filter(Boolean).join(" / ") || "-")}</div>
-        <div><strong>Tutor:</strong> ${esc(obterTutorAnimal(a) || "-")}<br/><strong>Peso:</strong> ${esc(pesoTxt)}</div>
+        <div><strong>Tutor:</strong> ${esc(nomeDoTutor(a) || "-")}<br/><strong>Peso:</strong> ${esc(pesoTxt)}</div>
         <div><strong>Emissão:</strong> ${esc(emissao.toLocaleDateString("pt-BR"))}<br/>
           <strong>Atendimento:</strong> ${esc(atendimento || "-")}</div>
       </div>`;
@@ -596,25 +637,45 @@ function Consultas() {
   const imprimirReceitaDe = (itens, observacoes, ctx = {}) => {
     const validos = itens.filter((i) => String(i.medicamento || "").trim());
     if (validos.length === 0) return;
-    const html = validos.map((i, idx) => {
+    const comuns = validos.filter((i) => !ehControlado(i));
+    const controlados = validos.filter((i) => ehControlado(i));
+
+    const renderItens = (lista) => lista.map((i, idx) => {
       const cod = codigoTipoUso(i.tipo_uso);
       const c = TIPO_USO_COR[cod];
+      const obs = observacoesFinais(i);
       return `
         <div class="item">
-          <div class="nome">${idx + 1}. ${esc(i.medicamento)}</div>
+          <div class="nome">${idx + 1}. ${esc(i.medicamento)}${ehControlado(i) ? ' <span class="urg">⚠ CONTROLADO</span>' : ""}</div>
           <div class="selo" style="color:${c.cor};border-color:${c.borda};background:${c.bg}">${c.icone} ${esc(TIPO_USO_ROTULO[cod])}</div>
           ${i.dosagem ? `<div class="linha"><strong>Dosagem:</strong> ${esc(i.dosagem)}</div>` : ""}
           ${i.frequencia ? `<div class="linha"><strong>Frequência:</strong> ${esc(i.frequencia)}</div>` : ""}
           ${i.duracao ? `<div class="linha"><strong>Duração:</strong> ${esc(i.duracao)}</div>` : ""}
-          ${i.observacoes ? `<div class="obs">📌 <strong>Obs:</strong> ${esc(i.observacoes)}</div>` : ""}
+          ${obs ? `<div class="obs">📌 <strong>Obs:</strong> ${esc(obs)}</div>` : ""}
         </div>`;
     }).join("");
+
+    const documento = (lista, { via = "", controlado = false } = {}) => `
+      <div class="quebra">
+        ${via ? `<div class="via">${esc(via)}</div>` : ""}
+        ${controlado ? '<div class="ctrl">RECEITA DE MEDICAMENTO CONTROLADO</div>' : ""}
+        ${cabecalhoImpressao(controlado ? "Receita de Controle Especial" : "Receituário Veterinário", ctx)}
+        ${controlado ? '<div class="linha" style="text-align:left;margin:-6px 0 14px"><strong>Endereço do tutor:</strong> ______________________________________________</div>' : ""}
+        <h2>💊 Medicamentos & Posologias</h2>${renderItens(lista)}
+        ${String(observacoes || "").trim() ? `<div class="geral"><strong>Orientações gerais:</strong>\n${esc(observacoes)}</div>` : ""}
+        ${rodapeAssinatura}
+      </div>`;
+
+    // Controlados saem em documento separado e em 2 vias (farmácia retém a 1ª; cliente fica com a 2ª)
+    const partes = [];
+    if (comuns.length > 0) partes.push(documento(comuns));
+    if (controlados.length > 0) {
+      partes.push(documento(controlados, { via: "1ª VIA — FARMÁCIA (retida na dispensação)", controlado: true }));
+      partes.push(documento(controlados, { via: "2ª VIA — CLIENTE (tutor)", controlado: true }));
+    }
     abrirJanelaImpressao(
-      `Receita ${(ctx.animal !== undefined ? ctx.animal : animalSelecionado)?.nome || ""}`,
-      `${cabecalhoImpressao("Receituário Veterinário", ctx)}
-       <h2>💊 Medicamentos & Posologias</h2>${html}
-       ${String(observacoes || "").trim() ? `<div class="geral"><strong>Orientações gerais:</strong>\n${esc(observacoes)}</div>` : ""}
-       ${rodapeAssinatura}`
+      tituloDocumento("Receita", ctx.animal !== undefined ? ctx.animal : animalSelecionado, ctx.segundaVia),
+      partes.join("")
     );
   };
 
@@ -635,7 +696,7 @@ function Consultas() {
           frequencia: i.frequencia || null,
           duracao: i.duracao || null,
           tipo_uso: TIPO_USO_ROTULO[i.tipo_uso] || null,
-          observacoes: i.observacoes || null,
+          observacoes: observacoesFinais(i) || null,
         })),
       }, { headers: { Authorization: `Bearer ${token}` } });
       setReceitaSalva(true);
@@ -692,7 +753,7 @@ function Consultas() {
             ${e.justificativa ? `<small>${esc(e.justificativa)}</small>` : ""}</div>`).join("");
       }).join("");
     abrirJanelaImpressao(
-      `Exames ${(ctx.animal !== undefined ? ctx.animal : animalSelecionado)?.nome || ""}`,
+      tituloDocumento("Exames", ctx.animal !== undefined ? ctx.animal : animalSelecionado, ctx.segundaVia),
       `${cabecalhoImpressao("Solicitação de Exames", ctx)}
        ${String(suspeita || "").trim() ? `<div class="linha" style="margin-bottom:6px"><strong>Suspeita clínica:</strong> ${esc(suspeita)}</div>` : ""}
        <h2>🔬 Exames solicitados</h2>${grupos}
@@ -1019,7 +1080,7 @@ function Consultas() {
 
   const animalSelecionado = animais.find((a) => a.id === Number(animalId));
   const rotuloPaciente = animalSelecionado
-    ? [animalSelecionado.codigo || `PET-${animalSelecionado.id}`, animalSelecionado.nome, animalSelecionado.raca, obterTutorAnimal(animalSelecionado)]
+    ? [animalSelecionado.codigo || `PET-${animalSelecionado.id}`, animalSelecionado.nome, animalSelecionado.raca, nomeDoTutor(animalSelecionado)]
         .filter(Boolean)
         .join(" - ")
     : animalId ? "Carregando paciente..." : "Nenhum paciente selecionado";
@@ -1542,6 +1603,12 @@ function Consultas() {
               </div>
             )}
 
+            {itensReceitaValidos.some(ehControlado) && (
+              <div role="status" style={{ backgroundColor: "#fef2f2", color: "#991b1b", border: "1px solid #fca5a5", padding: "10px 12px", borderRadius: "8px", marginBottom: "12px", fontSize: "13px", fontWeight: 600, lineHeight: 1.45 }}>
+                🔒 Esta receita tem medicamento controlado. Ele será impresso em documento separado dos demais, em 2 vias (1ª via da farmácia, 2ª via do cliente). Confira o tipo de receituário exigido para o princípio ativo.
+              </div>
+            )}
+
             {itensReceita.map((item, idx) => {
               const cor = TIPO_USO_COR[item.tipo_uso] || TIPO_USO_COR.A_CONFIRMAR;
               const campo = (rotulo, chave, extra = {}) => (
@@ -1555,7 +1622,7 @@ function Consultas() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "8px", flexWrap: "wrap" }}>
                     <strong style={{ color: "#4f46e5", fontSize: "14px" }}>
                       {idx + 1}.
-                      {item.controlado && <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 700, color: "#991b1b", backgroundColor: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "999px", padding: "2px 8px" }}>Possível controlado — receituário especial</span>}
+                      {ehControlado(item) && <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 700, color: "#991b1b", backgroundColor: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "999px", padding: "2px 8px" }}>Controlado — receita em 2 vias</span>}
                     </strong>
                     <button type="button" onClick={() => removerItemReceita(item._id)} aria-label={`Remover medicamento ${idx + 1}`} style={{ backgroundColor: "#fee2e2", color: "#991b1b", border: "none", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: 600, fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
                       <MdDelete size={14} /> Remover
@@ -1573,6 +1640,10 @@ function Consultas() {
                       </select>
                     </div>
                     {campo("Observações", "observacoes", { gridColumn: "1 / -1" })}
+                    <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <input id={`rx-${item._id}-ctrl`} type="checkbox" checked={ehControlado(item)} onChange={(e) => alterarItemReceita(item._id, "controladoManual", e.target.checked)} style={{ width: "16px", height: "16px", cursor: "pointer" }} />
+                      <label htmlFor={`rx-${item._id}-ctrl`} style={{ fontSize: "12px", fontWeight: 600, color: "#374151", cursor: "pointer" }}>Medicamento controlado (imprime em 2 vias: farmácia e cliente)</label>
+                    </div>
                   </div>
                 </div>
               );
@@ -1752,7 +1823,7 @@ function Consultas() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px", marginBottom: "6px" }}>
                       <strong style={{ fontSize: "13px", color: "#3730a3" }}>💊 Receita · {formatarDataHora(r.data)}</strong>
                       <button type="button" onClick={() => imprimirReceitaDe(r.itens, r.observacoes, ctx2aVia(bloco, r.data))} style={{ backgroundColor: "#4f46e5", color: "#fff", border: "none", padding: "5px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: 600, fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
-                        <MdPrint size={14} /> Imprimir 2ª via
+                        <MdPrint size={14} /> Reimprimir
                       </button>
                     </div>
                     <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px", color: "#1f2937", lineHeight: 1.5 }}>
@@ -1766,7 +1837,7 @@ function Consultas() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px", marginBottom: "6px" }}>
                       <strong style={{ fontSize: "13px", color: "#115e59" }}>🔬 Exames solicitados · {formatarDataHora(lote.data)}</strong>
                       <button type="button" onClick={() => imprimirExamesDe(lote.itens, bloco.suspeita_diagnostica, ctx2aVia(bloco, lote.data))} style={{ backgroundColor: "#0f766e", color: "#fff", border: "none", padding: "5px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: 600, fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
-                        <MdPrint size={14} /> Imprimir 2ª via
+                        <MdPrint size={14} /> Reimprimir
                       </button>
                     </div>
                     <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px", color: "#1f2937", lineHeight: 1.5 }}>
