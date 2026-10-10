@@ -277,7 +277,33 @@ function Consultas() {
       if (!token) return tratarSessaoExpirada();
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      await api.put(`/consultas/${consulta.id}`, { status: "Em Atendimento" }, config);
+      // Busca o registro atualizado e reenvia os campos já salvos junto com o novo status:
+      // o PUT do backend sobrescreve com vazio o que não for enviado (ex.: exame físico).
+      let atual = consulta;
+      try {
+        const respAtual = await api.get(`/consultas/${consulta.id}`, config);
+        if (respAtual.data) atual = { ...consulta, ...respAtual.data };
+      } catch (errAtual) {
+        console.warn("Não foi possível recarregar a consulta; usando dados da lista.", errAtual);
+      }
+      consulta = atual;
+
+      await api.put(`/consultas/${consulta.id}`, {
+        status: "Em Atendimento",
+        queixa_principal: consulta.queixa_principal ?? null,
+        historico_clinico: consulta.historico_clinico ?? null,
+        sintomas: consulta.sintomas ?? null,
+        exame_fisico: consulta.exame_fisico ?? null,
+        suspeita_diagnostica: consulta.suspeita_diagnostica ?? null,
+        peso_atendimento: consulta.peso_atendimento ?? null,
+        temperatura: consulta.temperatura ?? null,
+        frequencia_cardiaca: consulta.frequencia_cardiaca ?? null,
+        frequencia_respiratoria: consulta.frequencia_respiratoria ?? null,
+        parecer_copiloto: consulta.parecer_copiloto ?? null,
+        observacoes: consulta.observacoes ?? null,
+        indicacao_cirurgia: consulta.indicacao_cirurgia ?? false,
+        justificativa_cirurgica: consulta.justificativa_cirurgica ?? null,
+      }, config);
 
       let dadosTriagem = {};
       try {
