@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdDelete, MdCampaign, MdAttachFile } from "react-icons/md";
+import { MdEvent, MdVisibility, MdPrint, MdPsychology, MdAutoAwesome, MdDelete, MdCampaign, MdAttachFile, MdMedicalServices, MdScience, MdAdd } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
@@ -102,6 +102,52 @@ const obterTutorAnimal = (a) => {
   return String(candidatos.find((c) => c && String(c).trim()) || "").trim();
 };
 
+// ---------- Receita médica e solicitação de exames (sugeridas pela IA) ----------
+const TIPO_USO_ROTULO = {
+  HUMANO: "Uso Humano (Farmácia / Drogaria)",
+  VETERINARIO: "Uso Veterinário (Pet Shop / Agropecuária)",
+  CLINICA: "Uso Clínico (aplicação na clínica)",
+  A_CONFIRMAR: "Disponibilidade a confirmar",
+};
+const TIPO_USO_COR = {
+  HUMANO: { cor: "#0369a1", borda: "#7dd3fc", bg: "#f0f9ff", icone: "💊" },
+  VETERINARIO: { cor: "#166534", borda: "#86efac", bg: "#f0fdf4", icone: "🐾" },
+  CLINICA: { cor: "#6b21a8", borda: "#d8b4fe", bg: "#faf5ff", icone: "🏥" },
+  A_CONFIRMAR: { cor: "#475569", borda: "#cbd5e1", bg: "#f8fafc", icone: "❔" },
+};
+const CATEGORIA_EXAME_ROTULO = { LABORATORIAL: "Exames laboratoriais", IMAGEM: "Exames de imagem", OUTRO: "Outros exames" };
+
+const novoId = () => Math.random().toString(36).slice(2, 10);
+
+// Escapa texto antes de colocar no HTML da janela de impressão
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// Mensagem de erro legível (o 422 do FastAPI pode vir como lista)
+const mensagemApi = (error, padrao) => {
+  const d = error?.response?.data?.detail;
+  return typeof d === "string" && d ? d : padrao;
+};
+
+const CSS_IMPRESSAO = `
+  *{box-sizing:border-box} body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:0;padding:32px 40px}
+  h1{margin:0;text-align:center;font-size:22px;color:#1e1b4b} .sub{text-align:center;font-size:11px;font-weight:700;margin:6px 0 14px;letter-spacing:.3px}
+  hr{border:0;border-top:2px solid #4f46e5;margin:0 0 16px}
+  .pac{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;font-size:13px;margin-bottom:20px}
+  h2{text-align:center;font-size:16px;margin:0 0 14px}
+  .item{text-align:center;padding:14px 0;border-bottom:1px dashed #d1d5db;page-break-inside:avoid}
+  .nome{font-size:15px;font-weight:700;color:#4f46e5;margin-bottom:6px}
+  .selo{display:inline-block;font-size:11px;font-weight:700;border:1px solid;border-radius:6px;padding:3px 9px;margin-bottom:8px}
+  .linha{font-size:13px;margin:3px 0} .obs{margin:8px auto 0;max-width:620px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:6px 10px;font-size:11px;color:#78350f}
+  .geral{margin:18px 0 0;font-size:12px;color:#374151;white-space:pre-line}
+  .grupo{font-size:13px;font-weight:700;color:#1e1b4b;border-bottom:1px solid #e5e7eb;margin:18px 0 8px;padding-bottom:4px}
+  .ex{font-size:13px;margin:6px 0;padding-left:4px} .ex small{display:block;color:#4b5563;font-size:11px;margin-left:18px}
+  .urg{color:#b91c1c;font-weight:700;font-size:11px}
+  .assin{margin:70px auto 0;width:300px;text-align:center;border-top:1px solid #111827;padding-top:6px;font-size:13px;font-weight:700}
+  .assin small{display:block;font-weight:400;font-size:12px;margin-top:2px}
+  .aviso{margin-top:28px;text-align:center;font-size:10px;color:#6b7280}
+  @media print{body{padding:16px 20px}}
+`;
+
 function Consultas() {
   const navigate = useNavigate();
   const [consultas, setConsultas] = useState([]);
@@ -146,6 +192,35 @@ function Consultas() {
 
   const [refs, setRefs] = useState(null);
   const [buscandoRefs, setBuscandoRefs] = useState(false);
+
+  // Receita médica
+  const [modalReceita, setModalReceita] = useState(false);
+  const [itensReceita, setItensReceita] = useState([]);
+  const [alertasReceita, setAlertasReceita] = useState([]);
+  const [obsReceita, setObsReceita] = useState("");
+  const [pesoUsadoReceita, setPesoUsadoReceita] = useState(null);
+  const [receitaConferida, setReceitaConferida] = useState(false);
+  const [receitaSalva, setReceitaSalva] = useState(false);
+  const [carregandoReceita, setCarregandoReceita] = useState(false);
+  const [salvandoReceita, setSalvandoReceita] = useState(false);
+  const [erroReceita, setErroReceita] = useState("");
+
+  // Solicitação de exames
+  const [modalExames, setModalExames] = useState(false);
+  const [examesSugeridos, setExamesSugeridos] = useState([]);
+  const [geradoExames, setGeradoExames] = useState(false);
+  const [carregandoExames, setCarregandoExames] = useState(false);
+  const [erroExames, setErroExames] = useState("");
+  const [novoExame, setNovoExame] = useState("");
+  const [salvandoExames, setSalvandoExames] = useState(false);
+  const [examesSalvos, setExamesSalvos] = useState(false);
+
+  // Histórico de receitas e exames do paciente
+  const [modalHistorico, setModalHistorico] = useState(false);
+  const [historicoAnimalId, setHistoricoAnimalId] = useState(null);
+  const [historico, setHistorico] = useState([]);
+  const [carregandoHistorico, setCarregandoHistorico] = useState(false);
+  const [erroHistorico, setErroHistorico] = useState("");
 
   const [busca, setBusca] = useState("");
   const [mensagemErro, setMensagemErro] = useState("");
@@ -394,6 +469,288 @@ function Consultas() {
     }
   };
 
+  // ---------------- Receita médica e exames sugeridos pela IA ----------------
+  const parecerDisponivel = Boolean(suspeitaDiagnostica.trim() || sugestoesCopiloto.trim());
+  const botoesIADesabilitados = !animalId || !parecerDisponivel;
+  const dicaBotoesIA = !animalId
+    ? "Selecione o paciente"
+    : !parecerDisponivel
+      ? "Execute a análise do Copiloto Clínico primeiro: a sugestão parte do parecer da IA"
+      : undefined;
+
+  const montarContextoClinico = () => {
+    const texto = (v, max) => (v && String(v).trim() ? String(v).trim().slice(0, max) : null);
+    const pesoNum = pesoAtendimento !== "" ? Number(pesoAtendimento) : null;
+    return {
+      consulta_id: consultaEditando?.id ?? null,
+      animal_id: animalId ? Number(animalId) : null,
+      peso: pesoNum && pesoNum > 0 ? pesoNum : null,
+      idade: idadeAtendimento ? `${idadeAtendimento} anos` : null,
+      queixa_principal: texto(queixaPrincipal, 4000),
+      sintomas: texto(sintomas, 4000),
+      exame_fisico: texto(exameFisico, 4000),
+      suspeita_diagnostica: texto(suspeitaDiagnostica, 1000),
+      parecer_copiloto: texto(sugestoesCopiloto, 12000),
+      temperatura: texto(temperatura, 20),
+      frequencia_cardiaca: texto(frequenciaCardiaca, 20),
+      frequencia_respiratoria: texto(frequenciaRespiratoria, 20),
+      tpc_segundos: texto(tpcSegundos, 20),
+      mucosas: texto(mucosas, 60),
+      exames_anexados: arquivosExames.length > 0
+        ? arquivosExames.map((f) => f.name).join(", ").slice(0, 1000)
+        : texto(consultaEditando?.exames_anexados, 1000),
+      solicitar_exames_preventivos: Boolean(solicitarExamesPreventivos),
+    };
+  };
+
+  const gerarReceitaIA = async () => {
+    setCarregandoReceita(true);
+    setErroReceita("");
+    setReceitaConferida(false);
+    setReceitaSalva(false);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.post("/atendimento-ia/sugerir-receita", montarContextoClinico(), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setItensReceita((res.data.itens || []).map((i) => ({ ...i, _id: novoId() })));
+      setAlertasReceita(res.data.alertas || []);
+      setPesoUsadoReceita(res.data.peso_usado ?? null);
+    } catch (error) {
+      setErroReceita(mensagemApi(error, "Não foi possível gerar a sugestão de receita."));
+    } finally {
+      setCarregandoReceita(false);
+    }
+  };
+
+  const abrirReceita = () => {
+    setModalReceita(true);
+    // Reabrir não apaga o que o veterinário já editou; "Gerar novamente" refaz a sugestão.
+    if (itensReceita.length === 0 && !carregandoReceita) gerarReceitaIA();
+  };
+
+  const alterarItemReceita = (id, campo, valor) => {
+    setReceitaConferida(false);
+    setReceitaSalva(false);
+    setItensReceita((prev) => prev.map((i) => (i._id === id ? { ...i, [campo]: valor } : i)));
+  };
+  const removerItemReceita = (id) => {
+    setReceitaConferida(false);
+    setReceitaSalva(false);
+    setItensReceita((prev) => prev.filter((i) => i._id !== id));
+  };
+  const adicionarItemReceita = () => {
+    setReceitaConferida(false);
+    setReceitaSalva(false);
+    setItensReceita((prev) => [...prev, {
+      _id: novoId(), medicamento: "", dosagem: "", frequencia: "", duracao: "",
+      tipo_uso: "A_CONFIRMAR", observacoes: "", controlado: false,
+    }]);
+  };
+
+  const itensReceitaValidos = itensReceita.filter((i) => i.medicamento.trim());
+  const pesoAtualNum = pesoAtendimento !== "" ? Number(pesoAtendimento) : null;
+  const pesoMudouDesdeReceita = itensReceita.length > 0 && pesoAtualNum !== null && pesoUsadoReceita !== pesoAtualNum;
+
+  const abrirJanelaImpressao = (titulo, corpoHtml) => {
+    const janela = window.open("", "_blank", "width=860,height=900");
+    if (!janela) {
+      setMensagemErro("O navegador bloqueou a janela de impressão. Libere os pop-ups deste site e tente de novo.");
+      return;
+    }
+    janela.document.write(
+      `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(titulo)}</title><style>${CSS_IMPRESSAO}</style></head><body>${corpoHtml}</body></html>`
+    );
+    janela.document.close();
+    janela.focus();
+    setTimeout(() => janela.print(), 300);
+  };
+
+  // ctx permite imprimir dados de outro atendimento (2ª via do histórico)
+  const cabecalhoImpressao = (titulo, ctx = {}) => {
+    const a = ctx.animal !== undefined ? ctx.animal : animalSelecionado;
+    const peso = ctx.peso !== undefined ? ctx.peso : pesoAtendimento;
+    const emissao = ctx.emissao ? new Date(ctx.emissao) : new Date();
+    const atendimento = ctx.atendimento !== undefined ? ctx.atendimento : codigo;
+    const codigoPet = a ? (a.codigo || `PET-${a.id}`) : "";
+    const pesoTxt = peso !== "" && peso !== null && peso !== undefined ? `${peso} kg` : "-";
+    return `
+      <h1>VetAssist AI — ${esc(titulo)}${ctx.segundaVia ? " (2ª via)" : ""}</h1>
+      <div class="sub">DOCUMENTO VÁLIDO SOMENTE COM ASSINATURA E CRMV DO MÉDICO-VETERINÁRIO</div><hr/>
+      <div class="pac">
+        <div><strong>Paciente:</strong> ${esc(a?.nome || "-")} (${esc(codigoPet)})<br/>
+          <strong>Espécie/Raça:</strong> ${esc([a?.especie, a?.raca].filter(Boolean).join(" / ") || "-")}</div>
+        <div><strong>Tutor:</strong> ${esc(obterTutorAnimal(a) || "-")}<br/><strong>Peso:</strong> ${esc(pesoTxt)}</div>
+        <div><strong>Emissão:</strong> ${esc(emissao.toLocaleDateString("pt-BR"))}<br/>
+          <strong>Atendimento:</strong> ${esc(atendimento || "-")}</div>
+      </div>`;
+  };
+
+  const rodapeAssinatura = `
+    <div class="assin">Médico(a) Veterinário(a)<small>CRMV: ______________</small></div>`;
+
+  // O histórico guarda o rótulo do tipo de uso; aqui volta para o código (cores do selo)
+  const codigoTipoUso = (valor) =>
+    TIPO_USO_ROTULO[valor] ? valor : (Object.keys(TIPO_USO_ROTULO).find((k) => TIPO_USO_ROTULO[k] === valor) || "A_CONFIRMAR");
+
+  const imprimirReceitaDe = (itens, observacoes, ctx = {}) => {
+    const validos = itens.filter((i) => String(i.medicamento || "").trim());
+    if (validos.length === 0) return;
+    const html = validos.map((i, idx) => {
+      const cod = codigoTipoUso(i.tipo_uso);
+      const c = TIPO_USO_COR[cod];
+      return `
+        <div class="item">
+          <div class="nome">${idx + 1}. ${esc(i.medicamento)}</div>
+          <div class="selo" style="color:${c.cor};border-color:${c.borda};background:${c.bg}">${c.icone} ${esc(TIPO_USO_ROTULO[cod])}</div>
+          ${i.dosagem ? `<div class="linha"><strong>Dosagem:</strong> ${esc(i.dosagem)}</div>` : ""}
+          ${i.frequencia ? `<div class="linha"><strong>Frequência:</strong> ${esc(i.frequencia)}</div>` : ""}
+          ${i.duracao ? `<div class="linha"><strong>Duração:</strong> ${esc(i.duracao)}</div>` : ""}
+          ${i.observacoes ? `<div class="obs">📌 <strong>Obs:</strong> ${esc(i.observacoes)}</div>` : ""}
+        </div>`;
+    }).join("");
+    abrirJanelaImpressao(
+      `Receita ${(ctx.animal !== undefined ? ctx.animal : animalSelecionado)?.nome || ""}`,
+      `${cabecalhoImpressao("Receituário Veterinário", ctx)}
+       <h2>💊 Medicamentos & Posologias</h2>${html}
+       ${String(observacoes || "").trim() ? `<div class="geral"><strong>Orientações gerais:</strong>\n${esc(observacoes)}</div>` : ""}
+       ${rodapeAssinatura}`
+    );
+  };
+
+  const imprimirReceita = () => imprimirReceitaDe(itensReceitaValidos, obsReceita);
+
+  const salvarReceitaNoProntuario = async () => {
+    if (!consultaEditando?.id || itensReceitaValidos.length === 0) return;
+    setSalvandoReceita(true);
+    setErroReceita("");
+    try {
+      const token = localStorage.getItem("token");
+      await api.post("/atendimento-ia/receita", {
+        consulta_id: consultaEditando.id,
+        observacoes: obsReceita.trim() || null,
+        itens: itensReceitaValidos.map((i) => ({
+          medicamento: i.medicamento.trim(),
+          dosagem: i.dosagem || null,
+          frequencia: i.frequencia || null,
+          duracao: i.duracao || null,
+          tipo_uso: TIPO_USO_ROTULO[i.tipo_uso] || null,
+          observacoes: i.observacoes || null,
+        })),
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setReceitaSalva(true);
+      setMensagemSucesso("✅ Receita salva no prontuário!");
+    } catch (error) {
+      setErroReceita(mensagemApi(error, "Não foi possível salvar a receita."));
+    } finally {
+      setSalvandoReceita(false);
+    }
+  };
+
+  const gerarExamesIA = async () => {
+    setCarregandoExames(true);
+    setErroExames("");
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.post("/atendimento-ia/sugerir-exames", montarContextoClinico(), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setExamesSugeridos((res.data.exames || []).map((e) => ({ ...e, _id: novoId(), selecionado: true })));
+      setGeradoExames(true);
+    } catch (error) {
+      setErroExames(mensagemApi(error, "Não foi possível gerar a sugestão de exames."));
+    } finally {
+      setCarregandoExames(false);
+    }
+  };
+
+  const abrirExames = () => {
+    setModalExames(true);
+    if (!geradoExames && !carregandoExames) gerarExamesIA();
+  };
+
+  const alternarExame = (id) => { setExamesSalvos(false); setExamesSugeridos((prev) => prev.map((e) => (e._id === id ? { ...e, selecionado: !e.selecionado } : e))); };
+  const removerExame = (id) => { setExamesSalvos(false); setExamesSugeridos((prev) => prev.filter((e) => e._id !== id)); };
+  const adicionarExameManual = () => {
+    const nome = novoExame.trim();
+    if (!nome) return;
+    setExamesSalvos(false);
+    setExamesSugeridos((prev) => [...prev, { _id: novoId(), nome, categoria: "OUTRO", prioridade: "ROTINA", justificativa: "", selecionado: true }]);
+    setNovoExame("");
+  };
+
+  const examesSelecionados = examesSugeridos.filter((e) => e.selecionado);
+
+  const imprimirExamesDe = (lista, suspeita, ctx = {}) => {
+    if (lista.length === 0) return;
+    const grupos = Object.keys(CATEGORIA_EXAME_ROTULO)
+      .map((cat) => {
+        const doGrupo = lista.filter((e) => e.categoria === cat);
+        if (doGrupo.length === 0) return "";
+        return `<div class="grupo">${esc(CATEGORIA_EXAME_ROTULO[cat])}</div>` + doGrupo.map((e) => `
+          <div class="ex">☐ <strong>${esc(e.nome)}</strong> ${e.prioridade === "URGENTE" ? '<span class="urg">· URGENTE</span>' : ""}
+            ${e.justificativa ? `<small>${esc(e.justificativa)}</small>` : ""}</div>`).join("");
+      }).join("");
+    abrirJanelaImpressao(
+      `Exames ${(ctx.animal !== undefined ? ctx.animal : animalSelecionado)?.nome || ""}`,
+      `${cabecalhoImpressao("Solicitação de Exames", ctx)}
+       ${String(suspeita || "").trim() ? `<div class="linha" style="margin-bottom:6px"><strong>Suspeita clínica:</strong> ${esc(suspeita)}</div>` : ""}
+       <h2>🔬 Exames solicitados</h2>${grupos}
+       ${rodapeAssinatura}`
+    );
+  };
+
+  const imprimirExames = () => imprimirExamesDe(examesSelecionados, suspeitaDiagnostica);
+
+  const salvarExamesNoProntuario = async () => {
+    if (!consultaEditando?.id || examesSelecionados.length === 0) return;
+    setSalvandoExames(true);
+    setErroExames("");
+    try {
+      const token = localStorage.getItem("token");
+      await api.post("/atendimento-ia/exames", {
+        consulta_id: consultaEditando.id,
+        exames: examesSelecionados.map((e) => ({
+          nome: e.nome, categoria: e.categoria, prioridade: e.prioridade, justificativa: e.justificativa || null,
+        })),
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setExamesSalvos(true);
+      setMensagemSucesso("✅ Solicitação de exames salva no prontuário!");
+    } catch (error) {
+      setErroExames(mensagemApi(error, "Não foi possível salvar a solicitação de exames."));
+    } finally {
+      setSalvandoExames(false);
+    }
+  };
+
+  // ---------------- Histórico do paciente ----------------
+  const abrirHistorico = async (idAnimal) => {
+    if (!idAnimal) return;
+    setHistoricoAnimalId(Number(idAnimal));
+    setModalHistorico(true);
+    setHistorico([]);
+    setErroHistorico("");
+    setCarregandoHistorico(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.get(`/atendimento-ia/historico/${idAnimal}`, { headers: { Authorization: `Bearer ${token}` } });
+      setHistorico(res.data || []);
+    } catch (error) {
+      setErroHistorico(mensagemApi(error, "Não foi possível carregar o histórico."));
+    } finally {
+      setCarregandoHistorico(false);
+    }
+  };
+
+  const animalDoHistorico = animais.find((a) => a.id === historicoAnimalId);
+  const formatarDataHora = (iso) => {
+    const d = iso ? new Date(String(iso).replace(" ", "T")) : null;
+    return d && !isNaN(d) ? d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "-";
+  };
+  const ctx2aVia = (bloco, data) => ({
+    animal: animalDoHistorico || null, peso: bloco.peso_atendimento ?? "", emissao: data, atendimento: bloco.codigo, segundaVia: true,
+  });
+
   const limparFormulario = () => {
     setConsultaEditando(null);
     setCodigo("");
@@ -421,6 +778,22 @@ function Consultas() {
     setArquivosExames([]);
     setRefs(null);
     setMensagemErro("");
+    setModalReceita(false);
+    setItensReceita([]);
+    setAlertasReceita([]);
+    setObsReceita("");
+    setPesoUsadoReceita(null);
+    setReceitaConferida(false);
+    setReceitaSalva(false);
+    setErroReceita("");
+    setModalExames(false);
+    setExamesSugeridos([]);
+    setGeradoExames(false);
+    setErroExames("");
+    setNovoExame("");
+    setExamesSalvos(false);
+    setModalHistorico(false);
+    setHistorico([]);
   };
 
   const salvarConsulta = async () => {
@@ -619,6 +992,9 @@ function Consultas() {
   const alertaMucosas = avaliarMucosas(mucosas);
 
   const temIndicacaoReal = indicacaoCirurgia || forcarCirurgia;
+
+  const estiloOverlay = { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1100, padding: "20px" };
+  const estiloCaixaModal = { backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", maxWidth: "820px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" };
 
   const estiloPainel = { border: "1px solid #e5e7eb", borderRadius: "10px", padding: "16px", backgroundColor: "#ffffff", minWidth: 0 };
   const estiloTituloPainel = { margin: "0 0 14px 0", color: "#111827", fontSize: "15px", fontWeight: 700 };
@@ -951,9 +1327,40 @@ function Consultas() {
           </div>
 
           {/* BARRA DE AÇÕES */}
-          <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap", gap: "10px", marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
-            <button type="button" onClick={() => { limparFormulario(); setMostrarFormulario(false); }} style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Fechar</button>
-            <button type="button" onClick={salvarConsulta} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "700", boxShadow: "0 2px 4px rgba(22, 163, 74, 0.35)" }}>Salvar atendimento</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={abrirReceita}
+                disabled={botoesIADesabilitados}
+                title={dicaBotoesIA}
+                style={{ backgroundColor: botoesIADesabilitados ? "#e5e7eb" : "#4f46e5", color: botoesIADesabilitados ? "#6b7280" : "#ffffff", border: "none", padding: "10px 16px", borderRadius: "8px", cursor: botoesIADesabilitados ? "not-allowed" : "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <MdMedicalServices size={18} /> Receita médica
+              </button>
+              <button
+                type="button"
+                onClick={abrirExames}
+                disabled={botoesIADesabilitados}
+                title={dicaBotoesIA}
+                style={{ backgroundColor: botoesIADesabilitados ? "#e5e7eb" : "#0f766e", color: botoesIADesabilitados ? "#6b7280" : "#ffffff", border: "none", padding: "10px 16px", borderRadius: "8px", cursor: botoesIADesabilitados ? "not-allowed" : "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <MdScience size={18} /> Exames
+              </button>
+              <button
+                type="button"
+                onClick={() => abrirHistorico(animalId)}
+                disabled={!animalId}
+                title={!animalId ? "Selecione o paciente" : "Receitas e exames anteriores deste paciente"}
+                style={{ backgroundColor: "#ffffff", color: animalId ? "#374151" : "#9ca3af", border: "1px solid #d1d5db", padding: "10px 16px", borderRadius: "8px", cursor: animalId ? "pointer" : "not-allowed", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                📋 Histórico
+              </button>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+              <button type="button" onClick={() => { limparFormulario(); setMostrarFormulario(false); }} style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Fechar</button>
+              <button type="button" onClick={salvarConsulta} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "700", boxShadow: "0 2px 4px rgba(22, 163, 74, 0.35)" }}>Salvar atendimento</button>
+            </div>
           </div>
         </div>
       )}
@@ -1011,6 +1418,9 @@ function Consultas() {
                         </button>
                         <button onClick={() => iniciarAtendimentoVeterinario(c)} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
                           💉 Atender
+                        </button>
+                        <button onClick={() => abrirHistorico(c.animal_id)} title="Receitas e exames anteriores do paciente" style={{ backgroundColor: "#f3f4f6", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
+                          📋 Histórico
                         </button>
                         <button onClick={() => setConsultaDetalhes(c)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
                           <MdVisibility size={16} /> Ver
@@ -1081,6 +1491,294 @@ function Consultas() {
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
               <button onClick={() => setModalExclusaoAberto(false)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}>Cancelar</button>
               <button onClick={deletarConsulta} style={{ backgroundColor: "#dc2626", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}>Sim, Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: RECEITA MÉDICA (sugerida pela IA, editável) */}
+      {modalReceita && (
+        <div role="dialog" aria-modal="true" aria-label="Receita médica" style={estiloOverlay}>
+          <div style={estiloCaixaModal}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: "12px", marginBottom: "14px" }}>
+              <h2 style={{ margin: 0, color: "#1e1b4b", fontSize: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
+                <MdMedicalServices color="#4f46e5" size={24} /> Receita médica — {animalSelecionado?.nome || "paciente"}
+              </h2>
+              <button type="button" aria-label="Fechar" onClick={() => setModalReceita(false)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", fontWeight: "bold", color: "#6b7280" }}>✕</button>
+            </div>
+
+            <p style={{ margin: "0 0 12px 0", fontSize: "12px", color: "#475569", lineHeight: 1.45 }}>
+              Sugestão gerada pela IA a partir do parecer do Copiloto. Doses, apresentações e a disponibilidade (farmácia ou pet shop) <strong>precisam ser conferidas por você</strong> antes de imprimir. Todos os campos são editáveis.
+            </p>
+
+            {carregandoReceita && (
+              <div role="status" style={{ display: "flex", alignItems: "center", gap: "12px", backgroundColor: "#eef2ff", border: "1px solid #c7d2fe", padding: "12px 16px", borderRadius: "8px", marginBottom: "12px" }}>
+                <div style={{ width: "20px", height: "20px", border: "3px solid #4f46e5", borderTop: "3px solid transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                <span style={{ fontSize: "13px", fontWeight: 600, color: "#3730a3" }}>Montando a sugestão de receita...</span>
+              </div>
+            )}
+
+            {erroReceita && (
+              <div role="alert" style={{ backgroundColor: "#fee2e2", color: "#991b1b", padding: "10px 12px", borderRadius: "8px", marginBottom: "12px", fontSize: "13px", fontWeight: 500 }}>
+                {erroReceita}
+              </div>
+            )}
+
+            {pesoMudouDesdeReceita && !carregandoReceita && (
+              <div role="alert" style={{ backgroundColor: "#fffbeb", color: "#92400e", border: "1px solid #fcd34d", padding: "10px 12px", borderRadius: "8px", marginBottom: "12px", fontSize: "13px", fontWeight: 600 }}>
+                ⚠️ O peso mudou desde que as doses foram calculadas ({pesoUsadoReceita ?? "sem peso"} → {pesoAtualNum ?? "sem peso"} kg). Clique em “Gerar novamente” para recalcular.
+              </div>
+            )}
+
+            {alertasReceita.length > 0 && (
+              <ul style={{ margin: "0 0 12px 0", padding: "10px 12px 10px 28px", backgroundColor: "#fffbeb", border: "1px solid #fcd34d", borderRadius: "8px", fontSize: "12px", color: "#78350f", lineHeight: 1.5 }}>
+                {alertasReceita.map((a, idx) => <li key={idx}>{a}</li>)}
+              </ul>
+            )}
+
+            {!carregandoReceita && !erroReceita && itensReceita.length === 0 && (
+              <div style={{ padding: "14px", backgroundColor: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: "8px", fontSize: "13px", color: "#475569", marginBottom: "12px" }}>
+                A IA não sugeriu medicação para este parecer. Você pode adicionar medicamentos manualmente.
+              </div>
+            )}
+
+            {itensReceita.map((item, idx) => {
+              const cor = TIPO_USO_COR[item.tipo_uso] || TIPO_USO_COR.A_CONFIRMAR;
+              const campo = (rotulo, chave, extra = {}) => (
+                <div style={{ minWidth: 0, ...extra }}>
+                  <label htmlFor={`rx-${item._id}-${chave}`} style={{ ...estiloLabel, fontSize: "12px", marginBottom: "4px" }}>{rotulo}</label>
+                  <input id={`rx-${item._id}-${chave}`} type="text" value={item[chave] || ""} onChange={(e) => alterarItemReceita(item._id, chave, e.target.value)} style={{ ...estiloInput, height: "36px", fontSize: "13px" }} />
+                </div>
+              );
+              return (
+                <div key={item._id} style={{ border: `1px solid ${cor.borda}`, backgroundColor: "#ffffff", borderLeft: `4px solid ${cor.borda}`, borderRadius: "8px", padding: "12px", marginBottom: "10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "8px", flexWrap: "wrap" }}>
+                    <strong style={{ color: "#4f46e5", fontSize: "14px" }}>
+                      {idx + 1}.
+                      {item.controlado && <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 700, color: "#991b1b", backgroundColor: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "999px", padding: "2px 8px" }}>Possível controlado — receituário especial</span>}
+                    </strong>
+                    <button type="button" onClick={() => removerItemReceita(item._id)} aria-label={`Remover medicamento ${idx + 1}`} style={{ backgroundColor: "#fee2e2", color: "#991b1b", border: "none", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: 600, fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <MdDelete size={14} /> Remover
+                    </button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "10px" }}>
+                    {campo("Medicamento e apresentação", "medicamento", { gridColumn: "1 / -1" })}
+                    {campo("Dosagem", "dosagem", { gridColumn: "1 / -1" })}
+                    {campo("Frequência", "frequencia")}
+                    {campo("Duração", "duracao")}
+                    <div style={{ minWidth: 0 }}>
+                      <label htmlFor={`rx-${item._id}-uso`} style={{ ...estiloLabel, fontSize: "12px", marginBottom: "4px" }}>Onde encontrar</label>
+                      <select id={`rx-${item._id}-uso`} value={item.tipo_uso || "A_CONFIRMAR"} onChange={(e) => alterarItemReceita(item._id, "tipo_uso", e.target.value)} style={{ ...estiloInput, height: "36px", fontSize: "13px", backgroundColor: cor.bg, color: cor.cor, fontWeight: 600 }}>
+                        {Object.entries(TIPO_USO_ROTULO).map(([cod, rot]) => <option key={cod} value={cod}>{rot}</option>)}
+                      </select>
+                    </div>
+                    {campo("Observações", "observacoes", { gridColumn: "1 / -1" })}
+                  </div>
+                </div>
+              );
+            })}
+
+            <button type="button" onClick={adicionarItemReceita} style={{ backgroundColor: "#ffffff", color: "#4f46e5", border: "1px dashed #4f46e5", padding: "8px 14px", borderRadius: "8px", cursor: "pointer", fontWeight: 600, fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "6px", marginBottom: "14px" }}>
+              <MdAdd size={16} /> Adicionar medicamento
+            </button>
+
+            <label htmlFor="rx-obs" style={estiloLabel}>Orientações gerais ao tutor (opcional)</label>
+            <textarea id="rx-obs" value={obsReceita} onChange={(e) => { setObsReceita(e.target.value); setReceitaSalva(false); }} style={{ ...estiloInput, height: "auto", minHeight: "70px", padding: "10px 12px", resize: "vertical", lineHeight: 1.45, marginBottom: "14px" }} placeholder="Ex.: oferecer água fresca à vontade; retornar em 5 dias para reavaliação." />
+
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", backgroundColor: receitaConferida ? "#f0fdf4" : "#fffbeb", border: `1px solid ${receitaConferida ? "#86efac" : "#fcd34d"}`, borderRadius: "8px", padding: "10px 12px", marginBottom: "14px" }}>
+              <input id="rx-conferida" type="checkbox" checked={receitaConferida} onChange={(e) => setReceitaConferida(e.target.checked)} style={{ width: "16px", height: "16px", marginTop: "2px", cursor: "pointer", flexShrink: 0 }} />
+              <label htmlFor="rx-conferida" style={{ fontSize: "13px", fontWeight: 600, color: "#374151", cursor: "pointer", lineHeight: 1.4 }}>
+                Conferi medicamentos, doses, frequências e disponibilidade, e assumo a responsabilidade por esta prescrição.
+              </label>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", borderTop: "1px solid #e5e7eb", paddingTop: "14px" }}>
+              <button type="button" onClick={gerarReceitaIA} disabled={carregandoReceita} style={{ backgroundColor: "#ffffff", color: "#4f46e5", border: "1px solid #c7d2fe", padding: "8px 14px", borderRadius: "8px", cursor: carregandoReceita ? "not-allowed" : "pointer", fontWeight: 600, fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <MdAutoAwesome size={16} /> {carregandoReceita ? "Gerando..." : "Gerar novamente"}
+              </button>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                <button type="button" onClick={() => setModalReceita(false)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}>Fechar</button>
+                <button
+                  type="button"
+                  onClick={salvarReceitaNoProntuario}
+                  disabled={!receitaConferida || itensReceitaValidos.length === 0 || !consultaEditando?.id || salvandoReceita || receitaSalva}
+                  title={!consultaEditando?.id ? "Abra o atendimento pela lista (botão Atender) para salvar no prontuário" : !receitaConferida ? "Confirme a conferência da receita" : undefined}
+                  style={{ backgroundColor: (!receitaConferida || itensReceitaValidos.length === 0 || !consultaEditando?.id || receitaSalva) ? "#e5e7eb" : "#16a34a", color: (!receitaConferida || itensReceitaValidos.length === 0 || !consultaEditando?.id || receitaSalva) ? "#6b7280" : "#ffffff", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}
+                >
+                  {receitaSalva ? "✓ Salva no prontuário" : salvandoReceita ? "Salvando..." : "Salvar no prontuário"}
+                </button>
+                <button
+                  type="button"
+                  onClick={imprimirReceita}
+                  disabled={!receitaConferida || itensReceitaValidos.length === 0}
+                  title={!receitaConferida ? "Confirme a conferência da receita para imprimir" : undefined}
+                  style={{ backgroundColor: (!receitaConferida || itensReceitaValidos.length === 0) ? "#e5e7eb" : "#4f46e5", color: (!receitaConferida || itensReceitaValidos.length === 0) ? "#6b7280" : "#ffffff", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: (!receitaConferida || itensReceitaValidos.length === 0) ? "not-allowed" : "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  <MdPrint size={16} /> Imprimir receita
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: SOLICITAÇÃO DE EXAMES (sugerida pela IA, editável) */}
+      {modalExames && (
+        <div role="dialog" aria-modal="true" aria-label="Solicitação de exames" style={estiloOverlay}>
+          <div style={estiloCaixaModal}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: "12px", marginBottom: "14px" }}>
+              <h2 style={{ margin: 0, color: "#134e4a", fontSize: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
+                <MdScience color="#0f766e" size={24} /> Solicitação de exames — {animalSelecionado?.nome || "paciente"}
+              </h2>
+              <button type="button" aria-label="Fechar" onClick={() => setModalExames(false)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", fontWeight: "bold", color: "#6b7280" }}>✕</button>
+            </div>
+
+            <p style={{ margin: "0 0 12px 0", fontSize: "12px", color: "#475569", lineHeight: 1.45 }}>
+              Exames sugeridos pela IA a partir do parecer clínico. Marque os que deseja solicitar, remova os desnecessários ou adicione outros.
+            </p>
+
+            {carregandoExames && (
+              <div role="status" style={{ display: "flex", alignItems: "center", gap: "12px", backgroundColor: "#f0fdfa", border: "1px solid #99f6e4", padding: "12px 16px", borderRadius: "8px", marginBottom: "12px" }}>
+                <div style={{ width: "20px", height: "20px", border: "3px solid #0f766e", borderTop: "3px solid transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                <span style={{ fontSize: "13px", fontWeight: 600, color: "#115e59" }}>Escolhendo os exames mais indicados...</span>
+              </div>
+            )}
+
+            {erroExames && (
+              <div role="alert" style={{ backgroundColor: "#fee2e2", color: "#991b1b", padding: "10px 12px", borderRadius: "8px", marginBottom: "12px", fontSize: "13px", fontWeight: 500 }}>
+                {erroExames}
+              </div>
+            )}
+
+            {geradoExames && !carregandoExames && examesSugeridos.length === 0 && (
+              <div style={{ padding: "14px", backgroundColor: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: "8px", fontSize: "13px", color: "#475569", marginBottom: "12px" }}>
+                A IA não considerou necessário solicitar exames para este parecer. Você pode adicionar exames manualmente.
+              </div>
+            )}
+
+            {Object.keys(CATEGORIA_EXAME_ROTULO).map((cat) => {
+              const lista = examesSugeridos.filter((e) => e.categoria === cat);
+              if (lista.length === 0) return null;
+              return (
+                <div key={cat} style={{ marginBottom: "12px" }}>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#134e4a", borderBottom: "1px solid #e5e7eb", paddingBottom: "4px", marginBottom: "8px" }}>{CATEGORIA_EXAME_ROTULO[cat]}</div>
+                  {lista.map((ex) => (
+                    <div key={ex._id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "8px 10px", border: `1px solid ${ex.selecionado ? "#99f6e4" : "#e5e7eb"}`, backgroundColor: ex.selecionado ? "#f0fdfa" : "#f9fafb", borderRadius: "8px", marginBottom: "6px", opacity: ex.selecionado ? 1 : 0.7 }}>
+                      <input id={`ex-${ex._id}`} type="checkbox" checked={ex.selecionado} onChange={() => alternarExame(ex._id)} style={{ width: "16px", height: "16px", marginTop: "2px", cursor: "pointer", flexShrink: 0 }} />
+                      <label htmlFor={`ex-${ex._id}`} style={{ flex: 1, cursor: "pointer", minWidth: 0 }}>
+                        <span style={{ fontSize: "14px", fontWeight: 600, color: "#111827" }}>{ex.nome}</span>
+                        {ex.prioridade === "URGENTE" && <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 700, color: "#991b1b", backgroundColor: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "999px", padding: "1px 8px" }}>Urgente</span>}
+                        {ex.justificativa && <span style={{ display: "block", fontSize: "12px", color: "#475569", marginTop: "2px", lineHeight: 1.4 }}>{ex.justificativa}</span>}
+                      </label>
+                      <button type="button" onClick={() => removerExame(ex._id)} aria-label={`Remover ${ex.nome}`} style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+
+            <div style={{ display: "flex", gap: "8px", marginBottom: "14px", flexWrap: "wrap" }}>
+              <input
+                type="text"
+                value={novoExame}
+                onChange={(e) => setNovoExame(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); adicionarExameManual(); } }}
+                aria-label="Adicionar outro exame"
+                placeholder="Adicionar outro exame (ex.: Ultrassonografia abdominal)"
+                style={{ ...estiloInput, height: "38px", flex: 1, minWidth: "220px", fontSize: "13px" }}
+              />
+              <button type="button" onClick={adicionarExameManual} disabled={!novoExame.trim()} style={{ backgroundColor: "#ffffff", color: "#0f766e", border: "1px dashed #0f766e", padding: "0 14px", borderRadius: "8px", cursor: novoExame.trim() ? "pointer" : "not-allowed", fontWeight: 600, fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <MdAdd size={16} /> Adicionar
+              </button>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", borderTop: "1px solid #e5e7eb", paddingTop: "14px" }}>
+              <button type="button" onClick={gerarExamesIA} disabled={carregandoExames} style={{ backgroundColor: "#ffffff", color: "#0f766e", border: "1px solid #99f6e4", padding: "8px 14px", borderRadius: "8px", cursor: carregandoExames ? "not-allowed" : "pointer", fontWeight: 600, fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <MdAutoAwesome size={16} /> {carregandoExames ? "Gerando..." : "Gerar novamente"}
+              </button>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+                <span style={{ fontSize: "12px", color: "#475569" }}>{examesSelecionados.length} selecionado(s)</span>
+                <button type="button" onClick={() => setModalExames(false)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}>Fechar</button>
+                <button
+                  type="button"
+                  onClick={salvarExamesNoProntuario}
+                  disabled={examesSelecionados.length === 0 || !consultaEditando?.id || salvandoExames || examesSalvos}
+                  title={!consultaEditando?.id ? "Abra o atendimento pela lista (botão Atender) para salvar no prontuário" : undefined}
+                  style={{ backgroundColor: (examesSelecionados.length === 0 || !consultaEditando?.id || examesSalvos) ? "#e5e7eb" : "#16a34a", color: (examesSelecionados.length === 0 || !consultaEditando?.id || examesSalvos) ? "#6b7280" : "#ffffff", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}
+                >
+                  {examesSalvos ? "✓ Salva no prontuário" : salvandoExames ? "Salvando..." : "Salvar no prontuário"}
+                </button>
+                <button
+                  type="button"
+                  onClick={imprimirExames}
+                  disabled={examesSelecionados.length === 0}
+                  style={{ backgroundColor: examesSelecionados.length === 0 ? "#e5e7eb" : "#0f766e", color: examesSelecionados.length === 0 ? "#6b7280" : "#ffffff", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: examesSelecionados.length === 0 ? "not-allowed" : "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  <MdPrint size={16} /> Imprimir solicitação
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: HISTÓRICO DE RECEITAS E EXAMES DO PACIENTE */}
+      {modalHistorico && (
+        <div role="dialog" aria-modal="true" aria-label="Histórico do paciente" style={estiloOverlay}>
+          <div style={estiloCaixaModal}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: "12px", marginBottom: "14px" }}>
+              <h2 style={{ margin: 0, color: "#1e1b4b", fontSize: "20px" }}>📋 Histórico — {animalDoHistorico?.nome || "paciente"}</h2>
+              <button type="button" aria-label="Fechar" onClick={() => setModalHistorico(false)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", fontWeight: "bold", color: "#6b7280" }}>✕</button>
+            </div>
+
+            {carregandoHistorico && <div role="status" style={{ fontSize: "13px", color: "#475569", padding: "8px 0" }}>Carregando histórico...</div>}
+            {erroHistorico && <div role="alert" style={{ backgroundColor: "#fee2e2", color: "#991b1b", padding: "10px 12px", borderRadius: "8px", fontSize: "13px" }}>{erroHistorico}</div>}
+            {!carregandoHistorico && !erroHistorico && historico.length === 0 && (
+              <div style={{ padding: "14px", backgroundColor: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: "8px", fontSize: "13px", color: "#475569" }}>
+                Nenhuma receita ou solicitação de exames salva para este paciente ainda.
+              </div>
+            )}
+
+            {historico.map((bloco) => (
+              <div key={bloco.consulta_id} style={{ border: "1px solid #e5e7eb", borderRadius: "10px", padding: "12px 14px", marginBottom: "12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
+                  <strong style={{ color: "#4f46e5", fontSize: "14px" }}>{bloco.codigo}</strong>
+                  <span style={{ fontSize: "12px", color: "#64748b" }}>{formatarDataHora(bloco.data_consulta)}</span>
+                </div>
+                {bloco.suspeita_diagnostica && <div style={{ fontSize: "12px", color: "#374151", marginBottom: "8px" }}><strong>Suspeita:</strong> {bloco.suspeita_diagnostica}</div>}
+
+                {bloco.receitas.map((r) => (
+                  <div key={r.id} style={{ backgroundColor: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "8px", padding: "10px 12px", marginBottom: "8px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px", marginBottom: "6px" }}>
+                      <strong style={{ fontSize: "13px", color: "#3730a3" }}>💊 Receita · {formatarDataHora(r.data)}</strong>
+                      <button type="button" onClick={() => imprimirReceitaDe(r.itens, r.observacoes, ctx2aVia(bloco, r.data))} style={{ backgroundColor: "#4f46e5", color: "#fff", border: "none", padding: "5px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: 600, fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <MdPrint size={14} /> Imprimir 2ª via
+                      </button>
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px", color: "#1f2937", lineHeight: 1.5 }}>
+                      {r.itens.map((i, idx) => <li key={idx}><strong>{i.medicamento}</strong>{i.dosagem ? ` — ${i.dosagem}` : ""}{i.frequencia ? ` · ${i.frequencia}` : ""}{i.duracao ? ` · ${i.duracao}` : ""}</li>)}
+                    </ul>
+                  </div>
+                ))}
+
+                {bloco.exames.map((lote) => (
+                  <div key={lote.lote} style={{ backgroundColor: "#f0fdfa", border: "1px solid #99f6e4", borderRadius: "8px", padding: "10px 12px", marginBottom: "8px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px", marginBottom: "6px" }}>
+                      <strong style={{ fontSize: "13px", color: "#115e59" }}>🔬 Exames solicitados · {formatarDataHora(lote.data)}</strong>
+                      <button type="button" onClick={() => imprimirExamesDe(lote.itens, bloco.suspeita_diagnostica, ctx2aVia(bloco, lote.data))} style={{ backgroundColor: "#0f766e", color: "#fff", border: "none", padding: "5px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: 600, fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <MdPrint size={14} /> Imprimir 2ª via
+                      </button>
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px", color: "#1f2937", lineHeight: 1.5 }}>
+                      {lote.itens.map((e, idx) => <li key={idx}><strong>{e.nome}</strong>{e.prioridade === "URGENTE" ? " · URGENTE" : ""}</li>)}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "1px solid #e5e7eb", paddingTop: "14px" }}>
+              <button type="button" onClick={() => setModalHistorico(false)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}>Fechar</button>
             </div>
           </div>
         </div>
