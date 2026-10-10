@@ -125,46 +125,44 @@ const tituloDocumento = (prefixo, animal, segundaVia = false) => {
 };
 
 // Possivelmente sujeitos a controle especial (Portaria SVS/MS 344/98). Mantenha em sincronia com
-// POSSIVELMENTE_CONTROLADOS de routers/atendimento_ia.py. A identificação é automática, pelo nome do
-// medicamento (inclusive quando o veterinário digita ou edita o item); não há marcação manual.
+// POSSIVELMENTE_CONTROLADOS de routers/atendimento_ia.py. O veterinário pode marcar/desmarcar à mão.
 const REGEX_CONTROLADOS = /(tramadol|morfina|metadona|fentanil|codeina|petidina|meperidina|buprenorfina|oxicodona|hidromorfona|remifentanil|sufentanil|alfentanil|tapentadol|cetamina|ketamina|tiletamina|zolazepam|diazepam|midazolam|clonazepam|alprazolam|lorazepam|clorazepato|fenobarbital|pentobarbital|amitriptilina|clomipramina|fluoxetina|sertralina|paroxetina|carbamazepina)/;
 const semAcento = (v) => String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const ehControlado = (i) =>
-  Boolean(i.controlado) || REGEX_CONTROLADOS.test(semAcento(i.medicamento)) || /controle especial/i.test(i.observacoes || "");
+  typeof i.controladoManual === "boolean"
+    ? i.controladoManual
+    : Boolean(i.controlado) || REGEX_CONTROLADOS.test(semAcento(i.medicamento)) || /controle especial/i.test(i.observacoes || "");
+// Dados da clínica (endereço, cidade, UF, telefone) lembrados neste navegador para a receita de controle especial
+const CHAVE_CLINICA = "vetassist_clinica";
+const lerClinicaSalva = () => {
+  try {
+    const salvo = JSON.parse(localStorage.getItem(CHAVE_CLINICA) || "{}");
+    return salvo && typeof salvo === "object" ? salvo : {};
+  } catch (e) {
+    return {};
+  }
+};
+// A quantidade a dispensar fica no campo `quantidade` e, depois de salva, dentro de `observacoes` ("Quantidade: 1 caixa.")
+const extrairQuantidade = (i) => {
+  const direta = String(i.quantidade || "").trim();
+  if (direta) return direta;
+  const m = String(i.observacoes || "").match(/Quantidade:\s*(.+?)\.(?:\s|$)/i);
+  return m ? m[1].trim() : "";
+};
+// Observações sem as marcas que o sistema acrescenta (quantidade e "controle especial")
+const observacaoVisivel = (i) =>
+  String(i.observacoes || "")
+    .replace(/Quantidade:\s*(.+?)\.(?:\s|$)/i, "")
+    .replace(/Medicamento de controle especial\./i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 // Garante que o texto impresso/salvo diga que o item é controlado
 const observacoesFinais = (i) => {
-  const o = String(i.observacoes || "").trim();
-  const frase = `Medicamento de controle especial${i.lista_controle ? ` (lista ${i.lista_controle})` : ""}.`;
-  return ehControlado(i) && !/controle especial/i.test(o) ? [o, frase].filter(Boolean).join(" ") : o;
+  const base = observacaoVisivel(i);
+  if (!ehControlado(i)) return base;
+  const qtd = extrairQuantidade(i);
+  return [base, qtd ? `Quantidade: ${qtd}.` : "", "Medicamento de controle especial."].filter(Boolean).join(" ");
 };
-
-// ---------- Recomendações adicionais impressas na receita ----------
-// As recomendações vêm da IA (sugestão de receita ou análise do item digitado) e podem ser editadas.
-// A tabela abaixo é só uma RESERVA para receitas antigas, salvas antes desse recurso, que não têm
-// recomendação gravada. Não é necessário mantê-la.
-const RECOMENDACOES_MEDICAMENTOS = [
-  { chaves: ["ondansetrona"], texto: "Idealmente administrar 30 minutos antes das refeições." },
-  { chaves: ["metoclopramida"], texto: "Idealmente administrar cerca de 30 minutos antes das refeições." },
-  { chaves: ["sucralfato"], texto: "Manter intervalo de 2 horas em relação a outros medicamentos (interfere na absorção)." },
-  { chaves: ["famotidina"], texto: "Pode ser combinada com alimentação se o animal recusar jejum." },
-  { chaves: ["omeprazol", "pantoprazol", "esomeprazol"], texto: "Administrar em jejum, de preferência 30 a 60 minutos antes da primeira refeição do dia." },
-  { chaves: ["meloxicam", "carprofeno", "firocoxibe", "robenacoxibe", "cetoprofeno"], texto: "Administrar junto com o alimento. Suspender e procurar a clínica se houver vômito, diarreia, fezes escuras ou perda de apetite." },
-  { chaves: ["prednisolona", "prednisona", "dexametasona"], texto: "Administrar junto com o alimento. Não interromper de forma abrupta sem orientação veterinária." },
-  { chaves: ["doxiciclina"], texto: "Administrar com um pouco de alimento e água para evitar irritação do esôfago (principalmente em gatos). Completar todo o período do tratamento." },
-  { chaves: ["amoxicilina"], texto: "Administrar junto com o alimento para reduzir o desconforto gástrico. Completar todo o período do tratamento, mesmo com melhora." },
-  { chaves: ["cefalexina", "azitromicina", "clindamicina", "enrofloxacino"], texto: "Completar todo o período do tratamento, mesmo com melhora dos sintomas." },
-  { chaves: ["metronidazol"], texto: "Se houver náusea ou vômito, administrar junto com o alimento. Completar todo o período do tratamento." },
-];
-const recomendacaoDaTabela = (i) => {
-  const nome = semAcento(i.medicamento);
-  const achadas = RECOMENDACOES_MEDICAMENTOS.filter((r) => r.chaves.some((c) => nome.includes(c)));
-  return achadas.map((r) => r.texto).join(" ");
-};
-// null/undefined = item sem análise (receita antiga) -> reserva; texto vazio = "sem recomendação"
-const recomendacoesDe = (i) => (i.recomendacoes != null ? String(i.recomendacoes).trim() : recomendacaoDaTabela(i));
-// "Ondansetrona gotas 4 mg/mL" -> "Ondansetrona" (nome curto para o bloco de recomendações)
-const nomeCurtoMedicamento = (m) =>
-  String(m || "").split(/\s+(?=\d|gotas|comprimid|c[áa]psul|solu[çc]|suspens|xarope|injet|pomada|col[ií]rio|pasta|sach)/i)[0].trim();
 
 const novoId = () => Math.random().toString(36).slice(2, 10);
 
@@ -187,20 +185,6 @@ const CSS_IMPRESSAO = `
   .nome{font-size:15px;font-weight:700;color:#4f46e5;margin-bottom:6px}
   .selo{display:inline-block;font-size:11px;font-weight:700;border:1px solid;border-radius:6px;padding:3px 9px;margin-bottom:8px}
   .linha{font-size:13px;margin:3px 0} .obs{margin:8px auto 0;max-width:620px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:6px 10px;font-size:11px;color:#78350f}
-  .rec{margin:18px 0 0;border:1px solid #c7d2fe;background:#eef2ff;border-radius:8px;padding:10px 14px;font-size:12px;page-break-inside:avoid}
-  .rec h3{margin:0 0 6px;font-size:13px;color:#3730a3} .rec ul{margin:0;padding-left:18px} .rec li{margin:3px 0}
-  .rc-tit{text-align:center;font-weight:700;font-size:15px;border-bottom:1px solid #111;padding-bottom:6px;margin-bottom:10px;letter-spacing:.2px}
-  .rc-topo{display:flex;gap:12px;margin-bottom:12px} .rc-emit{flex:1.35} .rc-vias{flex:1;font-size:12px;line-height:1.5;padding-top:4px}
-  .rc-vias div{padding:3px 6px;margin-bottom:4px} .rc-vias .ativa{font-weight:700;background:#f3f4f6;border-left:3px solid #111}
-  .rc-box{border:1px solid #111;padding:8px 10px;font-size:12px;line-height:1.8}
-  .rc-lin{font-size:13px;margin:6px 0;line-height:2} .f{display:inline-block;border-bottom:1px solid #111;padding:0 6px;min-width:80px;text-align:center}
-  .rc-presc{margin-top:14px;font-size:13px;min-height:190px} .rc-presc .tit{font-size:13px;margin-bottom:6px}
-  .rc-via{font-weight:700;font-size:15px;margin:8px 0 4px}
-  .rc-med{display:flex;align-items:baseline;gap:6px;font-size:14px} .rc-med .lid{flex:1;border-bottom:1px dotted #111}
-  .rc-ins{font-size:13px;margin:8px 0 14px 12px;line-height:1.55}
-  .rc-ass{margin-top:26px;display:flex;justify-content:space-between;align-items:flex-end;font-size:12px}
-  .rc-assl{width:290px;border-top:1px solid #111;text-align:center;padding-top:4px}
-  .rc-baixo{display:flex;gap:12px;margin-top:20px} .rc-baixo>div{flex:1}
   .geral{margin:18px 0 0;font-size:12px;color:#374151;white-space:pre-line}
   .grupo{font-size:13px;font-weight:700;color:#1e1b4b;border-bottom:1px solid #e5e7eb;margin:18px 0 8px;padding-bottom:4px}
   .ex{font-size:13px;margin:6px 0;padding-left:4px} .ex small{display:block;color:#4b5563;font-size:11px;margin-left:18px}
@@ -210,6 +194,21 @@ const CSS_IMPRESSAO = `
   .quebra{page-break-after:always} .quebra:last-child{page-break-after:auto}
   .via{text-align:right;font-size:11px;font-weight:700;color:#374151;margin-bottom:6px}
   .ctrl{border:2px solid #b91c1c;color:#b91c1c;text-align:center;font-weight:700;font-size:13px;padding:6px;border-radius:6px;margin-bottom:10px;letter-spacing:.4px}
+  .rc{font-size:13px;line-height:1.5}
+  .rc .t{text-align:center;font-size:17px;margin:0 0 12px;padding-bottom:6px;border-bottom:1.5px solid #111}
+  .rc .topo{display:flex;gap:14px;align-items:flex-start;margin-bottom:12px}
+  .rc .caixa{border:1.5px solid #111;padding:8px 10px;line-height:1.9;flex:1.4}
+  .rc .vias{font-size:12px;line-height:1.6;flex:1;padding-top:2px}
+  .rc .vias .sel{font-weight:700}
+  .rc .l2{margin:11px 0}
+  .rc .v{display:inline-block;min-width:40px;border-bottom:1px solid #111;padding:0 6px;text-align:center}
+  .rc .ri{display:flex;align-items:baseline;margin-top:12px;font-size:15px}
+  .rc .ri .pt{flex:1;border-bottom:1px dotted #111;margin:0 8px}
+  .rc .rp{margin:3px 0 0 4px;font-size:14px}
+  .rc .assin2{display:inline-block;border-top:1px solid #111;padding-top:4px;margin-left:30px;min-width:270px;text-align:center;font-size:12px}
+  .rc .base{display:flex;gap:10px;margin-top:44px;align-items:stretch}
+  .rc .bx{border:1.5px solid #111;padding:8px 10px;font-size:12px;line-height:2.1}
+  .rc .bx .v{text-align:left}
   .aviso{margin-top:28px;text-align:center;font-size:10px;color:#6b7280}
   @media print{body{padding:16px 20px}}
 `;
@@ -267,7 +266,11 @@ function Consultas() {
   const [obsReceita, setObsReceita] = useState("");
   const [pesoUsadoReceita, setPesoUsadoReceita] = useState(null);
   const [receitaConferida, setReceitaConferida] = useState(false);
-  const [analisandoMed, setAnalisandoMed] = useState(0);
+  // Identificação do emitente (receita de controle especial). Nome/CRMV vêm do veterinário do
+  // atendimento; endereço, cidade, UF e telefone da clínica ficam salvos neste navegador.
+  const [emitente, setEmitente] = useState(() => ({
+    nome: "", crmv: "", ufCrmv: "", endereco: "", cidade: "", ufCidade: "", telefone: "", ...lerClinicaSalva(),
+  }));
   const [receitaSalva, setReceitaSalva] = useState(false);
   const [carregandoReceita, setCarregandoReceita] = useState(false);
   const [salvandoReceita, setSalvandoReceita] = useState(false);
@@ -597,9 +600,7 @@ function Consultas() {
       const res = await api.post("/atendimento-ia/sugerir-receita", montarContextoClinico(), {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setItensReceita((res.data.itens || []).map((i) => ({
-        ...i, recomendacoes: i.recomendacoes ?? "", quantidade: i.quantidade ?? "", _id: novoId(), _analisadoPara: i.medicamento,
-      })));
+      setItensReceita((res.data.itens || []).map((i) => ({ ...i, _id: novoId() })));
       setAlertasReceita(res.data.alertas || []);
       setPesoUsadoReceita(res.data.peso_usado ?? null);
     } catch (error) {
@@ -609,7 +610,22 @@ function Consultas() {
     }
   };
 
+  const alterarEmitente = (campo, valor) => {
+    setEmitente((prev) => {
+      const novo = { ...prev, [campo]: valor };
+      try {
+        const { nome, crmv, ...clinica } = novo; // nome/CRMV mudam de veterinário para veterinário
+        localStorage.setItem(CHAVE_CLINICA, JSON.stringify(clinica));
+      } catch (e) { /* sem armazenamento: segue sem salvar */ }
+      return novo;
+    });
+  };
+
+  const veterinarioDaConsulta = (usuarioId) => usuarios.find((u) => u.id === usuarioId);
+
   const abrirReceita = () => {
+    const vet = veterinarioDaConsulta(consultaEditando?.usuario_id);
+    if (vet) setEmitente((prev) => ({ ...prev, nome: vet.nome || prev.nome, crmv: vet.crmv || prev.crmv }));
     setModalReceita(true);
     // Reabrir não apaga o que o veterinário já editou; "Gerar novamente" refaz a sugestão.
     if (itensReceita.length === 0 && !carregandoReceita) gerarReceitaIA();
@@ -630,47 +646,21 @@ function Consultas() {
     setReceitaSalva(false);
     setItensReceita((prev) => [...prev, {
       _id: novoId(), medicamento: "", dosagem: "", frequencia: "", duracao: "",
-      tipo_uso: "A_CONFIRMAR", observacoes: "", controlado: false, lista_controle: null,
-      recomendacoes: "", quantidade: "", _analisadoPara: "",
+      tipo_uso: "A_CONFIRMAR", observacoes: "", quantidade: "", controlado: false,
     }]);
   };
 
-  // Item digitado/editado à mão: a IA classifica o controle especial e escreve as recomendações,
-  // considerando o paciente e os demais medicamentos da receita (interações, intervalos).
-  const analisarItemReceita = async (idItem) => {
-    const item = itensReceita.find((i) => i._id === idItem);
-    const nome = item?.medicamento?.trim();
-    if (!item || !nome || item._analisadoPara === item.medicamento) return;
-    const lista = itensReceita.filter((i) => i.medicamento.trim());
-    const posicao = lista.findIndex((i) => i._id === idItem);
-    setAnalisandoMed((n) => n + 1);
-    try {
-      const token = localStorage.getItem("token");
-      const res = await api.post("/atendimento-ia/analisar-medicamentos", {
-        ...montarContextoClinico(),
-        medicamentos: lista.map((i) => ({
-          medicamento: i.medicamento.trim(), dosagem: i.dosagem || null, frequencia: i.frequencia || null, duracao: i.duracao || null,
-        })),
-      }, { headers: { Authorization: `Bearer ${token}` } });
-      const r = (res.data.itens || [])[posicao];
-      if (r) {
-        setReceitaConferida(false);
-        setReceitaSalva(false);
-        setItensReceita((prev) => prev.map((i) => (i._id === idItem
-          ? { ...i, controlado: Boolean(r.controlado), lista_controle: r.lista_controle ?? null, recomendacoes: r.recomendacoes ?? "", _analisadoPara: nome }
-          : i)));
-      }
-    } catch (error) {
-      setErroReceita(mensagemApi(error, "Não foi possível verificar o medicamento com a IA. Confira manualmente o controle especial e as recomendações."));
-    } finally {
-      setAnalisandoMed((n) => n - 1);
-    }
-  };
-
   const itensReceitaValidos = itensReceita.filter((i) => i.medicamento.trim());
-  const receitaPronta = receitaConferida && analisandoMed === 0;
   const pesoAtualNum = pesoAtendimento !== "" ? Number(pesoAtendimento) : null;
   const pesoMudouDesdeReceita = itensReceita.length > 0 && pesoAtualNum !== null && pesoUsadoReceita !== pesoAtualNum;
+
+  const motivoBloqueioControlado = (() => {
+    const ctrl = itensReceitaValidos.filter(ehControlado);
+    if (ctrl.length === 0) return "";
+    if (!emitente.nome.trim() || !emitente.crmv.trim()) return "Preencha nome e CRMV do emitente (receita de controle especial).";
+    if (ctrl.some((i) => !extrairQuantidade(i))) return "Informe a quantidade de cada medicamento controlado (ex.: 1 caixa).";
+    return "";
+  })();
 
   const abrirJanelaImpressao = (titulo, corpoHtml) => {
     const janela = window.open("", "_blank", "width=860,height=900");
@@ -734,101 +724,88 @@ function Consultas() {
         </div>`;
     }).join("");
 
-    const blocoRecomendacoes = (lista) => {
-      const linhas = lista
-        .map((i) => ({ nome: nomeCurtoMedicamento(i.medicamento), texto: recomendacoesDe(i) }))
-        .filter((r) => r.texto);
-      if (linhas.length === 0) return "";
-      return `<div class="rec"><h3>Recomendações adicionais</h3><ul>${linhas
-        .map((r) => `<li><strong>${esc(r.nome)}</strong> — ${esc(r.texto)}</li>`)
-        .join("")}</ul></div>`;
-    };
-
-    const minuscula = (s) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : "");
-    const primeiro = (...v) => v.find((x) => x !== undefined && x !== null && String(x).trim() !== "");
-
-    // Receituário Veterinário de Controle Especial (1ª via: farmácia/clínica; 2ª via: proprietário)
-    const documentoControlado = (lista, numeroVia) => {
-      const a = ctx.animal !== undefined ? ctx.animal : animalSelecionado;
-      const tutor = a ? tutores.find((t) => t.id === a.tutor_id) : null;
-      const vet = ctx.segundaVia ? null : usuarios.find((u) => String(u.id) === String(consultaEditando?.usuario_id ?? usuarioId));
-      const peso = ctx.peso !== undefined ? ctx.peso : pesoAtendimento;
-      const idadeBruta = ctx.animal !== undefined ? a?.idade : primeiro(idadeAtendimento, a?.idade);
-      const idade = idadeBruta !== undefined && idadeBruta !== "" ? (/^\d+([.,]\d+)?$/.test(String(idadeBruta)) ? `${idadeBruta} anos` : String(idadeBruta)) : "";
-      // O cadastro do usuário só tem nome e CRMV. Se o CRMV vier com a UF (ex.: "RS 12570", "12570/RS"),
-      // separa número e UF; endereço, cidade e telefone ficam em branco para preencher/carimbar.
-      const crmvBruto = String(vet?.crmv || "");
-      const ufCrmv = (crmvBruto.match(/(?<![A-Za-z])([A-Za-z]{2})(?![A-Za-z])/) || [])[1]?.toUpperCase() || "";
-      const numeroCrmv = crmvBruto.replace(/CRMV/i, "").replace(/(?<![A-Za-z])[A-Za-z]{2}(?![A-Za-z])/, "").replace(/[\s\-\/]+/g, " ").trim();
-      const f = (valor, largura = 90) => `<span class="f" style="min-width:${largura}px">${esc(valor ?? "")}</span>`;
-
-      const itensHtml = lista.map((i) => {
-        const obs = String(i.observacoes || "");
-        const viaUso = (obs.match(/Via:\s*([^.]+)\./i) || [])[1];
-        const extras = obs.replace(/Via:\s*[^.]+\./i, "").replace(/Medicamento de controle especial[^.]*\./i, "").trim();
-        const posologia = [i.dosagem ? `Administrar ${i.dosagem}` : "Administrar conforme orientação veterinária", minuscula(i.frequencia), minuscula(i.duracao)]
-          .filter(Boolean).join(", ") + ".";
-        const orientacao = [recomendacoesDe(i), extras].filter(Boolean).join(" ");
-        return `
-          <div>
-            ${viaUso ? `<div class="rc-via">USO VIA ${esc(viaUso.trim().toUpperCase())}:</div>` : ""}
-            <div class="rc-med"><strong>${esc(i.medicamento)}</strong><span class="lid"></span>
-              <strong>${i.quantidade ? esc(i.quantidade) : `Quantidade: ${f("", 120)}`}</strong></div>
-            <div class="rc-ins">${esc(posologia)}${orientacao ? ` ${esc(orientacao)}` : ""}</div>
-          </div>`;
-      }).join("");
-
-      return `
+    const documentoComum = (lista) => `
       <div class="quebra">
-        <div class="rc-tit">RECEITUÁRIO VETERINÁRIO DE CONTROLE ESPECIAL</div>
-        <div class="rc-topo">
-          <div class="rc-box rc-emit">
-            <strong>IDENTIFICAÇÃO DO EMITENTE:</strong><br/>
-            Nome Completo: Méd. Vet. ${f(vet?.nome, 190)}<br/>
-            CRMV: ${f(numeroCrmv, 90)} UF: ${f(ufCrmv, 40)}<br/>
-            Endereço: ${f("", 200)}<br/>
-            Cidade: ${f("", 120)} UF: ${f(ufCrmv, 40)}<br/>
-            Tel: ${f("", 150)}
-          </div>
-          <div class="rc-vias">
-            <div class="${numeroVia === 1 ? "ativa" : ""}">1ª Via: Retenção na Farmácia/Clínica Veterinária.</div>
-            <div class="${numeroVia === 2 ? "ativa" : ""}">2ª Via: Proprietário.</div>
-          </div>
-        </div>
-        <div class="rc-lin">Nome do Animal: ${f(a?.nome, 260)}</div>
-        <div class="rc-lin">Espécie: ${f(a?.especie, 70)} Idade: ${f(idade, 60)} Sexo: ${f(a?.sexo, 40)}
-          Peso: ${f(peso !== "" && peso !== null && peso !== undefined ? `${peso} kg` : "", 60)} Raça: ${f(a?.raca, 100)}</div>
-        <div class="rc-lin">Nome do Proprietário: ${f(nomeDoTutor(a), 300)}</div>
-        <div class="rc-lin">Endereço: ${f(primeiro(tutor?.endereco, tutor?.logradouro), 420)}</div>
-        <div class="rc-presc"><div class="tit">Prescrição:</div>${itensHtml}</div>
-        <div class="rc-ass"><div>Data: ____/____/______</div><div class="rc-assl">Assinatura do Médico Veterinário / CRMV</div></div>
-        <div class="rc-baixo">
-          <div class="rc-box"><strong>IDENTIFICAÇÃO DO COMPRADOR:</strong><br/>
-            Nome: ${f("", 230)}<br/>RG: ${f("", 110)} Órgão Emissor: ${f("", 80)}<br/>
-            Endereço: ${f("", 230)}<br/>Cidade: ${f("", 110)} UF: ${f("", 36)}<br/>
-            Tel: ${f("", 120)} CPF: ${f("", 130)}</div>
-          <div class="rc-box"><strong>IDENTIFICAÇÃO DO FORNECEDOR:</strong><br/><br/><br/>
-            ${f("", 140)} Data: ____/____/______<br/>
-            <span style="font-size:11px">Assinatura do Farmacêutico/Médico Veterinário</span></div>
-        </div>
-      </div>`;
-    };
-
-    const documento = (lista, { via = "", controlado = false } = {}) => `
-      <div class="quebra">
-        ${via ? `<div class="via">${esc(via)}</div>` : ""}
-        ${controlado ? '<div class="ctrl">RECEITA DE MEDICAMENTO CONTROLADO</div>' : ""}
-        ${cabecalhoImpressao(controlado ? "Receita de Controle Especial" : "Receituário Veterinário", ctx)}
-        ${controlado ? '<div class="linha" style="text-align:left;margin:-6px 0 14px"><strong>Endereço do tutor:</strong> ______________________________________________</div>' : ""}
+        ${cabecalhoImpressao("Receituário Veterinário", ctx)}
         <h2>💊 Medicamentos & Posologias</h2>${renderItens(lista)}
-        ${blocoRecomendacoes(lista)}
         ${String(observacoes || "").trim() ? `<div class="geral"><strong>Orientações gerais:</strong>\n${esc(observacoes)}</div>` : ""}
         ${rodapeAssinatura}
       </div>`;
 
-    // Controlados saem em documento separado e em 2 vias (farmácia retém a 1ª; cliente fica com a 2ª)
+    // Modelo de Receituário Veterinário de Controle Especial (1ª via farmácia/clínica; 2ª via proprietário)
+    const documentoControlado = (lista, via) => {
+      const em = ctx.emitente || emitente;
+      const a = ctx.animal !== undefined ? ctx.animal : animalSelecionado;
+      const pesoRef = ctx.peso !== undefined ? ctx.peso : pesoAtendimento;
+      const emissao = ctx.emissao ? new Date(ctx.emissao) : new Date();
+      const t = a ? (tutores.find((x) => x.id === a.tutor_id) || null) : null;
+      const enderecoTutor = t
+        ? [t.rua, t.complemento, t.bairro, [t.cidade, t.estado].filter(Boolean).join("/")].filter((x) => x && String(x).trim()).join(", ")
+        : "";
+      const idadeBruta = a?.idade ?? (ctx.animal === undefined ? idadeAtendimento : "");
+      const idadeTxt = idadeBruta !== "" && idadeBruta != null ? (isNaN(Number(idadeBruta)) ? String(idadeBruta) : `${idadeBruta}a`) : "";
+      const sexoTxt = { m: "M", f: "F" }[semAcento(a?.sexo).charAt(0)] || (a?.sexo ? "Indef." : "");
+      const pesoTxt = pesoRef !== "" && pesoRef != null ? `${pesoRef}kg` : "";
+      // largura mínima em px para os campos em branco ficarem com linha visível
+      const v = (txt, w = 0) => `<span class="v"${w ? ` style="min-width:${w}px"` : ""}>${txt ? esc(txt) : "&nbsp;"}</span>`;
+      const itens = lista.map((i) => {
+        const linha = [i.dosagem, i.frequencia, i.duracao].filter((x) => x && String(x).trim()).join(" — ");
+        const obs = observacaoVisivel(i);
+        return `
+          <div class="ri"><strong>${esc(i.medicamento)}</strong><span class="pt"></span><strong>${esc(extrairQuantidade(i) || "______")}</strong></div>
+          ${linha ? `<div class="rp">${esc(linha)}</div>` : ""}
+          ${obs ? `<div class="rp">${esc(obs)}</div>` : ""}`;
+      }).join("");
+      const viaTxt = (n, texto) => `<div class="${via === n ? "sel" : ""}">${n}ª Via: ${texto}${via === n ? " ◄" : ""}</div>`;
+      return `
+        <div class="quebra rc">
+          <h3 class="t">RECEITUÁRIO VETERINÁRIO DE CONTROLE ESPECIAL</h3>
+          <div class="topo">
+            <div class="caixa">
+              <strong>IDENTIFICAÇÃO DO EMITENTE:</strong><br/>
+              Nome Completo: Méd. Vet. ${v(em.nome, 200)}<br/>
+              CRMV: ${v(em.crmv, 90)} &nbsp; UF: ${v(em.ufCrmv, 34)}<br/>
+              Endereço: ${v(em.endereco, 200)}<br/>
+              Cidade: ${v(em.cidade, 110)} &nbsp; UF: ${v(em.ufCidade, 34)}<br/>
+              Tel: ${v(em.telefone, 160)}
+            </div>
+            <div class="vias">${viaTxt(1, "Retenção na Farmácia/Clínica Veterinária.")}${viaTxt(2, "Proprietário.")}</div>
+          </div>
+          <div class="l2">Nome do Animal: ${v(a?.nome, 280)}</div>
+          <div class="l2">Espécie: ${v(a?.especie, 90)} Idade: ${v(idadeTxt, 50)} Sexo: ${v(sexoTxt, 34)} Peso: ${v(pesoTxt, 60)} Raça: ${v(a?.raca, 120)}</div>
+          <div class="l2">Nome do Proprietário: ${v(t?.nome || nomeDoTutor(a), 360)}</div>
+          <div class="l2">Endereço: ${v(enderecoTutor, 440)}</div>
+          <div class="l2" style="margin-top:18px"><strong>Prescrição:</strong></div>
+          ${itens}
+          ${String(observacoes || "").trim() ? `<div class="rp" style="margin-top:14px"><strong>Orientações:</strong> ${esc(observacoes)}</div>` : ""}
+          <div class="l2" style="margin-top:64px">Data: ${v(emissao.toLocaleDateString("pt-BR"), 100)}
+            <span class="assin2">Assinatura do Médico Veterinário/Carimbo</span></div>
+          <div class="base">
+            <div class="bx" style="flex:1.3">
+              <strong>IDENTIFICAÇÃO DO COMPRADOR:</strong><br/>
+              Nome: ${v("", 230)}<br/>RG: ${v("", 110)} Órgão Emissor: ${v("", 80)}<br/>
+              Endereço: ${v("", 220)}<br/>Cidade: ${v("", 120)} UF: ${v("", 34)}<br/>
+              Tel: ${v("", 110)} CPF: ${v("", 110)}
+            </div>
+            <div class="bx" style="flex:1">
+              <strong>IDENTIFICAÇÃO DO FORNECEDOR:</strong><br/><br/><br/>
+              ${v("", 190)} Data: ${v("", 70)}<br/>
+              Assinatura do Farmacêutico/<br/>Médico Veterinário
+            </div>
+          </div>
+        </div>`;
+    };
+
+    // Controlados saem em documento separado e em 2 vias (1ª farmácia/clínica; 2ª proprietário)
+    if (controlados.length > 0) {
+      const em = ctx.emitente || emitente;
+      if (!String(em.nome || "").trim() || !String(em.crmv || "").trim()) {
+        window.alert("Receita controlada: informe nome e CRMV do veterinário emitente (campo na tela da receita ou no cadastro do usuário).");
+        return;
+      }
+    }
     const partes = [];
-    if (comuns.length > 0) partes.push(documento(comuns));
+    if (comuns.length > 0) partes.push(documentoComum(comuns));
     if (controlados.length > 0) {
       partes.push(documentoControlado(controlados, 1));
       partes.push(documentoControlado(controlados, 2));
@@ -857,8 +834,6 @@ function Consultas() {
           duracao: i.duracao || null,
           tipo_uso: TIPO_USO_ROTULO[i.tipo_uso] || null,
           observacoes: observacoesFinais(i) || null,
-          recomendacoes: recomendacoesDe(i) || null,
-          quantidade: i.quantidade || null,
         })),
       }, { headers: { Authorization: `Bearer ${token}` } });
       setReceitaSalva(true);
@@ -972,6 +947,10 @@ function Consultas() {
   };
   const ctx2aVia = (bloco, data) => ({
     animal: animalDoHistorico || null, peso: bloco.peso_atendimento ?? "", emissao: data, atendimento: bloco.codigo, segundaVia: true,
+    emitente: (() => {
+      const vet = veterinarioDaConsulta(bloco.usuario_id);
+      return { ...emitente, nome: vet?.nome || emitente.nome, crmv: vet?.crmv || emitente.crmv };
+    })(),
   });
 
   const limparFormulario = () => {
@@ -1218,6 +1197,14 @@ function Consultas() {
 
   const estiloOverlay = { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1100, padding: "20px" };
   const estiloCaixaModal = { backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", maxWidth: "820px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" };
+
+  const renderCampoEmitente = (rotulo, chave, extra = {}) => (
+    <div style={{ minWidth: 0, ...extra }}>
+      <label htmlFor={`em-${chave}`} style={{ ...estiloLabel, fontSize: "12px", marginBottom: "4px" }}>{rotulo}</label>
+      <input id={`em-${chave}`} type="text" value={emitente[chave] || ""} onChange={(e) => alterarEmitente(chave, e.target.value)} style={{ ...estiloInput, height: "36px", fontSize: "13px" }} />
+    </div>
+  );
+  const impressaoBloqueada = !receitaConferida || itensReceitaValidos.length === 0 || Boolean(motivoBloqueioControlado);
 
   const estiloPainel = { border: "1px solid #e5e7eb", borderRadius: "10px", padding: "16px", backgroundColor: "#ffffff", minWidth: 0 };
   const estiloTituloPainel = { margin: "0 0 14px 0", color: "#111827", fontSize: "15px", fontWeight: 700 };
@@ -1771,24 +1758,12 @@ function Consultas() {
               </div>
             )}
 
-            {itensReceitaValidos.some((i) => ehControlado(i) && /^[AB]/.test(i.lista_controle || "")) && (
-              <div role="status" style={{ backgroundColor: "#fffbeb", color: "#92400e", border: "1px solid #fcd34d", padding: "10px 12px", borderRadius: "8px", marginBottom: "12px", fontSize: "13px", fontWeight: 600, lineHeight: 1.45 }}>
-                ⚠️ Medicamentos das listas A e B normalmente exigem a Notificação de Receita oficial (talonário numerado), que este receituário não substitui. Confira a exigência para o princípio ativo.
-              </div>
-            )}
-
-            {analisandoMed > 0 && (
-              <div role="status" style={{ backgroundColor: "#eef2ff", color: "#3730a3", border: "1px solid #c7d2fe", padding: "8px 12px", borderRadius: "8px", marginBottom: "12px", fontSize: "12px", fontWeight: 600 }}>
-                🔎 A IA está verificando o medicamento: controle especial e recomendações de administração...
-              </div>
-            )}
-
             {itensReceita.map((item, idx) => {
               const cor = TIPO_USO_COR[item.tipo_uso] || TIPO_USO_COR.A_CONFIRMAR;
-              const campo = (rotulo, chave, extra = {}, aoSair) => (
+              const campo = (rotulo, chave, extra = {}) => (
                 <div style={{ minWidth: 0, ...extra }}>
                   <label htmlFor={`rx-${item._id}-${chave}`} style={{ ...estiloLabel, fontSize: "12px", marginBottom: "4px" }}>{rotulo}</label>
-                  <input id={`rx-${item._id}-${chave}`} type="text" value={item[chave] || ""} onChange={(e) => alterarItemReceita(item._id, chave, e.target.value)} onBlur={aoSair} style={{ ...estiloInput, height: "36px", fontSize: "13px" }} />
+                  <input id={`rx-${item._id}-${chave}`} type="text" value={item[chave] || ""} onChange={(e) => alterarItemReceita(item._id, chave, e.target.value)} style={{ ...estiloInput, height: "36px", fontSize: "13px" }} />
                 </div>
               );
               return (
@@ -1796,14 +1771,14 @@ function Consultas() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "8px", flexWrap: "wrap" }}>
                     <strong style={{ color: "#4f46e5", fontSize: "14px" }}>
                       {idx + 1}.
-                      {ehControlado(item) && <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 700, color: "#991b1b", backgroundColor: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "999px", padding: "2px 8px" }}>Controlado{item.lista_controle ? ` (lista ${item.lista_controle})` : ""} — receita em 2 vias</span>}
+                      {ehControlado(item) && <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 700, color: "#991b1b", backgroundColor: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "999px", padding: "2px 8px" }}>Controlado — receita em 2 vias</span>}
                     </strong>
                     <button type="button" onClick={() => removerItemReceita(item._id)} aria-label={`Remover medicamento ${idx + 1}`} style={{ backgroundColor: "#fee2e2", color: "#991b1b", border: "none", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: 600, fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
                       <MdDelete size={14} /> Remover
                     </button>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "10px" }}>
-                    {campo("Medicamento e apresentação", "medicamento", { gridColumn: "1 / -1" }, () => analisarItemReceita(item._id))}
+                    {campo("Medicamento e apresentação", "medicamento", { gridColumn: "1 / -1" })}
                     {campo("Dosagem", "dosagem", { gridColumn: "1 / -1" })}
                     {campo("Frequência", "frequencia")}
                     {campo("Duração", "duracao")}
@@ -1814,15 +1789,10 @@ function Consultas() {
                       </select>
                     </div>
                     {campo("Observações", "observacoes", { gridColumn: "1 / -1" })}
-                    {ehControlado(item) && (
-                      <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
-                        <label htmlFor={`rx-${item._id}-qtd`} style={{ ...estiloLabel, fontSize: "12px", marginBottom: "4px" }}>Quantidade a dispensar (algarismos e por extenso)</label>
-                        <input id={`rx-${item._id}-qtd`} type="text" value={item.quantidade || ""} placeholder="Ex.: 1 (um) frasco" onChange={(e) => alterarItemReceita(item._id, "quantidade", e.target.value)} style={{ ...estiloInput, height: "36px", fontSize: "13px" }} />
-                      </div>
-                    )}
-                    <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
-                      <label htmlFor={`rx-${item._id}-rec`} style={{ ...estiloLabel, fontSize: "12px", marginBottom: "4px" }}>Recomendações adicionais (impressas na receita)</label>
-                      <textarea id={`rx-${item._id}-rec`} rows={2} value={recomendacoesDe(item)} onChange={(e) => alterarItemReceita(item._id, "recomendacoes", e.target.value)} style={{ ...estiloInput, height: "auto", minHeight: "56px", padding: "8px 10px", fontSize: "13px", resize: "vertical", lineHeight: 1.4, backgroundColor: "#eef2ff", borderColor: "#c7d2fe" }} />
+                    {ehControlado(item) && campo("Quantidade a dispensar (ex.: 1 caixa, 10 comprimidos)", "quantidade", { gridColumn: "1 / -1" })}
+                    <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <input id={`rx-${item._id}-ctrl`} type="checkbox" checked={ehControlado(item)} onChange={(e) => alterarItemReceita(item._id, "controladoManual", e.target.checked)} style={{ width: "16px", height: "16px", cursor: "pointer" }} />
+                      <label htmlFor={`rx-${item._id}-ctrl`} style={{ fontSize: "12px", fontWeight: 600, color: "#374151", cursor: "pointer" }}>Medicamento controlado (imprime em 2 vias: farmácia e cliente)</label>
                     </div>
                   </div>
                 </div>
@@ -1836,6 +1806,22 @@ function Consultas() {
             <label htmlFor="rx-obs" style={estiloLabel}>Orientações gerais ao tutor (opcional)</label>
             <textarea id="rx-obs" value={obsReceita} onChange={(e) => { setObsReceita(e.target.value); setReceitaSalva(false); }} style={{ ...estiloInput, height: "auto", minHeight: "70px", padding: "10px 12px", resize: "vertical", lineHeight: 1.45, marginBottom: "14px" }} placeholder="Ex.: oferecer água fresca à vontade; retornar em 5 dias para reavaliação." />
 
+            {itensReceitaValidos.some(ehControlado) && (
+              <div style={{ border: "1px solid #fca5a5", backgroundColor: "#fef2f2", borderRadius: "8px", padding: "12px", marginBottom: "14px" }}>
+                <div style={{ fontWeight: 700, fontSize: "13px", color: "#991b1b", marginBottom: "4px" }}>Identificação do emitente (receita de controle especial)</div>
+                <div style={{ fontSize: "11px", color: "#7f1d1d", marginBottom: "8px" }}>Nome e CRMV vêm do veterinário do atendimento. Endereço, cidade, UF e telefone da clínica ficam salvos neste navegador.</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px" }}>
+                  {renderCampoEmitente("Nome completo do veterinário", "nome", { gridColumn: "1 / -1" })}
+                  {renderCampoEmitente("CRMV", "crmv")}
+                  {renderCampoEmitente("UF do CRMV", "ufCrmv")}
+                  {renderCampoEmitente("Endereço da clínica", "endereco", { gridColumn: "1 / -1" })}
+                  {renderCampoEmitente("Cidade", "cidade")}
+                  {renderCampoEmitente("UF", "ufCidade")}
+                  {renderCampoEmitente("Telefone", "telefone")}
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", backgroundColor: receitaConferida ? "#f0fdf4" : "#fffbeb", border: `1px solid ${receitaConferida ? "#86efac" : "#fcd34d"}`, borderRadius: "8px", padding: "10px 12px", marginBottom: "14px" }}>
               <input id="rx-conferida" type="checkbox" checked={receitaConferida} onChange={(e) => setReceitaConferida(e.target.checked)} style={{ width: "16px", height: "16px", marginTop: "2px", cursor: "pointer", flexShrink: 0 }} />
               <label htmlFor="rx-conferida" style={{ fontSize: "13px", fontWeight: 600, color: "#374151", cursor: "pointer", lineHeight: 1.4 }}>
@@ -1843,6 +1829,9 @@ function Consultas() {
               </label>
             </div>
 
+            {motivoBloqueioControlado && (
+              <div role="alert" style={{ color: "#991b1b", fontSize: "12px", fontWeight: 600, marginBottom: "8px" }}>⚠️ {motivoBloqueioControlado}</div>
+            )}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", borderTop: "1px solid #e5e7eb", paddingTop: "14px" }}>
               <button type="button" onClick={gerarReceitaIA} disabled={carregandoReceita} style={{ backgroundColor: "#ffffff", color: "#4f46e5", border: "1px solid #c7d2fe", padding: "8px 14px", borderRadius: "8px", cursor: carregandoReceita ? "not-allowed" : "pointer", fontWeight: 600, fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
                 <MdAutoAwesome size={16} /> {carregandoReceita ? "Gerando..." : "Gerar novamente"}
@@ -1852,18 +1841,18 @@ function Consultas() {
                 <button
                   type="button"
                   onClick={salvarReceitaNoProntuario}
-                  disabled={!receitaPronta || itensReceitaValidos.length === 0 || !consultaEditando?.id || salvandoReceita || receitaSalva}
-                  title={!consultaEditando?.id ? "Abra o atendimento pela lista (botão Atender) para salvar no prontuário" : !receitaPronta ? "Confirme a conferência da receita" : undefined}
-                  style={{ backgroundColor: (!receitaPronta || itensReceitaValidos.length === 0 || !consultaEditando?.id || receitaSalva) ? "#e5e7eb" : "#16a34a", color: (!receitaPronta || itensReceitaValidos.length === 0 || !consultaEditando?.id || receitaSalva) ? "#6b7280" : "#ffffff", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}
+                  disabled={!receitaConferida || itensReceitaValidos.length === 0 || !consultaEditando?.id || salvandoReceita || receitaSalva}
+                  title={!consultaEditando?.id ? "Abra o atendimento pela lista (botão Atender) para salvar no prontuário" : !receitaConferida ? "Confirme a conferência da receita" : undefined}
+                  style={{ backgroundColor: (!receitaConferida || itensReceitaValidos.length === 0 || !consultaEditando?.id || receitaSalva) ? "#e5e7eb" : "#16a34a", color: (!receitaConferida || itensReceitaValidos.length === 0 || !consultaEditando?.id || receitaSalva) ? "#6b7280" : "#ffffff", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}
                 >
                   {receitaSalva ? "✓ Salva no prontuário" : salvandoReceita ? "Salvando..." : "Salvar no prontuário"}
                 </button>
                 <button
                   type="button"
                   onClick={imprimirReceita}
-                  disabled={!receitaPronta || itensReceitaValidos.length === 0}
-                  title={!receitaPronta ? "Confirme a conferência da receita para imprimir" : undefined}
-                  style={{ backgroundColor: (!receitaPronta || itensReceitaValidos.length === 0) ? "#e5e7eb" : "#4f46e5", color: (!receitaPronta || itensReceitaValidos.length === 0) ? "#6b7280" : "#ffffff", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: (!receitaPronta || itensReceitaValidos.length === 0) ? "not-allowed" : "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}
+                  disabled={impressaoBloqueada}
+                  title={!receitaConferida ? "Confirme a conferência da receita para imprimir" : (motivoBloqueioControlado || undefined)}
+                  style={{ backgroundColor: impressaoBloqueada ? "#e5e7eb" : "#4f46e5", color: impressaoBloqueada ? "#6b7280" : "#ffffff", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: impressaoBloqueada ? "not-allowed" : "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}
                 >
                   <MdPrint size={16} /> Imprimir receita
                 </button>
