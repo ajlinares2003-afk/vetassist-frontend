@@ -25,16 +25,52 @@ const avaliarSinal = (valor, refTexto, unidade, dica = "") => {
   if (v < lim[0]) return { nivel: "baixo", texto: `Abaixo do limite clínico (≥ ${lim[0]} ${unidade})${dica}` };
   if (repouso && v > repouso[1]) return { nivel: "atencao", texto: `Acima da faixa de repouso (≤ ${repouso[1]} ${unidade})${dica}` };
   if (repouso && v < repouso[0]) return { nivel: "atencao", texto: `Abaixo da faixa de repouso (≥ ${repouso[0]} ${unidade})${dica}` };
+  return { nivel: "ok", texto: "Dentro do esperado" };
+};
+
+// Peso: faixa "20.40 - 34.00" dentro do texto de referência
+const avaliarPeso = (valor, refTexto) => {
+  const v = parseFloat(valor);
+  const m = String(refTexto || "").match(/(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/);
+  if (isNaN(v) || !m) return null;
+  const min = parseFloat(m[1].replace(",", "."));
+  const max = parseFloat(m[2].replace(",", "."));
+  if (v < min || v > max) return { nivel: "atencao", texto: `Fora da faixa de referência (${min} - ${max} kg)` };
+  return { nivel: "ok", texto: "Dentro do esperado" };
+};
+
+// TPC: referências como "Menos de 2 segundos" (limite superior) ou faixa "1 - 2"
+const avaliarTPC = (valor, refTexto) => {
+  const v = parseFloat(valor);
+  const t = String(refTexto || "");
+  if (isNaN(v)) return null;
+  const limite = t.match(/(?:menos de|at[eé]|inferior a|<|≤)\s*(\d+(?:[.,]\d+)?)/i);
+  if (limite) {
+    const max = parseFloat(limite[1].replace(",", "."));
+    return v <= max ? { nivel: "ok", texto: "Dentro do esperado" } : { nivel: "atencao", texto: `Acima do esperado (≤ ${max} s)` };
+  }
+  const faixa = t.match(/(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/);
+  if (faixa) {
+    const min = parseFloat(faixa[1].replace(",", "."));
+    const max = parseFloat(faixa[2].replace(",", "."));
+    return v >= min && v <= max ? { nivel: "ok", texto: "Dentro do esperado" } : { nivel: "atencao", texto: `Fora da faixa esperada (${min} - ${max} s)` };
+  }
   return null;
 };
+
+const avaliarMucosas = (valor) =>
+  /^normocorada/i.test(String(valor || "").trim())
+    ? { nivel: "ok", texto: "Dentro do esperado" }
+    : { nivel: "atencao", texto: "Mucosa alterada — avaliar" };
 
 const CORES_ALERTA = {
   alto: { cor: "#b91c1c", borda: "#fca5a5", bg: "#fef2f2", icone: "🔴" },
   baixo: { cor: "#b91c1c", borda: "#fca5a5", bg: "#fef2f2", icone: "🔴" },
   atencao: { cor: "#b45309", borda: "#fcd34d", bg: "#fffbeb", icone: "⚠️" },
+  ok: { cor: "#15803d", borda: "#86efac", bg: "#f0fdf4", icone: "✓" },
 };
 
-const ICONE_ALERTA = { alto: "↑", baixo: "↓", atencao: "!" };
+const ICONE_ALERTA = { alto: "↑", baixo: "↓", atencao: "!", ok: "✓" };
 
 const renderAlertaSinal = (alerta) =>
   alerta ? (
@@ -538,7 +574,9 @@ function Consultas() {
   const estiloLabel = { display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" };
 
   const estiloAlerta = (alerta) =>
-    alerta
+    alerta?.nivel === "ok"
+      ? { ...estiloInput, border: `1px solid ${CORES_ALERTA.ok.borda}`, backgroundColor: "#ffffff", color: "#14532d", fontWeight: "600" }
+      : alerta
       ? { ...estiloInput, border: `1px solid ${CORES_ALERTA[alerta.nivel].borda}`, backgroundColor: CORES_ALERTA[alerta.nivel].bg, color: CORES_ALERTA[alerta.nivel].cor, fontWeight: "700" }
       : estiloInput;
 
@@ -550,6 +588,9 @@ function Consultas() {
   const alertaTemp = avaliarSinal(temperatura, refs?.temperatura, "°C", " — reavaliar após repouso");
   const alertaFC = avaliarSinal(frequenciaCardiaca, refs?.fc, "bpm");
   const alertaFR = avaliarSinal(frequenciaRespiratoria, refs?.fr, "ir/min");
+  const alertaPeso = avaliarPeso(pesoAtendimento, refs?.peso_ref);
+  const alertaTPC = avaliarTPC(tpcSegundos, refs?.tpc);
+  const alertaMucosas = avaliarMucosas(mucosas);
 
   const temIndicacaoReal = indicacaoCirurgia || forcarCirurgia;
 
@@ -648,8 +689,8 @@ function Consultas() {
               <div className="cns-vitais">
                 {renderCardVital(
                   "cns-peso", "Peso atual (kg)",
-                  <input id="cns-peso" type="number" step="0.1" value={pesoAtendimento} onChange={(e) => setPesoAtendimento(e.target.value)} style={estiloInputVital} />,
-                  refTxt("peso_ref")
+                  <input id="cns-peso" type="number" step="0.1" value={pesoAtendimento} onChange={(e) => setPesoAtendimento(e.target.value)} style={estiloAlertaVital(alertaPeso)} />,
+                  refTxt("peso_ref"), alertaPeso
                 )}
                 {renderCardVital(
                   "cns-temp", "Temperatura (°C)",
@@ -668,18 +709,18 @@ function Consultas() {
                 )}
                 {renderCardVital(
                   "cns-tpc", "TPC (segundos)",
-                  <input id="cns-tpc" type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInputVital} />,
-                  refTxt("tpc")
+                  <input id="cns-tpc" type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloAlertaVital(alertaTPC)} />,
+                  refTxt("tpc"), alertaTPC
                 )}
                 {renderCardVital(
                   "cns-mucosas", "Mucosas",
-                  <select id="cns-mucosas" value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInputVital}>
+                  <select id="cns-mucosas" value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloAlertaVital(alertaMucosas)}>
                     <option value="Normocoradas">Normocoradas (Rosadas)</option>
                     <option value="Hipocoradas / Pálidas">Hipocoradas / Pálidas</option>
                     <option value="Cianóticas">Cianóticas</option>
                     <option value="Ictéricas">Ictéricas</option>
                   </select>,
-                  refTxt("mucosas")
+                  refTxt("mucosas"), alertaMucosas
                 )}
               </div>
 
