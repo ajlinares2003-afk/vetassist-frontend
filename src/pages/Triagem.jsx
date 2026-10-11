@@ -4,8 +4,11 @@ import {
   MdMedicalServices, 
   MdAutoAwesome,
   MdRefresh,
-  MdCampaign
+  MdCampaign,
+  MdPets
 } from "react-icons/md";
+import { FaDog, FaCat, FaFish, FaDove, FaHorse, FaFrog, FaBug } from "react-icons/fa";
+import { GiCow, GiPig, GiSheep, GiGoat, GiRabbit } from "react-icons/gi";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
@@ -232,23 +235,16 @@ function Triagem() {
     }
   }, [tpcSegundos, mucosas]);
 
-  // --------------------------------------------------------------------------
-  // NOVO TRAVÃO DE SEGURANÇA FÍSICO NO FRONT-END
-  // --------------------------------------------------------------------------
   useEffect(() => {
-    // 1. TPC crítico (choque/falência circulatória)
     const tpcNum = parseInt(tpcSegundos);
     const tpcCritico = !isNaN(tpcNum) && tpcNum >= 3;
 
-    // 2. Temperatura crítica (hipotermia ou hipertermia grave)
     const tempNum = parseFloat(temperatura);
     const tempCritica = !isNaN(tempNum) && (tempNum <= 35.0 || tempNum >= 40.5);
 
-    // Se qualquer sinal vital atingir o limiar de emergência, muda para Vermelho imediatamente
     if (tpcCritico || tempCritica) {
       setClassificacaoRisco("VERMELHO");
       
-      // Constrói uma justificativa automática para informar o utilizador do motivo da mudança
       let motivos = [];
       if (tpcCritico) motivos.push(`TPC ${tpcNum}s (perfusão comprometida)`);
       if (tempCritica) motivos.push(`Temperatura ${tempNum}°C`);
@@ -258,7 +254,6 @@ function Triagem() {
         `Protocolo de Manchester acionado por risco iminente à vida.`
       );
       
-      // Impede o banner amarelo de sobrepor esta decisão crítica
       setManterClassificacao(true); 
     }
   }, [tpcSegundos, temperatura]); 
@@ -289,9 +284,56 @@ function Triagem() {
     }
   };
 
-  const obterNomeAnimal = (animalId) => {
-    const a = animais.find((item) => item.id === animalId);
-    return a ? `${a.nome} (${a.codigo || `PET-${a.id}`})` : `-`;
+  // Cores de fundo pastel por espécie para o Avatar na Triagem
+  const obterCorAvatar = (especie) => {
+    const esp = (especie || "").toLowerCase();
+    if (esp.includes("felino") || esp.includes("gato")) return "#fce7f3";
+    if (esp.includes("canino") || esp.includes("cão") || esp.includes("cachorro")) return "#dbeafe";
+    if (esp.includes("ave") || esp.includes("pássaro") || esp.includes("calopsita")) return "#e0f2fe";
+    if (esp.includes("lagomorfo") || esp.includes("coelho") || esp.includes("lebre")) return "#fef3c7";
+    if (esp.includes("bovino") || esp.includes("vaca") || esp.includes("boi") || esp.includes("touro")) return "#f5f5f4";
+    if (esp.includes("suíno") || esp.includes("suino") || esp.includes("porco")) return "#ffe4e6";
+    if (esp.includes("ovino") || esp.includes("ovelha") || esp.includes("carneiro")) return "#f1f5f9";
+    if (esp.includes("caprino") || esp.includes("cabra") || esp.includes("bode")) return "#ecfdf5";
+    if (esp.includes("equino") || esp.includes("cavalo") || esp.includes("égua") || esp.includes("ponei")) return "#fef3c7";
+    return "#f3f4f6";
+  };
+
+  // Cores fortes para os ícones na Triagem
+  const obterCorIcone = (especie) => {
+    const esp = (especie || "").toLowerCase();
+    if (esp.includes("felino") || esp.includes("gato")) return "#be185d"; 
+    if (esp.includes("canino") || esp.includes("cão") || esp.includes("cachorro")) return "#1d4ed8"; 
+    if (esp.includes("ave") || esp.includes("pássaro") || esp.includes("calopsita")) return "#0369a1"; 
+    if (esp.includes("lagomorfo") || esp.includes("coelho") || esp.includes("lebre")) return "#b45309"; 
+    if (esp.includes("bovino") || esp.includes("vaca") || esp.includes("boi") || esp.includes("touro")) return "#44403c"; 
+    if (esp.includes("suíno") || esp.includes("suino") || esp.includes("porco")) return "#e11d48"; 
+    if (esp.includes("ovino") || esp.includes("ovelha") || esp.includes("carneiro")) return "#475569"; 
+    if (esp.includes("caprino") || esp.includes("cabra") || esp.includes("bode")) return "#047857"; 
+    if (esp.includes("equino") || esp.includes("cavalo") || esp.includes("égua") || esp.includes("ponei")) return "#b45309";
+    return "#4b5563";
+  };
+
+  // Renderizador do ícone inteligente da espécie
+  const renderizarIconeAnimal = (especie, corUnica) => {
+    const cor = corUnica || "#9ca3af";
+    const tamanho = 20;
+    const esp = (especie || "").toLowerCase();
+
+    if (esp.includes("bovino") || esp.includes("vaca") || esp.includes("boi") || esp.includes("touro")) return <GiCow size={tamanho} color={cor} />;
+    if (esp.includes("suíno") || esp.includes("suino") || esp.includes("porco")) return <GiPig size={tamanho} color={cor} />;
+    if (esp.includes("ovino") || esp.includes("ovelha") || esp.includes("carneiro")) return <GiSheep size={tamanho} color={cor} />;
+    if (esp.includes("caprino") || esp.includes("cabra") || esp.includes("bode")) return <GiGoat size={tamanho} color={cor} />;
+    if (esp.includes("equino") || esp.includes("cavalo") || esp.includes("égua") || esp.includes("ponei")) return <FaHorse size={tamanho} color={cor} />;
+    if (esp.includes("lagomorfo") || esp.includes("coelho") || esp.includes("lebre")) return <GiRabbit size={tamanho} color={cor} />;
+    if (esp.includes("felino") || esp.includes("gato")) return <FaCat size={tamanho} color={cor} />;
+    if (esp.includes("canino") || esp.includes("cão") || esp.includes("cachorro")) return <FaDog size={tamanho} color={cor} />;
+    if (esp.includes("ave") || esp.includes("pássaro") || esp.includes("calopsita")) return <FaDove size={tamanho} color={cor} />;
+    if (esp.includes("peixe") || esp.includes("aquático") || esp.includes("tilápia")) return <FaFish size={tamanho} color={cor} />;
+    if (esp.includes("réptil") || esp.includes("lagarto") || esp.includes("cobra") || esp.includes("tartaruga")) return <FaFrog size={tamanho} color={cor} />; 
+    if (esp.includes("inseto") || esp.includes("aracnídeo")) return <FaBug size={tamanho} color={cor} />;
+    
+    return <MdPets size={tamanho} color={cor} />;
   };
 
   const obterHeaderDetalhado = (consulta) => {
@@ -339,7 +381,7 @@ function Triagem() {
         await api.put(`/consultas/${consulta.id}`, { status: "Chamando para Triagem" }, { headers: { Authorization: `Bearer ${token}` } });
       });
       setAtendimentosPendentes(prev => prev.map(item => item.id === consulta.id ? { ...item, status: "Chamando para Triagem" } : item));
-      setMensagem({ tipo: "sucesso", texto: `📢 Chamando ${obterNomeAnimal(consulta.animal_id)} no painel para Triagem!` });
+      setMensagem({ tipo: "sucesso", texto: `📢 Chamando paciente no painel para Triagem!` });
     } catch (err) {
       setMensagem({ tipo: "erro", texto: "Erro ao emitir chamada para o paciente." });
     }
@@ -633,7 +675,6 @@ function Triagem() {
         </div>
       )}
 
-      {/* RENDERIZAÇÃO ALTERNADA: FORMULÁRIO DE TRIAGEM OU TABELA DE FILA DE CHECK-IN */}
       {atendimentoSelecionado ? (
         <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
           
@@ -725,16 +766,16 @@ function Triagem() {
           </div>
         </div>
       ) : (
-        /* TABELA DE FILA DE CHECK-IN PADRONIZADA COM O ESTILO DA TELA DE ATENDIMENTOS */
+        /* TABELA DE FILA DE TRIAGEM COM CÓDIGO NA FRENTE E ÍCONE INTELIGENTE DA ESPÉCIE */
         <div style={{ backgroundColor: "white", borderRadius: "12px", overflow: "hidden", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
             <thead>
               <tr style={{ backgroundColor: "#4f46e5", color: "white" }}>
-                <th style={{ padding: "12px 16px", fontWeight: "700", width: "12%" }}>Código</th>
-                <th style={{ padding: "12px 16px", fontWeight: "700", width: "18%" }}>Paciente</th>
-                <th style={{ padding: "12px 16px", fontWeight: "700", width: "42%" }}>Queixa Principal</th>
-                <th style={{ padding: "12px 16px", fontWeight: "700", width: "13%", textAlign: "center" }}>Status</th>
-                <th style={{ padding: "12px 16px", fontWeight: "700", width: "15%", textAlign: "center" }}>Ações</th>
+                <th style={{ padding: "12px 16px", fontWeight: "700", width: "14%" }}>Código</th>
+                <th style={{ padding: "12px 16px", fontWeight: "700", width: "26%" }}>Paciente</th>
+                <th style={{ padding: "12px 16px", fontWeight: "700", width: "34%" }}>Queixa Principal</th>
+                <th style={{ padding: "12px 16px", fontWeight: "700", width: "12%", textAlign: "center" }}>Status</th>
+                <th style={{ padding: "12px 16px", fontWeight: "700", width: "14%", textAlign: "center" }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -749,6 +790,16 @@ function Triagem() {
                   const ehVacina = item.status === "AGUARDANDO_VACINA" || item.status === "Aguardando Vacina";
                   const estaSendoChamado = item.status === "Chamando para Triagem";
 
+                  // Localiza dados do animal para extrair espécie e ícone dinâmico
+                  const a = animais.find((itemAnim) => itemAnim.id === Number(item.animal_id));
+                  const nomePet = a ? a.nome : "Paciente desconhecido";
+                  const especie = a?.especie || "Pet";
+                  const raca = a?.raca ? ` - ${a.raca}` : "";
+                  const codigoFormatado = item.codigo || `CNS-${String(item.id).padStart(4, "0")}`;
+
+                  const avatarBg = obterCorAvatar(especie);
+                  const iconColor = obterCorIcone(especie);
+
                   return (
                     <tr
                       key={item.id}
@@ -758,15 +809,40 @@ function Triagem() {
                         transition: "background-color 0.15s ease",
                       }}
                     >
-                      <td style={{ padding: "14px 16px", fontWeight: "600", color: "#4f46e5", verticalAlign: "middle" }}>
-                        {item.codigo || `CNS-${String(item.id).padStart(4, "0")}`}
+                      {/* Código destacado na frente */}
+                      <td style={{ padding: "14px 16px", fontWeight: "700", color: "#4f46e5", verticalAlign: "middle" }}>
+                        {codigoFormatado}
                       </td>
-                      <td style={{ padding: "14px 16px", fontWeight: "600", color: "#1f2937", verticalAlign: "middle" }}>
-                        {obterNomeAnimal(item.animal_id)}
+
+                      {/* Paciente com Ícone da Espécie */}
+                      <td style={{ padding: "14px 16px", verticalAlign: "middle" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div style={{ 
+                            backgroundColor: avatarBg, 
+                            width: "32px", 
+                            height: "32px", 
+                            borderRadius: "50%", 
+                            display: "flex", 
+                            alignItems: "center", 
+                            justifyContent: "center",
+                            flexShrink: 0,
+                            boxShadow: "inset 0 1px 2px 0 rgba(0, 0, 0, 0.05)"
+                          }}>
+                            {renderizarIconeAnimal(especie, iconColor)}
+                          </div>
+                          <div>
+                            <span style={{ fontWeight: "700", color: "#1f2937", display: "block" }}>{nomePet}</span>
+                            <span style={{ fontSize: "11px", color: "#6b7280" }}>{especie}{raca}</span>
+                          </div>
+                        </div>
                       </td>
+
+                      {/* Queixa Principal */}
                       <td style={{ padding: "14px 16px", color: "#4b5563", verticalAlign: "middle", lineHeight: "1.4" }}>
                         {item.queixa_principal || "-"}
                       </td>
+
+                      {/* Status */}
                       <td style={{ padding: "14px 16px", textAlign: "center", verticalAlign: "middle" }}>
                         <span
                           style={{
@@ -782,6 +858,8 @@ function Triagem() {
                           {estaSendoChamado ? "📢 Chamando..." : ehVacina ? "💉 Vacina" : "Aguardando"}
                         </span>
                       </td>
+
+                      {/* Ações */}
                       <td style={{ padding: "14px 16px", textAlign: "center", verticalAlign: "middle" }}>
                         <div style={{ display: "flex", justifyContent: "center", gap: "6px" }}>
                           <button
