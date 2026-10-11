@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdEvent, MdTv, MdDelete, MdSearch, MdPets } from "react-icons/md";
-import { FaDog, FaCat, FaFish, FaDove, FaHorse, FaFrog, FaBug } from "react-icons/fa";
+import { FaDog, FaCat, FaFish, FaDove, FaHorse, FaFrog, FaBug, FaUser, FaClock } from "react-icons/fa";
 import { GiCow, GiPig, GiSheep, GiGoat, GiRabbit } from "react-icons/gi";
 import api from "../api/api";
 import Layout from "../components/Layout";
@@ -143,9 +143,39 @@ function Checkin() {
     }
   };
 
+  // Cores de fundo pastel personalizadas por espécie
+  const obterCorAvatar = (especie) => {
+    const esp = (especie || "").toLowerCase();
+    if (esp.includes("felino") || esp.includes("gato")) return "#fce7f3"; // Rosa
+    if (esp.includes("canino") || esp.includes("cão") || esp.includes("cachorro")) return "#dbeafe"; // Azul
+    if (esp.includes("ave") || esp.includes("pássaro") || esp.includes("calopsita")) return "#e0f2fe"; // Azul Claro
+    if (esp.includes("lagomorfo") || esp.includes("coelho") || esp.includes("lebre")) return "#fef3c7"; // Amarelo/Dourado
+    if (esp.includes("bovino") || esp.includes("vaca") || esp.includes("boi") || esp.includes("touro")) return "#f5f5f4"; // Cinza Pedra
+    if (esp.includes("suíno") || esp.includes("suino") || esp.includes("porco")) return "#ffe4e6"; // Rosé Suave
+    if (esp.includes("ovino") || esp.includes("ovelha") || esp.includes("carneiro")) return "#f1f5f9"; // Slate Claro
+    if (esp.includes("caprino") || esp.includes("cabra") || esp.includes("bode")) return "#ecfdf5"; // Esmeralda Suave
+    if (esp.includes("equino") || esp.includes("cavalo") || esp.includes("égua") || esp.includes("ponei")) return "#fef3c7"; // Laranja/Palha
+    return "#f3f4f6"; // Padrão
+  };
+
+  // Cores de ícones fortes correspondentes por espécie
+  const obterCorIcone = (especie) => {
+    const esp = (especie || "").toLowerCase();
+    if (esp.includes("felino") || esp.includes("gato")) return "#be185d"; 
+    if (esp.includes("canino") || esp.includes("cão") || esp.includes("cachorro")) return "#1d4ed8"; 
+    if (esp.includes("ave") || esp.includes("pássaro") || esp.includes("calopsita")) return "#0369a1"; 
+    if (esp.includes("lagomorfo") || esp.includes("coelho") || esp.includes("lebre")) return "#b45309"; 
+    if (esp.includes("bovino") || esp.includes("vaca") || esp.includes("boi") || esp.includes("touro")) return "#44403c"; 
+    if (esp.includes("suíno") || esp.includes("suino") || esp.includes("porco")) return "#e11d48"; 
+    if (esp.includes("ovino") || esp.includes("ovelha") || esp.includes("carneiro")) return "#475569"; 
+    if (esp.includes("caprino") || esp.includes("cabra") || esp.includes("bode")) return "#047857"; 
+    if (esp.includes("equino") || esp.includes("cavalo") || esp.includes("égua") || esp.includes("ponei")) return "#b45309";
+    return "#4b5563"; // Padrão
+  };
+
   // Função para retornar o ícone exato baseado na espécie do banco de dados
-  const renderizarIconeAnimal = (especie, isSelected) => {
-    const cor = isSelected ? "#fff" : "#9ca3af";
+  const renderizarIconeAnimal = (especie, isSelected, corUnica) => {
+    const cor = corUnica ? corUnica : (isSelected ? "#fff" : "#9ca3af");
     const tamanho = 18;
     const esp = (especie || "").toLowerCase();
 
@@ -249,48 +279,179 @@ function Checkin() {
         </div>
       )}
 
-      {/* Lista de Fila de Espera */}
-      <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", border: "1px solid #e5e7eb" }}>
-        <h3 style={{ marginTop: 0, color: "#111827", fontSize: "18px", marginBottom: "16px" }}>
+      {/* Lista de Fila de Espera Atualizada para Design System */}
+      <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "16px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", border: "1px solid #e5e7eb" }}>
+        <h3 style={{ marginTop: 0, color: "#111827", fontSize: "20px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
           📋 Fila de Espera Atual ({filaCheckin.length} pacientes)
         </h3>
 
         {filaCheckin.length === 0 ? (
-          <p style={{ color: "#6b7280", textAlign: "center", padding: "30px" }}>Nenhum paciente aguardando atendimento no momento.</p>
+          <p style={{ color: "#6b7280", textAlign: "center", padding: "40px 20px", fontSize: "15px" }}>Nenhum paciente aguardando atendimento no momento.</p>
         ) : (
-          <div style={{ display: "grid", gap: "10px" }}>
-            {filaCheckin.map((item) => (
-              <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px", backgroundColor: "#f9fafb", borderRadius: "8px", border: "1px solid #f3f4f6" }}>
-                <div>
-                  <strong style={{ color: "#1f2937", fontSize: "15px" }}>🐾 {obterInfoAnimalETutor(item.animal_id)}</strong>
-                  <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "#4b5563" }}>
-                    Código: <strong>{item.codigo}</strong> | Motivo: {item.queixa_principal}
-                  </p>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span style={{ backgroundColor: "#fef3c7", color: "#b45309", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "600" }}>
-                    Aguardando Triagem
-                  </span>
-                  <button
-                    onClick={() => setConsultaParaExcluir(item)}
-                    title="Excluir Check-in"
-                    style={{
-                      backgroundColor: "#fee2e2",
-                      color: "#b91c1c",
-                      border: "none",
-                      padding: "8px 10px",
-                      borderRadius: "6px",
-                      cursor: "pointer",
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))", gap: "20px" }}>
+            {filaCheckin.map((item) => {
+              const a = animais.find((itemAnim) => itemAnim.id === Number(item.animal_id));
+              const t = a ? tutores.find((tutor) => tutor.id === a.tutor_id) : null;
+              
+              const nomePet = a ? a.nome : "Paciente desconhecido";
+              const especie = a?.especie || "Pet";
+              const raca = a?.raca ? ` - ${a.raca}` : "";
+              const nomeTutor = t ? t.nome : "Tutor não vinculado";
+
+              // Transforma string de queixa principal em tags de sintomas
+              const tagsSintomas = (item.queixa_principal || "")
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter(Boolean);
+
+              const avatarBg = obterCorAvatar(especie);
+              const iconColor = obterCorIcone(especie);
+
+              return (
+                <div 
+                  key={item.id} 
+                  style={{ 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    alignItems: "flex-start", 
+                    padding: "20px", 
+                    backgroundColor: "#ffffff", 
+                    borderRadius: "16px", 
+                    border: "1px solid #e5e7eb",
+                    borderLeft: "6px solid #4f46e5",
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+                    transition: "transform 0.2s, box-shadow 0.2s",
+                    cursor: "default"
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.05)";
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "18px", alignItems: "flex-start", width: "100%" }}>
+                    {/* Coluna do Avatar com Ícone Específico */}
+                    <div style={{ 
+                      backgroundColor: avatarBg, 
+                      padding: "16px", 
+                      borderRadius: "50%", 
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center",
+                      width: "56px", 
+                      height: "56px",
+                      flexShrink: 0,
+                      boxShadow: "inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)"
+                    }}>
+                      {renderizarIconeAnimal(especie, false, iconColor)}
+                    </div>
+
+                    {/* Coluna com Dados Clínicos e de Identificação */}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                        <span style={{ fontSize: "16px", fontWeight: "700", color: "#1e1b4b" }}>{nomePet}</span>
+                        <span style={{ fontSize: "13px", color: "#6b7280" }}>({especie}{raca})</span>
+                        
+                        {/* Identificador com o Código */}
+                        <span style={{ 
+                          backgroundColor: "#f3f4f6", 
+                          color: "#374151", 
+                          padding: "4px 8px", 
+                          borderRadius: "6px", 
+                          fontSize: "12px", 
+                          fontWeight: "600",
+                          fontFamily: "monospace"
+                        }}>
+                          #{item.codigo}
+                        </span>
+                      </div>
+
+                      {/* Dados de Tutor */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#4b5563", fontSize: "14px", marginBottom: "12px" }}>
+                        <FaUser size={13} color="#9ca3af" />
+                        <span>Tutor: <strong style={{ color: "#1f2937" }}>{nomeTutor}</strong></span>
+                      </div>
+
+                      {/* Sintomas em Formato de Tags (Chips) */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
+                        <span style={{ fontSize: "12px", fontWeight: "600", color: "#9ca3af", marginRight: "4px" }}>Sintomas:</span>
+                        {tagsSintomas.length === 0 ? (
+                          <span style={{ fontSize: "13px", color: "#6b7280" }}>Não informados</span>
+                        ) : (
+                          tagsSintomas.map((tag, idx) => (
+                            <span 
+                              key={idx}
+                              style={{ 
+                                backgroundColor: "#f3f4f6", 
+                                color: "#1f2937", 
+                                padding: "4px 10px", 
+                                borderRadius: "20px", 
+                                fontSize: "12px",
+                                fontWeight: "500",
+                                border: "1px solid #e5e7eb"
+                              }}
+                            >
+                              {tag}
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Coluna de Status e Ações */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "12px", justifyContent: "space-between", height: "100%", minHeight: "80px", flexShrink: 0 }}>
+                    <span style={{ 
+                      backgroundColor: "#fef3c7", 
+                      color: "#b45309", 
+                      padding: "6px 12px", 
+                      borderRadius: "20px", 
+                      fontSize: "12px", 
+                      fontWeight: "700",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center"
-                    }}
-                  >
-                    <MdDelete size={18} />
-                  </button>
+                      gap: "6px",
+                      boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)"
+                    }}>
+                      <FaClock size={12} color="#b45309" />
+                      Aguardando Triagem
+                    </span>
+
+                    <button
+                      onClick={() => setConsultaParaExcluir(item)}
+                      title="Excluir Check-in"
+                      style={{
+                        backgroundColor: "#fee2e2",
+                        color: "#dc2626",
+                        border: "none",
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "50%",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transition: "background 0.2s, transform 0.2s",
+                        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)"
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = "#fca5a5";
+                        e.currentTarget.style.transform = "scale(1.05)";
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = "#fee2e2";
+                        e.currentTarget.style.transform = "scale(1)";
+                      }}
+                    >
+                      <MdDelete size={18} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
