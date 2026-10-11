@@ -143,22 +143,20 @@ function Checkin() {
     }
   };
 
-  // Cores de fundo pastel personalizadas por espécie
   const obterCorAvatar = (especie) => {
     const esp = (especie || "").toLowerCase();
-    if (esp.includes("felino") || esp.includes("gato")) return "#fce7f3"; // Rosa
-    if (esp.includes("canino") || esp.includes("cão") || esp.includes("cachorro")) return "#dbeafe"; // Azul
-    if (esp.includes("ave") || esp.includes("pássaro") || esp.includes("calopsita")) return "#e0f2fe"; // Azul Claro
-    if (esp.includes("lagomorfo") || esp.includes("coelho") || esp.includes("lebre")) return "#fef3c7"; // Amarelo/Dourado
-    if (esp.includes("bovino") || esp.includes("vaca") || esp.includes("boi") || esp.includes("touro")) return "#f5f5f4"; // Cinza Pedra
-    if (esp.includes("suíno") || esp.includes("suino") || esp.includes("porco")) return "#ffe4e6"; // Rosé Suave
-    if (esp.includes("ovino") || esp.includes("ovelha") || esp.includes("carneiro")) return "#f1f5f9"; // Slate Claro
-    if (esp.includes("caprino") || esp.includes("cabra") || esp.includes("bode")) return "#ecfdf5"; // Esmeralda Suave
-    if (esp.includes("equino") || esp.includes("cavalo") || esp.includes("égua") || esp.includes("ponei")) return "#fef3c7"; // Laranja/Palha
-    return "#f3f4f6"; // Padrão
+    if (esp.includes("felino") || esp.includes("gato")) return "#fce7f3";
+    if (esp.includes("canino") || esp.includes("cão") || esp.includes("cachorro")) return "#dbeafe";
+    if (esp.includes("ave") || esp.includes("pássaro") || esp.includes("calopsita")) return "#e0f2fe";
+    if (esp.includes("lagomorfo") || esp.includes("coelho") || esp.includes("lebre")) return "#fef3c7";
+    if (esp.includes("bovino") || esp.includes("vaca") || esp.includes("boi") || esp.includes("touro")) return "#f5f5f4";
+    if (esp.includes("suíno") || esp.includes("suino") || esp.includes("porco")) return "#ffe4e6";
+    if (esp.includes("ovino") || esp.includes("ovelha") || esp.includes("carneiro")) return "#f1f5f9";
+    if (esp.includes("caprino") || esp.includes("cabra") || esp.includes("bode")) return "#ecfdf5";
+    if (esp.includes("equino") || esp.includes("cavalo") || esp.includes("égua") || esp.includes("ponei")) return "#fef3c7";
+    return "#f3f4f6";
   };
 
-  // Cores de ícones fortes correspondentes por espécie
   const obterCorIcone = (especie) => {
     const esp = (especie || "").toLowerCase();
     if (esp.includes("felino") || esp.includes("gato")) return "#be185d"; 
@@ -170,25 +168,23 @@ function Checkin() {
     if (esp.includes("ovino") || esp.includes("ovelha") || esp.includes("carneiro")) return "#475569"; 
     if (esp.includes("caprino") || esp.includes("cabra") || esp.includes("bode")) return "#047857"; 
     if (esp.includes("equino") || esp.includes("cavalo") || esp.includes("égua") || esp.includes("ponei")) return "#b45309";
-    return "#4b5563"; // Padrão
+    return "#4b5563";
   };
 
-  // Cores inteligentes para as tags de sintomas
   const obterCorSintoma = (tag) => {
     const t = tag.toLowerCase();
-    if (t.includes("trauma") || t.includes("sangue") || t.includes("dor")) return { bg: "#fee2e2", text: "#991b1b" }; // Vermelho
-    if (t.includes("pele") || t.includes("ocular") || t.includes("coceira")) return { bg: "#f3e8ff", text: "#6b21a8" }; // Roxo
-    if (t.includes("diarreia") || t.includes("vômito")) return { bg: "#ffedd5", text: "#c2410c" }; // Laranja
-    if (t.includes("febre") || t.includes("infecção")) return { bg: "#fef3c7", text: "#b45309" }; // Amarelo
-    if (t.includes("tosse") || t.includes("respiração")) return { bg: "#e0f2fe", text: "#0369a1" }; // Azul
-    if (t.includes("apatia") || t.includes("letargia")) return { bg: "#f1f5f9", text: "#475569" }; // Cinza/Slate
-    return { bg: "#f3f4f6", text: "#374151" }; // Padrão
+    if (t.includes("trauma") || t.includes("sangue") || t.includes("dor")) return { bg: "#fee2e2", text: "#991b1b" };
+    if (t.includes("pele") || t.includes("ocular") || t.includes("coceira")) return { bg: "#f3e8ff", text: "#6b21a8" };
+    if (t.includes("diarreia") || t.includes("vômito")) return { bg: "#ffedd5", text: "#c2410c" };
+    if (t.includes("febre") || t.includes("infecção")) return { bg: "#fef3c7", text: "#b45309" };
+    if (t.includes("tosse") || t.includes("respiração")) return { bg: "#e0f2fe", text: "#0369a1" };
+    if (t.includes("apatia") || t.includes("letargia")) return { bg: "#f1f5f9", text: "#475569" };
+    return { bg: "#f3f4f6", text: "#374151" };
   };
 
-  // Função atualizada com controle de tamanho (sizeMode)
   const renderizarIconeAnimal = (especie, isSelected, corUnica, sizeMode = "small") => {
     const cor = corUnica ? corUnica : (isSelected ? "#fff" : "#9ca3af");
-    const tamanho = sizeMode === "large" ? 48 : 18; // Agora o ícone grande terá 48px!
+    const tamanho = sizeMode === "large" ? 48 : 18;
     const esp = (especie || "").toLowerCase();
 
     if (esp.includes("bovino") || esp.includes("vaca") || esp.includes("boi") || esp.includes("touro")) return <GiCow size={tamanho} color={cor} />;
@@ -285,7 +281,7 @@ function Checkin() {
         </div>
       )}
 
-      {/* Fila de Espera Atualizada para Design Retangular */}
+      {/* Fila de Espera */}
       <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "16px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", border: "1px solid #e5e7eb" }}>
         <h3 style={{ marginTop: 0, color: "#111827", fontSize: "20px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
           📋 Fila de Espera Atual ({filaCheckin.length} pacientes)
@@ -294,7 +290,6 @@ function Checkin() {
         {filaCheckin.length === 0 ? (
           <p style={{ color: "#6b7280", textAlign: "center", padding: "40px 20px", fontSize: "15px" }}>Nenhum paciente aguardando atendimento no momento.</p>
         ) : (
-          /* Grelha Blindada: No máximo 2 colunas, minmax garante retângulos horizontais */
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))", gap: "24px" }}>
             {filaCheckin.map((item) => {
               const a = animais.find((itemAnim) => itemAnim.id === Number(item.animal_id));
@@ -319,7 +314,7 @@ function Checkin() {
                   style={{ 
                     display: "flex", 
                     justifyContent: "space-between", 
-                    alignItems: "center", // Garante alinhamento central vertical
+                    alignItems: "center", 
                     padding: "24px", 
                     backgroundColor: "#ffffff", 
                     borderRadius: "16px", 
@@ -328,7 +323,7 @@ function Checkin() {
                     boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
                     transition: "transform 0.2s, box-shadow 0.2s",
                     cursor: "default",
-                    textAlign: "left" // Override obrigatório contra CSS global
+                    textAlign: "left" 
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.transform = "translateY(-2px)";
@@ -352,35 +347,22 @@ function Checkin() {
                       flexShrink: 0,
                       boxShadow: "inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)"
                     }}>
-                      {/* sizeMode="large" aciona o ícone em 48px */}
                       {renderizarIconeAnimal(especie, false, iconColor, "large")}
                     </div>
 
-                    {/* Coluna Central com Textos */}
+                    {/* Coluna Central com Textos Livres (Sem corte de reticências) */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1, minWidth: 0 }}>
                       
-                      {/* Nome, Espécie e Raça na mesma linha */}
-                      <div style={{ fontSize: "20px", fontWeight: "800", color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {nomePet} <span style={{ fontWeight: "500", color: "#4b5563", fontSize: "16px" }}>({especie}{raca})</span>
+                      {/* Código na Frente do Nome e Espécie/Raça */}
+                      <div style={{ fontSize: "18px", fontWeight: "800", color: "#111827", lineHeight: "1.3" }}>
+                        <span style={{ color: "#4f46e5", marginRight: "6px" }}>{item.codigo}</span>
+                        - {nomePet} <span style={{ fontWeight: "500", color: "#4b5563", fontSize: "15px" }}>({especie}{raca})</span>
                       </div>
 
-                      {/* Tutor e Código */}
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "#4b5563", fontSize: "15px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <FaUser size={14} color="#9ca3af" />
-                          <span>Tutor: <strong style={{ color: "#111827" }}>{nomeTutor}</strong></span>
-                        </div>
-                        <span style={{ 
-                          backgroundColor: "#f3f4f6", 
-                          color: "#374151", 
-                          padding: "2px 8px", 
-                          borderRadius: "6px", 
-                          fontSize: "13px", 
-                          fontWeight: "600",
-                          fontFamily: "monospace"
-                        }}>
-                          #{item.codigo}
-                        </span>
+                      {/* Tutor */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#4b5563", fontSize: "15px" }}>
+                        <FaUser size={14} color="#9ca3af" />
+                        <span>Tutor: <strong style={{ color: "#111827" }}>{nomeTutor}</strong></span>
                       </div>
 
                       {/* Sintomas com Cores Dinâmicas */}
@@ -483,7 +465,7 @@ function Checkin() {
         </div>
       )}
 
-      {/* Modal de Novo Check-in Redesenhado */}
+      {/* Modal de Novo Check-in */}
       {mostrarModal && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "20px" }}>
           <div style={{ backgroundColor: "white", padding: "32px", borderRadius: "16px", maxWidth: "850px", width: "100%", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}>
@@ -585,7 +567,6 @@ function Checkin() {
                                 width: "36px", 
                                 height: "36px"
                               }}>
-                                {/* Aqui o ícone continua no tamanho pequeno (small) por padrão */}
                                 {renderizarIconeAnimal(a.especie, isSelected)}
                               </div>
                               <div>
