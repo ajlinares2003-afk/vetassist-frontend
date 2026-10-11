@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   MdMedicalServices, 
@@ -64,6 +64,20 @@ const estiloAlerta = (alerta) =>
     ? { ...estiloInput, border: `1px solid ${CORES_ALERTA[alerta.nivel].borda}`, backgroundColor: CORES_ALERTA[alerta.nivel].bg, color: CORES_ALERTA[alerta.nivel].cor, fontWeight: "700" }
     : estiloInput;
 
+// Devolve o valor só depois de `ms` sem mudança: evita reagir a "3" enquanto se digita "38,2".
+function useValorEstavel(valor, ms = 1200) {
+  const [estavel, setEstavel] = useState(valor);
+  useEffect(() => {
+    const t = setTimeout(() => setEstavel(valor), ms);
+    return () => clearTimeout(t);
+  }, [valor, ms]);
+  return estavel;
+}
+
+// Faixas fisiologicamente possíveis para a regra automática: fora delas é quase certo erro de digitação.
+const TEMP_PLAUSIVEL = [25, 45];
+const TPC_PLAUSIVEL = [0, 10];
+
 function Triagem() {
   const navigate = useNavigate();
 
@@ -86,8 +100,16 @@ function Triagem() {
   const [queixaPrincipal, setQueixaPrincipal] = useState("");
   const [classificacaoRisco, setClassificacaoRisco] = useState("VERDE");
   const [justificativa, setJustificativa] = useState("");
+  // De onde veio a justificativa: "regra" (cálculo automático, sem IA) ou "ia"
+  const [origemJustificativa, setOrigemJustificativa] = useState("ia");
   const [manterClassificacao, setManterClassificacao] = useState(false);
   const [autoUrgente, setAutoUrgente] = useState(null);
+  // Guarda a classificação anterior quando a regra de emergência assume, para poder devolvê-la
+  const emergenciaAuto = useRef(null);
+  const temperaturaEstavel = useValorEstavel(temperatura);
+  const tpcEstavel = useValorEstavel(tpcSegundos);
+  const fcEstavel = useValorEstavel(frequenciaCardiaca);
+  const frEstavel = useValorEstavel(frequenciaRespiratoria);
 
   const [refsDinamicas, setRefsDinamicas] = useState({
       pesoRef: "💡 Ref. Peso: Selecione o paciente...",
@@ -117,6 +139,7 @@ function Triagem() {
   useEffect(() => {
     setManterClassificacao(false);
     setAutoUrgente(null);
+    emergenciaAuto.current = null;
   }, [atendimentoSelecionado]);
 
   useEffect(() => {
@@ -234,28 +257,41 @@ function Triagem() {
     }
   }, [tpcSegundos, mucosas]);
 
+  // Regra automática de emergência. Só avalia valores ESTÁVEIS (parou de digitar) e plausíveis,
+  // e se o valor for corrigido para normal, devolve a classificação que existia antes.
   useEffect(() => {
-    const tpcNum = parseInt(tpcSegundos);
-    const tpcCritico = !isNaN(tpcNum) && tpcNum >= 3;
+    const tpcNum = parseInt(tpcEstavel);
+    const tpcCritico = !isNaN(tpcNum) && tpcNum >= 3 && tpcNum <= TPC_PLAUSIVEL[1];
 
-    const tempNum = parseFloat(temperatura);
-    const tempCritica = !isNaN(tempNum) && (tempNum <= 35.0 || tempNum >= 40.5);
+    const tempNum = parseFloat(temperaturaEstavel);
+    const tempPlausivel = !isNaN(tempNum) && tempNum >= TEMP_PLAUSIVEL[0] && tempNum <= TEMP_PLAUSIVEL[1];
+    const tempCritica = tempPlausivel && (tempNum <= 35.0 || tempNum >= 40.5);
 
     if (tpcCritico || tempCritica) {
+      if (!emergenciaAuto.current) {
+        emergenciaAuto.current = { classificacao: classificacaoRisco, justificativa, origem: origemJustificativa };
+      }
       setClassificacaoRisco("VERMELHO");
-      
-      let motivos = [];
+      setOrigemJustificativa("regra");
+
+      const motivos = [];
       if (tpcCritico) motivos.push(`TPC ${tpcNum}s (perfusão comprometida)`);
       if (tempCritica) motivos.push(`Temperatura ${tempNum}°C`);
-      
+
       setJustificativa(
         `⚠️ EMERGÊNCIA CLÍNICA (Regra Automática): ${motivos.join(' e ')}. ` +
         `Protocolo de Manchester acionado por risco iminente à vida.`
       );
-      
-      setManterClassificacao(true); 
+      setManterClassificacao(true);
+    } else if (emergenciaAuto.current) {
+      const anterior = emergenciaAuto.current;
+      emergenciaAuto.current = null;
+      setClassificacaoRisco(anterior.classificacao);
+      setJustificativa(anterior.justificativa);
+      setOrigemJustificativa(anterior.origem || "ia");
+      setManterClassificacao(false);
     }
-  }, [tpcSegundos, temperatura]); 
+  }, [tpcEstavel, temperaturaEstavel]);
 
   const carregarDados = async (loaderPrincipal = false) => {
     if (loaderPrincipal) setCarregando(true);
@@ -371,6 +407,8 @@ function Triagem() {
     setQueixaPrincipal("");
     setClassificacaoRisco("VERDE");
     setJustificativa("");
+    setOrigemJustificativa("ia");
+    emergenciaAuto.current = null;
   };
 
   const handleVeterinarioChange = (e) => {
@@ -449,6 +487,8 @@ function Triagem() {
       if (res.data?.classificacao_risco) {
         setClassificacaoRisco(res.data.classificacao_risco);
         setJustificativa(res.data.justificativa || "");
+        // o back end avisa quando a classificação veio de regra física e não da IA
+        setOrigemJustificativa(res.data.origem === "REGRA_FISICA" ? "regra" : "ia");
       }
     } catch (err) {
       console.warn("Aviso ao consultar IA na Triagem:", err);
@@ -517,8 +557,12 @@ function Triagem() {
       : null;
   })();
 
+  // O gatilho "Urgente" usa os valores já estáveis (um "4" a caminho de "40,1" não pode disparar)
+  const alertaTempEstavel = avaliarSinal(temperaturaEstavel, refsDinamicas.temp, "°C");
+  const alertaFCEstavel = avaliarSinal(fcEstavel, refsDinamicas.fc, "bpm");
+  const alertaFREstavel = avaliarSinal(frEstavel, refsDinamicas.fr, "ir/min");
   const sinaisAlterados = [
-    ["Temp", alertaTemp], ["FC", alertaFC], ["FR", alertaFR],
+    ["Temp", alertaTempEstavel], ["FC", alertaFCEstavel], ["FR", alertaFREstavel],
   ].filter(([, a]) => a && a.nivel === "alto").map(([nome]) => nome);
 
   const SINTOMAS_GATILHO = [
@@ -581,6 +625,12 @@ function Triagem() {
           <input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloAlerta(alertaTemp)} placeholder="Ex: 38.5" />
           <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>💡 {refsDinamicas.temp}</span>
           {renderAlertaSinal(alertaTemp)}
+          {temperatura !== "" && !isNaN(parseFloat(temperatura)) &&
+            (parseFloat(temperatura) < TEMP_PLAUSIVEL[0] || parseFloat(temperatura) > TEMP_PLAUSIVEL[1]) && (
+            <span style={{ fontSize: "10px", display: "block", marginTop: "3px", fontWeight: "600", color: "#b45309" }}>
+              ⚠️ Valor improvável: confira a digitação
+            </span>
+          )}
         </div>
 
         {/* LINHA 2 */}
@@ -592,7 +642,7 @@ function Triagem() {
         </div>
 
         <div>
-          <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>FR (mpm)</label>
+          <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>FR (ir/min)</label>
           <input type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloAlerta(alertaFR)} placeholder="Ex: 25" />
           <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>💡 {refsDinamicas.fr}</span>
           {renderAlertaSinal(alertaFR)}
@@ -763,7 +813,7 @@ function Triagem() {
 
             {justificativa && (
               <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", padding: "12px 14px", borderRadius: "8px", fontSize: "12px", color: "#334151" }}>
-                <strong>🤖 Justificativa Clínica da IA:</strong> {justificativa}
+                <strong>{origemJustificativa === "regra" ? "⚙️ Regra automática (sem IA):" : "🤖 Justificativa Clínica da IA:"}</strong> {justificativa}
               </div>
             )}
           </div>
