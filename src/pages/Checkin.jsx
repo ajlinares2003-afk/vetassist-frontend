@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdEvent, MdTv, MdDelete, MdSearch, MdPets } from "react-icons/md";
+import { FaDog, FaCat, FaFish, FaDove, FaHorse, FaFrog, FaBug } from "react-icons/fa";
+import { GiCow, GiPig, GiSheep, GiGoat } from "react-icons/gi";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
@@ -139,6 +141,31 @@ function Checkin() {
       setMensagemErro(`❌ Erro ao excluir check-in: ${error.response?.data?.detail || error.message}`);
       setConsultaParaExcluir(null);
     }
+  };
+
+  // Função para retornar o ícone exato baseado na espécie do banco de dados
+  const renderizarIconeAnimal = (especie, isSelected) => {
+    const cor = isSelected ? "#fff" : "#9ca3af";
+    const tamanho = 18;
+    const esp = (especie || "").toLowerCase();
+
+    // 🐄 Animais de Produção / Grandes Animais
+    if (esp.includes("bovino") || esp.includes("vaca") || esp.includes("boi") || esp.includes("touro")) return <GiCow size={tamanho} color={cor} />;
+    if (esp.includes("suíno") || esp.includes("suino") || esp.includes("porco")) return <GiPig size={tamanho} color={cor} />;
+    if (esp.includes("ovino") || esp.includes("ovelha") || esp.includes("carneiro")) return <GiSheep size={tamanho} color={cor} />;
+    if (esp.includes("caprino") || esp.includes("cabra") || esp.includes("bode")) return <GiGoat size={tamanho} color={cor} />;
+    if (esp.includes("equino") || esp.includes("cavalo") || esp.includes("égua") || esp.includes("ponei")) return <FaHorse size={tamanho} color={cor} />;
+
+    // 🐈 Pets e Exóticos
+    if (esp.includes("felino") || esp.includes("gato")) return <FaCat size={tamanho} color={cor} />;
+    if (esp.includes("canino") || esp.includes("cão") || esp.includes("cachorro")) return <FaDog size={tamanho} color={cor} />;
+    if (esp.includes("ave") || esp.includes("pássaro") || esp.includes("calopsita")) return <FaDove size={tamanho} color={cor} />;
+    if (esp.includes("peixe") || esp.includes("aquático") || esp.includes("tilápia")) return <FaFish size={tamanho} color={cor} />;
+    if (esp.includes("réptil") || esp.includes("lagarto") || esp.includes("cobra") || esp.includes("tartaruga")) return <FaFrog size={tamanho} color={cor} />; 
+    if (esp.includes("inseto") || esp.includes("aracnídeo")) return <FaBug size={tamanho} color={cor} />;
+    
+    // 🐾 Fallback clássico para pequenos mamíferos (coelhos, roedores, etc) e espécies não mapeadas
+    return <MdPets size={tamanho} color={cor} />;
   };
 
   const estiloInput = {
@@ -374,8 +401,18 @@ function Checkin() {
                                 transition: "background 0.2s"
                               }}
                             >
-                              <div style={{ backgroundColor: isSelected ? "#4f46e5" : "#f3f4f6", padding: "8px", borderRadius: "50%", display: "flex" }}>
-                                <MdPets size={18} color={isSelected ? "#fff" : "#9ca3af"} />
+                              {/* Ícone dinâmico inteligente */}
+                              <div style={{ 
+                                backgroundColor: isSelected ? "#4f46e5" : "#f3f4f6", 
+                                padding: "8px", 
+                                borderRadius: "50%", 
+                                display: "flex", 
+                                alignItems: "center", 
+                                justifyContent: "center",
+                                width: "36px", 
+                                height: "36px"
+                              }}>
+                                {renderizarIconeAnimal(a.especie, isSelected)}
                               </div>
                               <div>
                                 <div style={{ fontWeight: "600", color: isSelected ? "#3730a3" : "#1f2937", fontSize: "14px" }}>
