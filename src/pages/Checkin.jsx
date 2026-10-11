@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdEvent, MdTv, MdDelete, MdSearch } from "react-icons/md";
+import { MdEvent, MdTv, MdDelete, MdSearch, MdPets } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
@@ -15,12 +15,15 @@ function Checkin() {
 
   // Estados do Formulário de Check-in
   const [animalId, setAnimalId] = useState("");
-  const [buscaPaciente, setBuscaPaciente] = useState(""); // Campo de busca rápida
+  const [buscaPaciente, setBuscaPaciente] = useState(""); 
   const [usuarioId, setUsuarioId] = useState("");
   const [queixaPrincipal, setQueixaPrincipal] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
   const [mensagemErro, setMensagemErro] = useState("");
   const [carregando, setCarregando] = useState(false);
+
+  // Lista de sintomas rápidos para os Chips
+  const sintomasRapidos = ["Vômito", "Diarreia", "Tosse", "Febre", "Letargia", "Apatia", "Trauma", "Pele", "Ocular"];
 
   useEffect(() => {
     carregarDados();
@@ -69,7 +72,6 @@ function Checkin() {
     return `${a.nome} (${especie}${raca}) — Tutor: ${nomeTutor}`;
   };
 
-  // Filtragem dos animais com base no texto digitado (pesquisa por nome do pet ou do tutor)
   const animaisFiltrados = animais.filter((a) => {
     if (!buscaPaciente) return true;
     const termo = buscaPaciente.toLowerCase();
@@ -78,6 +80,13 @@ function Checkin() {
     const nomeTutor = t ? (t.nome || "").toLowerCase() : "";
     return nomePet.includes(termo) || nomeTutor.includes(termo);
   });
+
+  const adicionarSintoma = (sintoma) => {
+    setQueixaPrincipal((prev) => {
+      if (prev.toLowerCase().includes(sintoma.toLowerCase())) return prev;
+      return prev ? `${prev}, ${sintoma}` : sintoma;
+    });
+  };
 
   const realizarCheckin = async (e) => {
     e.preventDefault();
@@ -149,7 +158,7 @@ function Checkin() {
     fontSize: "13px",
     fontWeight: "600",
     color: "#374151",
-    marginBottom: "6px"
+    marginBottom: "8px"
   };
 
   return (
@@ -177,7 +186,7 @@ function Checkin() {
               gap: "8px",
             }}
           >
-            <MdTv size={20} /> Abrir Painel da Recepção (TV)
+            <MdTv size={20} /> Abrir Painel (TV)
           </button>
 
           <button
@@ -210,7 +219,7 @@ function Checkin() {
         </div>
       )}
 
-      {/* Lista de Fila de Espera da Recepção */}
+      {/* Lista de Fila de Espera */}
       <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", border: "1px solid #e5e7eb" }}>
         <h3 style={{ marginTop: 0, color: "#111827", fontSize: "18px", marginBottom: "16px" }}>
           📋 Fila de Espera Atual ({filaCheckin.length} pacientes)
@@ -273,87 +282,152 @@ function Checkin() {
         </div>
       )}
 
-      {/* Modal de Novo Check-in Ampliada */}
+      {/* Modal de Novo Check-in Redesenhado */}
       {mostrarModal && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "20px" }}>
-          <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "14px", maxWidth: "780px", width: "100%", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" }}>
-            <h3 style={{ marginTop: 0, color: "#1e1b4b", fontSize: "20px", marginBottom: "20px", borderBottom: "1px solid #f3f4f6", paddingBottom: "12px" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "20px" }}>
+          <div style={{ backgroundColor: "white", padding: "32px", borderRadius: "16px", maxWidth: "850px", width: "100%", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}>
+            <h3 style={{ marginTop: 0, color: "#1e1b4b", fontSize: "22px", marginBottom: "24px", borderBottom: "2px solid #f3f4f6", paddingBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
               📋 Novo Check-in de Paciente
             </h3>
             
             <form onSubmit={realizarCheckin}>
-              
-              {/* LINHA DE DUAS COLUNAS: PROPORÇÃO 1fr PARA BUSCA E 1.8fr PARA O PACIENTE */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.8fr", gap: "16px", marginBottom: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: "24px", marginBottom: "20px" }}>
+                
+                {/* COLUNA ESQUERDA: Busca e Tags */}
                 <div>
                   <label style={estiloLabel}>Busca Rápida (Pet ou Tutor)</label>
-                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                    <MdSearch size={20} color="#9ca3af" style={{ position: "absolute", left: "10px" }} />
+                  <div style={{ position: "relative", display: "flex", alignItems: "center", marginBottom: "20px" }}>
+                    <MdSearch size={22} color="#6b7280" style={{ position: "absolute", left: "12px" }} />
                     <input
                       type="text"
-                      placeholder="Filtrar por nome..."
+                      placeholder="Buscar..."
                       value={buscaPaciente}
                       onChange={(e) => setBuscaPaciente(e.target.value)}
-                      style={{ ...estiloInput, paddingLeft: "36px" }}
+                      style={{ ...estiloInput, paddingLeft: "42px", height: "46px", backgroundColor: "#f9fafb" }}
                     />
+                  </div>
+
+                  <label style={{...estiloLabel, display: "flex", alignItems: "center", gap: "6px"}}>
+                    <span style={{ fontSize: "16px" }}>➕</span> Tags de Sintomas Rápidos
+                  </label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "10px" }}>
+                    {sintomasRapidos.map((sintoma) => (
+                      <button
+                        key={sintoma}
+                        type="button"
+                        onClick={() => adicionarSintoma(sintoma)}
+                        style={{
+                          backgroundColor: "#e0e7ff",
+                          color: "#3730a3",
+                          border: "none",
+                          padding: "8px 14px",
+                          borderRadius: "20px",
+                          fontSize: "13px",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                          transition: "background 0.2s"
+                        }}
+                        onMouseOver={(e) => e.target.style.backgroundColor = "#c7d2fe"}
+                        onMouseOut={(e) => e.target.style.backgroundColor = "#e0e7ff"}
+                      >
+                        {sintoma}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div>
-                  <label style={estiloLabel}>Paciente & Tutor *</label>
-                  <select value={animalId} onChange={(e) => setAnimalId(e.target.value)} style={estiloInput} required>
-                    <option value="">Selecione ({animaisFiltrados.length} encontrados)...</option>
-                    {animaisFiltrados.map((a) => {
-                      const t = tutores.find((tutor) => tutor.id === a.tutor_id);
-                      const nomeTutor = t ? t.nome : "Sem Tutor";
-                      const especie = a.especie || "Pet";
-                      const raca = a.raca ? ` - ${a.raca}` : "";
-                      return (
-                        <option key={a.id} value={a.id}>
-                          {a.nome} ({especie}{raca}) — Tutor: {nomeTutor}
+                {/* COLUNA DIREITA: Paciente, Enfermeiro e Queixa */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  
+                  <div>
+                    <label style={estiloLabel}>Paciente & Tutor *</label>
+                    {/* Lista Customizada de Pacientes (Combobox) */}
+                    <div style={{ 
+                      maxHeight: "160px", 
+                      overflowY: "auto", 
+                      border: "1px solid #d1d5db", 
+                      borderRadius: "8px",
+                      backgroundColor: "#f9fafb"
+                    }}>
+                      {animaisFiltrados.length === 0 ? (
+                        <div style={{ padding: "12px", color: "#6b7280", textAlign: "center", fontSize: "14px" }}>Nenhum paciente encontrado.</div>
+                      ) : (
+                        animaisFiltrados.map((a) => {
+                          const t = tutores.find((tutor) => tutor.id === a.tutor_id);
+                          const nomeTutor = t ? t.nome : "Sem Tutor";
+                          const isSelected = animalId === a.id.toString();
+                          const raca = a.raca ? ` - ${a.raca}` : "";
+
+                          return (
+                            <div 
+                              key={a.id}
+                              onClick={() => setAnimalId(a.id.toString())}
+                              style={{
+                                padding: "12px 16px",
+                                borderBottom: "1px solid #e5e7eb",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "12px",
+                                backgroundColor: isSelected ? "#eef2ff" : "#ffffff",
+                                borderLeft: isSelected ? "4px solid #4f46e5" : "4px solid transparent",
+                                transition: "background 0.2s"
+                              }}
+                            >
+                              <div style={{ backgroundColor: isSelected ? "#4f46e5" : "#f3f4f6", padding: "8px", borderRadius: "50%", display: "flex" }}>
+                                <MdPets size={18} color={isSelected ? "#fff" : "#9ca3af"} />
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: "600", color: isSelected ? "#3730a3" : "#1f2937", fontSize: "14px" }}>
+                                  {a.nome} <span style={{ fontWeight: "400", color: "#6b7280" }}>({a.especie}{raca})</span>
+                                </div>
+                                <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>Tutor: {nomeTutor}</div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={estiloLabel}>Enfermeiro(a) / Triagem (Opcional)</label>
+                    <select value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)} style={{...estiloInput, height: "44px"}}>
+                      <option value="">Selecione o enfermeiro responsável...</option>
+                      {usuarios.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.nome || u.email}
                         </option>
-                      );
-                    })}
-                  </select>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={estiloLabel}>Queixa Principal *</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Descreva a queixa ou selecione as tags ao lado..."
+                      value={queixaPrincipal}
+                      onChange={(e) => setQueixaPrincipal(e.target.value)}
+                      style={{
+                        ...estiloInput,
+                        height: "auto",
+                        minHeight: "90px",
+                        padding: "12px",
+                        resize: "none"
+                      }}
+                      required
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* SELEÇÃO APENAS DE ENFERMEIRO / TRIAGEM */}
-              <div style={{ marginBottom: "16px" }}>
-                <label style={estiloLabel}>Enfermeiro(a) / Triagem (Opcional)</label>
-                <select value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)} style={estiloInput}>
-                  <option value="">Selecione o enfermeiro responsável...</option>
-                  {usuarios.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nome || u.email}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* MOTIVO DA VISITA */}
-              <div style={{ marginBottom: "22px" }}>
-                <label style={estiloLabel}>Motivo da Visita / Queixa Principal *</label>
-                <textarea
-                  rows={4}
-                  placeholder="Descreva o motivo da visita ou queixa principal..."
-                  value={queixaPrincipal}
-                  onChange={(e) => setQueixaPrincipal(e.target.value)}
-                  style={{
-                    ...estiloInput,
-                    height: "auto",
-                    minHeight: "100px",
-                    padding: "10px 12px",
-                    resize: "vertical"
-                  }}
-                  required
-                />
-              </div>
-
               {/* BOTÕES DE AÇÃO */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", borderTop: "1px solid #f3f4f6", paddingTop: "16px" }}>
-                <button type="button" onClick={() => setMostrarModal(false)} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Cancelar</button>
-                <button type="submit" disabled={carregando} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 22px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>{carregando ? "Salvando..." : "Concluir Check-in"}</button>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", borderTop: "2px solid #f3f4f6", paddingTop: "20px", marginTop: "10px" }}>
+                <button type="button" onClick={() => setMostrarModal(false)} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>Cancelar</button>
+                <button type="submit" disabled={carregando} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "12px 30px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  {carregando ? "Salvando..." : "Concluir Check-in"}
+                </button>
               </div>
             </form>
           </div>
