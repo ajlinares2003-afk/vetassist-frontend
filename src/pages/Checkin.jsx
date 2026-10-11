@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdEvent, MdTv, MdDelete, MdSearch, MdPets } from "react-icons/md";
 import { FaDog, FaCat, FaFish, FaDove, FaHorse, FaFrog, FaBug } from "react-icons/fa";
-import { GiCow, GiPig, GiSheep, GiGoat } from "react-icons/gi";
+import { GiCow, GiPig, GiSheep, GiGoat, GiRabbit } from "react-icons/gi";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
@@ -156,6 +156,9 @@ function Checkin() {
     if (esp.includes("caprino") || esp.includes("cabra") || esp.includes("bode")) return <GiGoat size={tamanho} color={cor} />;
     if (esp.includes("equino") || esp.includes("cavalo") || esp.includes("égua") || esp.includes("ponei")) return <FaHorse size={tamanho} color={cor} />;
 
+    // 🐇 Lagomorfos
+    if (esp.includes("lagomorfo") || esp.includes("coelho") || esp.includes("lebre")) return <GiRabbit size={tamanho} color={cor} />;
+
     // 🐈 Pets e Exóticos
     if (esp.includes("felino") || esp.includes("gato")) return <FaCat size={tamanho} color={cor} />;
     if (esp.includes("canino") || esp.includes("cão") || esp.includes("cachorro")) return <FaDog size={tamanho} color={cor} />;
@@ -164,7 +167,7 @@ function Checkin() {
     if (esp.includes("réptil") || esp.includes("lagarto") || esp.includes("cobra") || esp.includes("tartaruga")) return <FaFrog size={tamanho} color={cor} />; 
     if (esp.includes("inseto") || esp.includes("aracnídeo")) return <FaBug size={tamanho} color={cor} />;
     
-    // 🐾 Fallback clássico para pequenos mamíferos (coelhos, roedores, etc) e espécies não mapeadas
+    // 🐾 Fallback genérico
     return <MdPets size={tamanho} color={cor} />;
   };
 
@@ -368,7 +371,6 @@ function Checkin() {
                   
                   <div>
                     <label style={estiloLabel}>Paciente & Tutor *</label>
-                    {/* Lista Customizada de Pacientes (Combobox) */}
                     <div style={{ 
                       maxHeight: "160px", 
                       overflowY: "auto", 
