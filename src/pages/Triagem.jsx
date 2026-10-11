@@ -5,8 +5,7 @@ import {
   MdAutoAwesome,
   MdRefresh,
   MdCampaign,
-  MdPets,
-  MdDelete
+  MdPets
 } from "react-icons/md";
 import { FaDog, FaCat, FaFish, FaDove, FaHorse, FaFrog, FaBug, FaUser, FaClock } from "react-icons/fa";
 import { GiCow, GiPig, GiSheep, GiGoat, GiRabbit } from "react-icons/gi";
@@ -21,7 +20,6 @@ const CORES_MANCHESTER = {
   AZUL: { nome: "Não Urgente", bg: "#e0f2fe", text: "#0369a1", border: "#7dd3fc", badge: "🔵 240 min", inactiveBg: "#f0f9ff" },
 };
 
-// ---------- Alertas de sinais vitais ----------
 const normalizarTexto = (t) =>
   String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
@@ -285,7 +283,6 @@ function Triagem() {
     }
   };
 
-  // Cores de fundo pastel por espécie para o Avatar na Triagem
   const obterCorAvatar = (especie) => {
     const esp = (especie || "").toLowerCase();
     if (esp.includes("felino") || esp.includes("gato")) return "#fce7f3";
@@ -300,7 +297,6 @@ function Triagem() {
     return "#f3f4f6";
   };
 
-  // Cores fortes para os ícones na Triagem
   const obterCorIcone = (especie) => {
     const esp = (especie || "").toLowerCase();
     if (esp.includes("felino") || esp.includes("gato")) return "#be185d"; 
@@ -315,7 +311,6 @@ function Triagem() {
     return "#4b5563";
   };
 
-  // Cores inteligentes para as tags de sintomas
   const obterCorSintoma = (tag) => {
     const t = tag.toLowerCase();
     if (t.includes("trauma") || t.includes("sangue") || t.includes("dor")) return { bg: "#fee2e2", text: "#991b1b" };
@@ -327,7 +322,6 @@ function Triagem() {
     return { bg: "#f3f4f6", text: "#374151" };
   };
 
-  // Renderizador do ícone inteligente da espécie (com suporte a tamanho grande)
   const renderizarIconeAnimal = (especie, isSelected, corUnica, sizeMode = "small") => {
     const cor = corUnica ? corUnica : (isSelected ? "#fff" : "#9ca3af");
     const tamanho = sizeMode === "large" ? 48 : 18;
@@ -658,40 +652,45 @@ function Triagem() {
 
   return (
     <Layout>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-        <div>
-          <h1 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0, fontSize: "22px", color: "#1e1b4b" }}>
-            <MdMedicalServices color="#dc2626" size={26} />
-            Check-in & Triagem (Protocolo Manchester)
-          </h1>
-          <p style={{ color: "#6b7280", margin: "2px 0 0 0", fontSize: "12px" }}>
-            Recepção, entrada de pacientes e classificação de urgência clínica.
-          </p>
-        </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
+        <h1 style={{ display: "flex", alignItems: "center", gap: "12px", margin: 0, fontSize: "26px", color: "#1e1b4b" }}>
+          <MdMedicalServices color="#dc2626" size={38} /> Check-in & Triagem (Protocolo Manchester)
+        </h1>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           {atualizandoSilencioso && (
             <span style={{ fontSize: "12px", color: "#6366f1", fontWeight: "500" }}>Sincronizando...</span>
           )}
           <button
             onClick={() => carregarDados(true)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: "#ffffff", border: "1px solid #d1d5db", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", color: "#374151", fontSize: "12px" }}
+            style={{
+              backgroundColor: "#ffffff",
+              color: "#374151",
+              border: "1px solid #d1d5db",
+              padding: "10px 18px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "14px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
           >
-            <MdRefresh size={14} /> Atualizar
+            <MdRefresh size={18} /> Atualizar
           </button>
         </div>
       </div>
 
       {mensagem.texto && (
-        <div style={{ padding: "8px 12px", borderRadius: "6px", marginBottom: "12px", backgroundColor: mensagem.tipo === "sucesso" ? "#dcfce7" : "#fee2e2", color: mensagem.tipo === "sucesso" ? "#166534" : "#991b1b", fontWeight: "600", fontSize: "12px" }}>
+        <div style={{ backgroundColor: mensagem.tipo === "sucesso" ? "#dcfce7" : "#fee2e2", color: mensagem.tipo === "sucesso" ? "#166534" : "#991b1b", padding: "12px 16px", borderRadius: "8px", marginBottom: "15px", fontWeight: "500" }}>
           {mensagem.texto}
         </div>
       )}
 
       {atendimentoSelecionado ? (
-        <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-          
-          <h3 style={{ marginTop: 0, color: "#1e1b4b", fontSize: "16px", borderBottom: "1px solid #f3f4f6", paddingBottom: "10px", marginBottom: "16px", fontWeight: "700" }}>
+        <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
+          <h3 style={{ marginTop: 0, color: "#1e1b4b", fontSize: "18px", borderBottom: "2px solid #f3f4f6", paddingBottom: "16px", marginBottom: "20px", fontWeight: "700" }}>
             🩺 Aferição de Sinais Vitais — {obterHeaderDetalhado(atendimentoSelecionado)}
           </h3>
 
@@ -699,13 +698,13 @@ function Triagem() {
 
           <div style={{ marginBottom: "20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <label style={{ fontSize: "12px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
-              <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+              <label style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
+              <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}>
                 <MdAutoAwesome /> Avaliar com IA
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "14px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "10px", marginBottom: "14px" }}>
               {Object.keys(CORES_MANCHESTER).map((cor) => {
                 const item = CORES_MANCHESTER[cor];
                 const selecionado = classificacaoRisco === cor;
@@ -715,16 +714,16 @@ function Triagem() {
                     type="button"
                     onClick={() => setClassificacaoRisco(cor)}
                     style={{
-                      padding: "10px 4px",
-                      borderRadius: "6px",
+                      padding: "12px 6px",
+                      borderRadius: "8px",
                       border: selecionado ? `2px solid ${item.text}` : `1px solid ${item.border}`,
                       backgroundColor: selecionado ? item.bg : item.inactiveBg,
                       color: item.text,
                       fontWeight: selecionado ? "700" : "600",
-                      fontSize: "12px",
+                      fontSize: "13px",
                       cursor: "pointer",
                       textAlign: "center",
-                      boxShadow: selecionado ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
+                      boxShadow: selecionado ? "0 2px 4px rgba(0,0,0,0.08)" : "none",
                       transition: "all 0.15s ease-in-out"
                     }}
                   >
@@ -735,25 +734,25 @@ function Triagem() {
             </div>
 
             {mostrarBannerUrgente && (
-              <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", padding: "12px 14px", borderRadius: "8px", fontSize: "11px", color: "#92400e", marginBottom: "12px" }}>
+              <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", padding: "14px 16px", borderRadius: "8px", fontSize: "12px", color: "#92400e", marginBottom: "12px" }}>
                 <strong>⚠️ {autoUrgente !== null && classificacaoRisco === "AMARELO" ? "Classificado automaticamente como Urgente:" : "Sugestão: Urgente —"}</strong>{" "}
                 {sinaisAlterados.join(", ")} acima do limite clínico + {sintomasGatilho.join(", ")} relatado(s) na queixa.
-                <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
                   {autoUrgente !== null && classificacaoRisco === "AMARELO" ? (
                     <>
-                      <button type="button" onClick={() => setManterClassificacao(true)} style={{ backgroundColor: "#fef9c3", color: "#a16207", border: "1px solid #fde047", padding: "5px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "700" }}>
+                      <button type="button" onClick={() => setManterClassificacao(true)} style={{ backgroundColor: "#fef9c3", color: "#a16207", border: "1px solid #fde047", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "700" }}>
                         Manter Urgente
                       </button>
-                      <button type="button" onClick={() => { setClassificacaoRisco(autoUrgente); setManterClassificacao(true); }} style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "5px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}>
+                      <button type="button" onClick={() => { setClassificacaoRisco(autoUrgente); setManterClassificacao(true); }} style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600" }}>
                         Desfazer ({CORES_MANCHESTER[autoUrgente]?.nome})
                       </button>
                     </>
                   ) : (
                     <>
-                      <button type="button" onClick={() => setClassificacaoRisco("AMARELO")} style={{ backgroundColor: "#fef9c3", color: "#a16207", border: "1px solid #fde047", padding: "5px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "700" }}>
+                      <button type="button" onClick={() => setClassificacaoRisco("AMARELO")} style={{ backgroundColor: "#fef9c3", color: "#a16207", border: "1px solid #fde047", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "700" }}>
                         Alterar para Urgente
                       </button>
-                      <button type="button" onClick={() => setManterClassificacao(true)} style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "5px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}>
+                      <button type="button" onClick={() => setManterClassificacao(true)} style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600" }}>
                         Manter {CORES_MANCHESTER[classificacaoRisco]?.nome}
                       </button>
                     </>
@@ -763,23 +762,19 @@ function Triagem() {
             )}
 
             {justificativa && (
-              <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", padding: "10px 12px", borderRadius: "6px", fontSize: "11px", color: "#334151" }}>
+              <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", padding: "12px 14px", borderRadius: "8px", fontSize: "12px", color: "#334151" }}>
                 <strong>🤖 Justificativa Clínica da IA:</strong> {justificativa}
               </div>
             )}
           </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", borderTop: "1px solid #f3f4f6", paddingTop: "16px", marginTop: "12px" }}>
-            <button onClick={() => { setAtendimentoSelecionado(null); limparFormulario(); }} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "none", padding: "8px 18px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "12px" }}>
-              Voltar para a Fila
-            </button>
-            <button onClick={salvarTriagemExistente} disabled={carregando} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "8px 22px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "12px" }}>
-              {carregando ? "Enviando..." : "Finalizar Triagem"}
-            </button>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", borderTop: "2px solid #f3f4f6", paddingTop: "20px", marginTop: "10px" }}>
+            <button onClick={() => { setAtendimentoSelecionado(null); limparFormulario(); }} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>Voltar para a Fila</button>
+            <button onClick={salvarTriagemExistente} disabled={carregando} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "12px 30px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>{carregando ? "Enviando..." : "Finalizar Triagem"}</button>
           </div>
         </div>
       ) : (
-        /* FILA DE TRIAGEM EM FORMATO DE CARTÕES RETANGULARES (IDÊNTICO AO CHECK-IN) */
+        /* FILA DE ESPERA EM CARDS RETANGULARES (100% IDÊNTICO AO CHECK-IN) */
         <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "16px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", border: "1px solid #e5e7eb" }}>
           <h3 style={{ marginTop: 0, color: "#111827", fontSize: "20px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
             📋 Fila de Espera Atual ({atendimentosPendentes.length} pacientes)
@@ -944,4 +939,36 @@ function Triagem() {
                             padding: "8px 14px",
                             borderRadius: "8px",
                             cursor: "pointer",
-                            fontSize: "
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                            transition: "background 0.2s"
+                          }}
+                        >
+                          Iniciar Triagem
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </Layout>
+  );
+}
+
+const estiloInput = {
+  width: "100%",
+  height: "38px",
+  padding: "0 10px",
+  border: "1px solid #d1d5db",
+  borderRadius: "6px",
+  fontSize: "12px",
+  outline: "none",
+  boxSizing: "border-box"
+};
+
+export default Triagem;
