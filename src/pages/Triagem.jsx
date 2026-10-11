@@ -232,6 +232,37 @@ function Triagem() {
     }
   }, [tpcSegundos, mucosas]);
 
+  // --------------------------------------------------------------------------
+  // NOVO TRAVÃO DE SEGURANÇA FÍSICO NO FRONT-END
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    // 1. TPC crítico (choque/falência circulatória)
+    const tpcNum = parseInt(tpcSegundos);
+    const tpcCritico = !isNaN(tpcNum) && tpcNum >= 3;
+
+    // 2. Temperatura crítica (hipotermia ou hipertermia grave)
+    const tempNum = parseFloat(temperatura);
+    const tempCritica = !isNaN(tempNum) && (tempNum <= 35.0 || tempNum >= 40.5);
+
+    // Se qualquer sinal vital atingir o limiar de emergência, muda para Vermelho imediatamente
+    if (tpcCritico || tempCritica) {
+      setClassificacaoRisco("VERMELHO");
+      
+      // Constrói uma justificativa automática para informar o utilizador do motivo da mudança
+      let motivos = [];
+      if (tpcCritico) motivos.push(`TPC ${tpcNum}s (perfusão comprometida)`);
+      if (tempCritica) motivos.push(`Temperatura ${tempNum}°C`);
+      
+      setJustificativa(
+        `⚠️ EMERGÊNCIA CLÍNICA (Regra Automática): ${motivos.join(' e ')}. ` +
+        `Protocolo de Manchester acionado por risco iminente à vida.`
+      );
+      
+      // Impede o banner amarelo de sobrepor esta decisão crítica
+      setManterClassificacao(true); 
+    }
+  }, [tpcSegundos, temperatura]); 
+
   const carregarDados = async (loaderPrincipal = false) => {
     if (loaderPrincipal) setCarregando(true);
     else setAtualizandoSilencioso(true);
