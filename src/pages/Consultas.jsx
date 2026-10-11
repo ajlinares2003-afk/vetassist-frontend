@@ -133,6 +133,13 @@ const ehControlado = (i) =>
     ? i.controladoManual
     : Boolean(i.controlado) || REGEX_CONTROLADOS.test(semAcento(i.medicamento)) || /controle especial/i.test(i.observacoes || "");
 // Dados da clínica (endereço, cidade, UF, telefone) lembrados neste navegador para a receita de controle especial
+// Status em que o paciente ainda não foi liberado pela triagem (não aparece na fila de consulta)
+const STATUS_ANTES_DA_CONSULTA = [
+  "AGUARDANDO_TRIAGEM", "Aguardando Triagem", "Aguardando Triagem (Recepção)",
+  "Chamando para Triagem", "Em Triagem",
+  "AGUARDANDO_VACINA", "Aguardando Vacina", "Em Vacinação",
+];
+
 const CHAVE_CLINICA = "vetassist_clinica";
 const lerClinicaSalva = () => {
   try {
@@ -1095,8 +1102,17 @@ function Consultas() {
   };
 
   const renderBadgeStatus = (st) => {
-    const statusVal = st || "EM_ATENDIMENTO";
+    const statusVal = st || "AGUARDANDO_TRIAGEM";
     const configs = {
+      AGUARDANDO_TRIAGEM: { bg: "#fef3c7", color: "#92400e", label: "⏳ Aguardando Triagem" },
+      "Aguardando Triagem": { bg: "#fef3c7", color: "#92400e", label: "⏳ Aguardando Triagem" },
+      "Aguardando Triagem (Recepção)": { bg: "#fef3c7", color: "#92400e", label: "⏳ Aguardando Triagem" },
+      "Chamando para Triagem": { bg: "#fee2e2", color: "#991b1b", label: "📢 Chamando p/ Triagem" },
+      "Em Triagem": { bg: "#fef3c7", color: "#92400e", label: "🩺 Em Triagem" },
+      AGUARDANDO_VACINA: { bg: "#f3e8ff", color: "#6b21a8", label: "💉 Aguardando Vacina" },
+      "Aguardando Vacina": { bg: "#f3e8ff", color: "#6b21a8", label: "💉 Aguardando Vacina" },
+      "Em Vacinação": { bg: "#f3e8ff", color: "#6b21a8", label: "💉 Em Vacinação" },
+      "Aguardando Cirurgia": { bg: "#ffedd5", color: "#9a3412", label: "🔪 Aguardando Cirurgia" },
       EM_ATENDIMENTO: { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
       "Em Atendimento": { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
       "Aguardando Consulta (Fila Vet)": { bg: "#e0e7ff", color: "#3730a3", label: "🩺 Pronto para Consulta" },
@@ -1105,7 +1121,7 @@ function Consultas() {
       "Finalizado": { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
       CANCELADO: { bg: "#fee2e2", color: "#991b1b", label: "❌ Cancelado" }
     };
-    const conf = configs[statusVal] || configs.EM_ATENDIMENTO;
+    const conf = configs[statusVal] || { bg: "#f1f5f9", color: "#475569", label: String(statusVal) };
     return <span style={{ backgroundColor: conf.bg, color: conf.color, padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>{conf.label}</span>;
   };
 
@@ -1162,7 +1178,8 @@ function Consultas() {
   const consultasFiltradas = consultas.filter((c) => {
     const statusVal = c.status || "";
     const ehFinalizado = ["FINALIZADO", "CONCLUIDA", "Concluída", "CANCELADO", "Finalizado", "Cancelado"].includes(statusVal);
-    if (abaAtiva === "ativos" && ehFinalizado) return false;
+    // Quem ainda está na triagem/recepção/vacina NÃO entra na fila de consulta (só em "Todos").
+    if (abaAtiva === "ativos" && (ehFinalizado || STATUS_ANTES_DA_CONSULTA.includes(statusVal))) return false;
     if (abaAtiva === "finalizados" && !ehFinalizado) return false;
 
     const termo = busca.toLowerCase();
