@@ -5,9 +5,10 @@ import {
   MdAutoAwesome,
   MdRefresh,
   MdCampaign,
-  MdPets
+  MdPets,
+  MdDelete
 } from "react-icons/md";
-import { FaDog, FaCat, FaFish, FaDove, FaHorse, FaFrog, FaBug } from "react-icons/fa";
+import { FaDog, FaCat, FaFish, FaDove, FaHorse, FaFrog, FaBug, FaUser, FaClock } from "react-icons/fa";
 import { GiCow, GiPig, GiSheep, GiGoat, GiRabbit } from "react-icons/gi";
 import api from "../api/api";
 import Layout from "../components/Layout";
@@ -314,10 +315,22 @@ function Triagem() {
     return "#4b5563";
   };
 
-  // Renderizador do ícone inteligente da espécie
-  const renderizarIconeAnimal = (especie, corUnica) => {
-    const cor = corUnica || "#9ca3af";
-    const tamanho = 20;
+  // Cores inteligentes para as tags de sintomas
+  const obterCorSintoma = (tag) => {
+    const t = tag.toLowerCase();
+    if (t.includes("trauma") || t.includes("sangue") || t.includes("dor")) return { bg: "#fee2e2", text: "#991b1b" };
+    if (t.includes("pele") || t.includes("ocular") || t.includes("coceira")) return { bg: "#f3e8ff", text: "#6b21a8" };
+    if (t.includes("diarreia") || t.includes("vômito")) return { bg: "#ffedd5", text: "#c2410c" };
+    if (t.includes("febre") || t.includes("infecção")) return { bg: "#fef3c7", text: "#b45309" };
+    if (t.includes("tosse") || t.includes("respiração")) return { bg: "#e0f2fe", text: "#0369a1" };
+    if (t.includes("apatia") || t.includes("letargia")) return { bg: "#f1f5f9", text: "#475569" };
+    return { bg: "#f3f4f6", text: "#374151" };
+  };
+
+  // Renderizador do ícone inteligente da espécie (com suporte a tamanho grande)
+  const renderizarIconeAnimal = (especie, isSelected, corUnica, sizeMode = "small") => {
+    const cor = corUnica ? corUnica : (isSelected ? "#fff" : "#9ca3af");
+    const tamanho = sizeMode === "large" ? 48 : 18;
     const esp = (especie || "").toLowerCase();
 
     if (esp.includes("bovino") || esp.includes("vaca") || esp.includes("boi") || esp.includes("touro")) return <GiCow size={tamanho} color={cor} />;
@@ -766,158 +779,169 @@ function Triagem() {
           </div>
         </div>
       ) : (
-        /* TABELA DE FILA DE TRIAGEM COM CÓDIGO NA FRENTE E ÍCONE INTELIGENTE DA ESPÉCIE */
-        <div style={{ backgroundColor: "white", borderRadius: "12px", overflow: "hidden", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
-            <thead>
-              <tr style={{ backgroundColor: "#4f46e5", color: "white" }}>
-                <th style={{ padding: "12px 16px", fontWeight: "700", width: "14%" }}>Código</th>
-                <th style={{ padding: "12px 16px", fontWeight: "700", width: "26%" }}>Paciente</th>
-                <th style={{ padding: "12px 16px", fontWeight: "700", width: "34%" }}>Queixa Principal</th>
-                <th style={{ padding: "12px 16px", fontWeight: "700", width: "12%", textAlign: "center" }}>Status</th>
-                <th style={{ padding: "12px 16px", fontWeight: "700", width: "14%", textAlign: "center" }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {atendimentosPendentes.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ padding: "32px", textAlign: "center", color: "#9ca3af", fontStyle: "italic" }}>
-                    Nenhum paciente aguardando triagem no momento. Os pacientes aparecerão aqui assim que realizarem o check-in na recepção.
-                  </td>
-                </tr>
-              ) : (
-                atendimentosPendentes.map((item, idx) => {
-                  const ehVacina = item.status === "AGUARDANDO_VACINA" || item.status === "Aguardando Vacina";
-                  const estaSendoChamado = item.status === "Chamando para Triagem";
+        /* FILA DE TRIAGEM EM FORMATO DE CARTÕES RETANGULARES (IDÊNTICO AO CHECK-IN) */
+        <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "16px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", border: "1px solid #e5e7eb" }}>
+          <h3 style={{ marginTop: 0, color: "#111827", fontSize: "20px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
+            📋 Fila de Espera Atual ({atendimentosPendentes.length} pacientes)
+          </h3>
 
-                  // Localiza dados do animal para extrair espécie e ícone dinâmico
-                  const a = animais.find((itemAnim) => itemAnim.id === Number(item.animal_id));
-                  const nomePet = a ? a.nome : "Paciente desconhecido";
-                  const especie = a?.especie || "Pet";
-                  const raca = a?.raca ? ` - ${a.raca}` : "";
-                  const codigoFormatado = item.codigo || `CNS-${String(item.id).padStart(4, "0")}`;
+          {atendimentosPendentes.length === 0 ? (
+            <p style={{ color: "#6b7280", textAlign: "center", padding: "40px 20px", fontSize: "15px" }}>Nenhum paciente aguardando triagem no momento. Os pacientes aparecerão aqui assim que realizarem o check-in na recepção.</p>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))", gap: "24px" }}>
+              {atendimentosPendentes.map((item) => {
+                const a = animais.find((itemAnim) => itemAnim.id === Number(item.animal_id));
+                const t = a ? tutores.find((tutor) => tutor.id === a.tutor_id) : null;
+                
+                const nomePet = a ? a.nome : "Paciente desconhecido";
+                const especie = a?.especie || "Pet";
+                const raca = a?.raca ? ` - ${a.raca}` : "";
+                const nomeTutor = t ? t.nome : "Tutor não vinculado";
+                const codigoFormatado = item.codigo || `CNS-${String(item.id).padStart(4, "0")}`;
 
-                  const avatarBg = obterCorAvatar(especie);
-                  const iconColor = obterCorIcone(especie);
+                const tagsSintomas = (item.queixa_principal || "")
+                  .split(",")
+                  .map((tag) => tag.trim())
+                  .filter(Boolean);
 
-                  return (
-                    <tr
-                      key={item.id}
-                      style={{
-                        borderBottom: "1px solid #f3f4f6",
-                        backgroundColor: estaSendoChamado ? "#fef2f2" : idx % 2 === 0 ? "#ffffff" : "#f9fafb",
-                        transition: "background-color 0.15s ease",
-                      }}
-                    >
-                      {/* Código destacado na frente */}
-                      <td style={{ padding: "14px 16px", fontWeight: "700", color: "#4f46e5", verticalAlign: "middle" }}>
-                        {codigoFormatado}
-                      </td>
+                const avatarBg = obterCorAvatar(especie);
+                const iconColor = obterCorIcone(especie);
+                const estaSendoChamado = item.status === "Chamando para Triagem";
 
-                      {/* Paciente com Ícone da Espécie */}
-                      <td style={{ padding: "14px 16px", verticalAlign: "middle" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <div style={{ 
-                            backgroundColor: avatarBg, 
-                            width: "32px", 
-                            height: "32px", 
-                            borderRadius: "50%", 
-                            display: "flex", 
-                            alignItems: "center", 
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            boxShadow: "inset 0 1px 2px 0 rgba(0, 0, 0, 0.05)"
-                          }}>
-                            {renderizarIconeAnimal(especie, iconColor)}
-                          </div>
-                          <div>
-                            <span style={{ fontWeight: "700", color: "#1f2937", display: "block" }}>{nomePet}</span>
-                            <span style={{ fontSize: "11px", color: "#6b7280" }}>{especie}{raca}</span>
-                          </div>
+                return (
+                  <div 
+                    key={item.id} 
+                    style={{ 
+                      display: "flex", 
+                      justifyContent: "space-between", 
+                      alignItems: "center", 
+                      padding: "24px", 
+                      backgroundColor: estaSendoChamado ? "#fef2f2" : "#ffffff", 
+                      borderRadius: "16px", 
+                      border: "1px solid #e5e7eb",
+                      borderLeft: "6px solid #4f46e5",
+                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+                      transition: "transform 0.2s, box-shadow 0.2s",
+                      cursor: "default",
+                      textAlign: "left" 
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.05)";
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: "20px", alignItems: "center", flex: 1, minWidth: 0 }}>
+                      {/* Avatar Gigante */}
+                      <div style={{ 
+                        backgroundColor: avatarBg, 
+                        width: "90px", 
+                        height: "90px", 
+                        borderRadius: "50%", 
+                        display: "flex", 
+                        alignItems: "center", 
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        boxShadow: "inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)"
+                      }}>
+                        {renderizarIconeAnimal(especie, false, iconColor, "large")}
+                      </div>
+
+                      {/* Coluna Central com Textos */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1, minWidth: 0 }}>
+                        
+                        {/* Código na Frente do Nome e Espécie/Raça */}
+                        <div style={{ fontSize: "18px", fontWeight: "800", color: "#111827", lineHeight: "1.3" }}>
+                          <span style={{ color: "#4f46e5", marginRight: "6px" }}>{codigoFormatado}</span>
+                          - {nomePet} <span style={{ fontWeight: "500", color: "#4b5563", fontSize: "15px" }}>({especie}{raca})</span>
                         </div>
-                      </td>
 
-                      {/* Queixa Principal */}
-                      <td style={{ padding: "14px 16px", color: "#4b5563", verticalAlign: "middle", lineHeight: "1.4" }}>
-                        {item.queixa_principal || "-"}
-                      </td>
+                        {/* Tutor */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#4b5563", fontSize: "15px" }}>
+                          <FaUser size={14} color="#9ca3af" />
+                          <span>Tutor: <strong style={{ color: "#111827" }}>{nomeTutor}</strong></span>
+                        </div>
 
-                      {/* Status */}
-                      <td style={{ padding: "14px 16px", textAlign: "center", verticalAlign: "middle" }}>
-                        <span
+                        {/* Sintomas com Cores Dinâmicas */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "2px" }}>
+                          <span style={{ fontSize: "14px", fontWeight: "600", color: "#9ca3af" }}>Sintomas:</span>
+                          {tagsSintomas.length === 0 ? (
+                            <span style={{ fontSize: "14px", color: "#6b7280" }}>-</span>
+                          ) : (
+                            tagsSintomas.map((tag, idx) => {
+                              const colors = obterCorSintoma(tag);
+                              return (
+                                <span 
+                                  key={idx}
+                                  style={{ 
+                                    backgroundColor: colors.bg, 
+                                    color: colors.text, 
+                                    padding: "4px 12px", 
+                                    borderRadius: "20px", 
+                                    fontSize: "13px",
+                                    fontWeight: "700"
+                                  }}
+                                >
+                                  {tag}
+                                </span>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Coluna Direita (Status e Botões de Ação) */}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between", height: "95px", flexShrink: 0, marginLeft: "16px" }}>
+                      <span style={{ 
+                        backgroundColor: estaSendoChamado ? "#fee2e2" : "#fef3c7", 
+                        color: estaSendoChamado ? "#991b1b" : "#b45309", 
+                        padding: "6px 12px", 
+                        borderRadius: "20px", 
+                        fontSize: "12px", 
+                        fontWeight: "700",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)"
+                      }}>
+                        <FaClock size={12} color={estaSendoChamado ? "#991b1b" : "#b45309"} />
+                        {estaSendoChamado ? "📢 Chamando..." : "Aguardando Triagem"}
+                      </span>
+
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <button
+                          onClick={(e) => chamarPaciente(item, e)}
+                          title="Chamar no Painel"
                           style={{
-                            display: "inline-block",
-                            padding: "4px 10px",
-                            borderRadius: "12px",
-                            fontSize: "11px",
+                            backgroundColor: "#0284c7",
+                            color: "white",
+                            border: "none",
+                            padding: "8px 12px",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            fontSize: "12px",
                             fontWeight: "600",
-                            backgroundColor: estaSendoChamado ? "#fee2e2" : ehVacina ? "#ccfbf1" : "#e0e7ff",
-                            color: estaSendoChamado ? "#991b1b" : ehVacina ? "#0f766e" : "#3730a3",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                            transition: "background 0.2s"
                           }}
                         >
-                          {estaSendoChamado ? "📢 Chamando..." : ehVacina ? "💉 Vacina" : "Aguardando"}
-                        </span>
-                      </td>
+                          <MdCampaign size={16} /> Chamar
+                        </button>
 
-                      {/* Ações */}
-                      <td style={{ padding: "14px 16px", textAlign: "center", verticalAlign: "middle" }}>
-                        <div style={{ display: "flex", justifyContent: "center", gap: "6px" }}>
-                          <button
-                            onClick={(e) => chamarPaciente(item, e)}
-                            style={{
-                              backgroundColor: "#0284c7",
-                              color: "white",
-                              border: "none",
-                              padding: "6px 10px",
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                              fontSize: "11px",
-                              fontWeight: "600",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}
-                          >
-                            <MdCampaign size={14} /> Chamar
-                          </button>
-                          <button
-                            onClick={() => selecionarParaTriagem(item)}
-                            style={{
-                              backgroundColor: ehVacina ? "#0d9488" : "#4f46e5",
-                              color: "white",
-                              border: "none",
-                              padding: "6px 12px",
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                              fontSize: "11px",
-                              fontWeight: "600"
-                            }}
-                          >
-                            Iniciar Triagem
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Layout>
-  );
-}
-
-const estiloInput = {
-  width: "100%",
-  height: "38px",
-  padding: "0 10px",
-  border: "1px solid #d1d5db",
-  borderRadius: "6px",
-  fontSize: "12px",
-  outline: "none",
-  boxSizing: "border-box"
-};
-
-export default Triagem;
+                        <button
+                          onClick={() => selecionarParaTriagem(item)}
+                          style={{
+                            backgroundColor: "#4f46e5",
+                            color: "white",
+                            border: "none",
+                            padding: "8px 14px",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            fontSize: "
