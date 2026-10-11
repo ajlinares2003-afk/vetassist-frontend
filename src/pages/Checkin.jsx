@@ -173,23 +173,30 @@ function Checkin() {
     return "#4b5563"; // Padrão
   };
 
-  // Função para retornar o ícone exato baseado na espécie do banco de dados
-  const renderizarIconeAnimal = (especie, isSelected, corUnica) => {
+  // Cores inteligentes para as tags de sintomas
+  const obterCorSintoma = (tag) => {
+    const t = tag.toLowerCase();
+    if (t.includes("trauma") || t.includes("sangue") || t.includes("dor")) return { bg: "#fee2e2", text: "#991b1b" }; // Vermelho
+    if (t.includes("pele") || t.includes("ocular") || t.includes("coceira")) return { bg: "#f3e8ff", text: "#6b21a8" }; // Roxo
+    if (t.includes("diarreia") || t.includes("vômito")) return { bg: "#ffedd5", text: "#c2410c" }; // Laranja
+    if (t.includes("febre") || t.includes("infecção")) return { bg: "#fef3c7", text: "#b45309" }; // Amarelo
+    if (t.includes("tosse") || t.includes("respiração")) return { bg: "#e0f2fe", text: "#0369a1" }; // Azul
+    if (t.includes("apatia") || t.includes("letargia")) return { bg: "#f1f5f9", text: "#475569" }; // Cinza/Slate
+    return { bg: "#f3f4f6", text: "#374151" }; // Padrão
+  };
+
+  // Função atualizada com controle de tamanho (sizeMode)
+  const renderizarIconeAnimal = (especie, isSelected, corUnica, sizeMode = "small") => {
     const cor = corUnica ? corUnica : (isSelected ? "#fff" : "#9ca3af");
-    const tamanho = 18;
+    const tamanho = sizeMode === "large" ? 48 : 18; // Agora o ícone grande terá 48px!
     const esp = (especie || "").toLowerCase();
 
-    // 🐄 Animais de Produção / Grandes Animais
     if (esp.includes("bovino") || esp.includes("vaca") || esp.includes("boi") || esp.includes("touro")) return <GiCow size={tamanho} color={cor} />;
     if (esp.includes("suíno") || esp.includes("suino") || esp.includes("porco")) return <GiPig size={tamanho} color={cor} />;
     if (esp.includes("ovino") || esp.includes("ovelha") || esp.includes("carneiro")) return <GiSheep size={tamanho} color={cor} />;
     if (esp.includes("caprino") || esp.includes("cabra") || esp.includes("bode")) return <GiGoat size={tamanho} color={cor} />;
     if (esp.includes("equino") || esp.includes("cavalo") || esp.includes("égua") || esp.includes("ponei")) return <FaHorse size={tamanho} color={cor} />;
-
-    // 🐇 Lagomorfos
     if (esp.includes("lagomorfo") || esp.includes("coelho") || esp.includes("lebre")) return <GiRabbit size={tamanho} color={cor} />;
-
-    // 🐈 Pets e Exóticos
     if (esp.includes("felino") || esp.includes("gato")) return <FaCat size={tamanho} color={cor} />;
     if (esp.includes("canino") || esp.includes("cão") || esp.includes("cachorro")) return <FaDog size={tamanho} color={cor} />;
     if (esp.includes("ave") || esp.includes("pássaro") || esp.includes("calopsita")) return <FaDove size={tamanho} color={cor} />;
@@ -197,7 +204,6 @@ function Checkin() {
     if (esp.includes("réptil") || esp.includes("lagarto") || esp.includes("cobra") || esp.includes("tartaruga")) return <FaFrog size={tamanho} color={cor} />; 
     if (esp.includes("inseto") || esp.includes("aracnídeo")) return <FaBug size={tamanho} color={cor} />;
     
-    // 🐾 Fallback genérico
     return <MdPets size={tamanho} color={cor} />;
   };
 
@@ -279,7 +285,7 @@ function Checkin() {
         </div>
       )}
 
-      {/* Lista de Fila de Espera Atualizada para Design System */}
+      {/* Fila de Espera Atualizada para Design Retangular */}
       <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "16px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", border: "1px solid #e5e7eb" }}>
         <h3 style={{ marginTop: 0, color: "#111827", fontSize: "20px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
           📋 Fila de Espera Atual ({filaCheckin.length} pacientes)
@@ -288,7 +294,8 @@ function Checkin() {
         {filaCheckin.length === 0 ? (
           <p style={{ color: "#6b7280", textAlign: "center", padding: "40px 20px", fontSize: "15px" }}>Nenhum paciente aguardando atendimento no momento.</p>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))", gap: "20px" }}>
+          /* Grelha Blindada: No máximo 2 colunas, minmax garante retângulos horizontais */
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))", gap: "24px" }}>
             {filaCheckin.map((item) => {
               const a = animais.find((itemAnim) => itemAnim.id === Number(item.animal_id));
               const t = a ? tutores.find((tutor) => tutor.id === a.tutor_id) : null;
@@ -298,7 +305,6 @@ function Checkin() {
               const raca = a?.raca ? ` - ${a.raca}` : "";
               const nomeTutor = t ? t.nome : "Tutor não vinculado";
 
-              // Transforma string de queixa principal em tags de sintomas
               const tagsSintomas = (item.queixa_principal || "")
                 .split(",")
                 .map((tag) => tag.trim())
@@ -313,15 +319,16 @@ function Checkin() {
                   style={{ 
                     display: "flex", 
                     justifyContent: "space-between", 
-                    alignItems: "flex-start", 
-                    padding: "20px", 
+                    alignItems: "center", // Garante alinhamento central vertical
+                    padding: "24px", 
                     backgroundColor: "#ffffff", 
                     borderRadius: "16px", 
                     border: "1px solid #e5e7eb",
                     borderLeft: "6px solid #4f46e5",
                     boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
                     transition: "transform 0.2s, box-shadow 0.2s",
-                    cursor: "default"
+                    cursor: "default",
+                    textAlign: "left" // Override obrigatório contra CSS global
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.transform = "translateY(-2px)";
@@ -332,36 +339,43 @@ function Checkin() {
                     e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.05)";
                   }}
                 >
-                  <div style={{ display: "flex", gap: "18px", alignItems: "flex-start", width: "100%" }}>
-                    {/* Coluna do Avatar com Ícone Específico */}
+                  <div style={{ display: "flex", gap: "20px", alignItems: "center", flex: 1, minWidth: 0 }}>
+                    {/* Avatar Gigante */}
                     <div style={{ 
                       backgroundColor: avatarBg, 
-                      padding: "16px", 
+                      width: "90px", 
+                      height: "90px", 
                       borderRadius: "50%", 
                       display: "flex", 
                       alignItems: "center", 
                       justifyContent: "center",
-                      width: "56px", 
-                      height: "56px",
                       flexShrink: 0,
                       boxShadow: "inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)"
                     }}>
-                      {renderizarIconeAnimal(especie, false, iconColor)}
+                      {/* sizeMode="large" aciona o ícone em 48px */}
+                      {renderizarIconeAnimal(especie, false, iconColor, "large")}
                     </div>
 
-                    {/* Coluna com Dados Clínicos e de Identificação */}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-                        <span style={{ fontSize: "16px", fontWeight: "700", color: "#1e1b4b" }}>{nomePet}</span>
-                        <span style={{ fontSize: "13px", color: "#6b7280" }}>({especie}{raca})</span>
-                        
-                        {/* Identificador com o Código */}
+                    {/* Coluna Central com Textos */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1, minWidth: 0 }}>
+                      
+                      {/* Nome, Espécie e Raça na mesma linha */}
+                      <div style={{ fontSize: "20px", fontWeight: "800", color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {nomePet} <span style={{ fontWeight: "500", color: "#4b5563", fontSize: "16px" }}>({especie}{raca})</span>
+                      </div>
+
+                      {/* Tutor e Código */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "#4b5563", fontSize: "15px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <FaUser size={14} color="#9ca3af" />
+                          <span>Tutor: <strong style={{ color: "#111827" }}>{nomeTutor}</strong></span>
+                        </div>
                         <span style={{ 
                           backgroundColor: "#f3f4f6", 
                           color: "#374151", 
-                          padding: "4px 8px", 
+                          padding: "2px 8px", 
                           borderRadius: "6px", 
-                          fontSize: "12px", 
+                          fontSize: "13px", 
                           fontWeight: "600",
                           fontFamily: "monospace"
                         }}>
@@ -369,54 +383,50 @@ function Checkin() {
                         </span>
                       </div>
 
-                      {/* Dados de Tutor */}
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#4b5563", fontSize: "14px", marginBottom: "12px" }}>
-                        <FaUser size={13} color="#9ca3af" />
-                        <span>Tutor: <strong style={{ color: "#1f2937" }}>{nomeTutor}</strong></span>
-                      </div>
-
-                      {/* Sintomas em Formato de Tags (Chips) */}
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
-                        <span style={{ fontSize: "12px", fontWeight: "600", color: "#9ca3af", marginRight: "4px" }}>Sintomas:</span>
+                      {/* Sintomas com Cores Dinâmicas */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "2px" }}>
+                        <span style={{ fontSize: "14px", fontWeight: "600", color: "#9ca3af" }}>Sintomas:</span>
                         {tagsSintomas.length === 0 ? (
-                          <span style={{ fontSize: "13px", color: "#6b7280" }}>Não informados</span>
+                          <span style={{ fontSize: "14px", color: "#6b7280" }}>-</span>
                         ) : (
-                          tagsSintomas.map((tag, idx) => (
-                            <span 
-                              key={idx}
-                              style={{ 
-                                backgroundColor: "#f3f4f6", 
-                                color: "#1f2937", 
-                                padding: "4px 10px", 
-                                borderRadius: "20px", 
-                                fontSize: "12px",
-                                fontWeight: "500",
-                                border: "1px solid #e5e7eb"
-                              }}
-                            >
-                              {tag}
-                            </span>
-                          ))
+                          tagsSintomas.map((tag, idx) => {
+                            const colors = obterCorSintoma(tag);
+                            return (
+                              <span 
+                                key={idx}
+                                style={{ 
+                                  backgroundColor: colors.bg, 
+                                  color: colors.text, 
+                                  padding: "4px 12px", 
+                                  borderRadius: "20px", 
+                                  fontSize: "13px",
+                                  fontWeight: "700"
+                                }}
+                              >
+                                {tag}
+                              </span>
+                            );
+                          })
                         )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Coluna de Status e Ações */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "12px", justifyContent: "space-between", height: "100%", minHeight: "80px", flexShrink: 0 }}>
+                  {/* Coluna Direita (Status e Botão) */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between", height: "90px", flexShrink: 0, marginLeft: "16px" }}>
                     <span style={{ 
                       backgroundColor: "#fef3c7", 
                       color: "#b45309", 
-                      padding: "6px 12px", 
+                      padding: "8px 14px", 
                       borderRadius: "20px", 
-                      fontSize: "12px", 
+                      fontSize: "13px", 
                       fontWeight: "700",
                       display: "flex",
                       alignItems: "center",
                       gap: "6px",
                       boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)"
                     }}>
-                      <FaClock size={12} color="#b45309" />
+                      <FaClock size={14} color="#b45309" />
                       Aguardando Triagem
                     </span>
 
@@ -427,8 +437,8 @@ function Checkin() {
                         backgroundColor: "#fee2e2",
                         color: "#dc2626",
                         border: "none",
-                        width: "36px",
-                        height: "36px",
+                        width: "38px",
+                        height: "38px",
                         borderRadius: "50%",
                         cursor: "pointer",
                         display: "flex",
@@ -446,7 +456,7 @@ function Checkin() {
                         e.currentTarget.style.transform = "scale(1)";
                       }}
                     >
-                      <MdDelete size={18} />
+                      <MdDelete size={20} />
                     </button>
                   </div>
                 </div>
@@ -561,10 +571,10 @@ function Checkin() {
                                 gap: "12px",
                                 backgroundColor: isSelected ? "#eef2ff" : "#ffffff",
                                 borderLeft: isSelected ? "4px solid #4f46e5" : "4px solid transparent",
-                                transition: "background 0.2s"
+                                transition: "background 0.2s",
+                                textAlign: "left"
                               }}
                             >
-                              {/* Ícone dinâmico inteligente */}
                               <div style={{ 
                                 backgroundColor: isSelected ? "#4f46e5" : "#f3f4f6", 
                                 padding: "8px", 
@@ -575,6 +585,7 @@ function Checkin() {
                                 width: "36px", 
                                 height: "36px"
                               }}>
+                                {/* Aqui o ícone continua no tamanho pequeno (small) por padrão */}
                                 {renderizarIconeAnimal(a.especie, isSelected)}
                               </div>
                               <div>
