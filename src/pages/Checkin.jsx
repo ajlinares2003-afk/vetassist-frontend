@@ -310,7 +310,7 @@ function Checkin() {
                       const raca = a.raca ? ` - ${a.raca}` : "";
                       return (
                         <option key={a.id} value={a.id}>
-                          {a.nome} ({especie}${raca}) — Tutor: {nomeTutor}
+                          {a.nome} ({especie}{raca}) — Tutor: {nomeTutor}
                         </option>
                       );
                     })}
