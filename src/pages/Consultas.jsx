@@ -1332,7 +1332,7 @@ function Consultas() {
                   refTxt("fc"), alertaFC
                 )}
                 {renderCardVital(
-                  "cns-fr", "Freq. respiratória (ir/min)",
+                  "cns-fr", "Freq. resp. (ir/min)",
                   <input id="cns-fr" type="number" value={frequenciaRespiratoria} onChange={(e) => setFrequenciaRespiratoria(e.target.value)} style={estiloAlertaVital(alertaFR)} />,
                   refTxt("fr"), alertaFR
                 )}
