@@ -58,6 +58,23 @@ const avaliarTPC = (valor, refTexto) => {
   return null;
 };
 
+// ECC (Escore de Condição Corporal, escala 1-9): mesma regra automática da Triagem,
+// calculada a partir do peso atual e da faixa de peso de referência da espécie.
+const calcularECC = (peso, pesoRef, aplicavel = true) => {
+  if (aplicavel === false) return { texto: "Avaliar clinicamente (filhote)", nivel: null };
+  const v = parseFloat(peso);
+  const m = String(pesoRef || "").match(/(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/);
+  if (isNaN(v) || v <= 0) return null;
+  if (!m) return { texto: "Indeterminado", nivel: null };
+  const min = parseFloat(m[1].replace(",", "."));
+  const max = parseFloat(m[2].replace(",", "."));
+  if (v < min * 0.85) return { texto: "1 a 2 (Muito Magro)", nivel: "alto" };
+  if (v < min) return { texto: "3 (Abaixo do Peso)", nivel: "atencao" };
+  if (v <= max) return { texto: "4 a 5 (Ideal)", nivel: "ok" };
+  if (v <= max * 1.2) return { texto: "6 a 7 (Sobrepeso)", nivel: "atencao" };
+  return { texto: "8 a 9 (Obeso)", nivel: "alto" };
+};
+
 const avaliarMucosas = (valor) =>
   /^normocorada/i.test(String(valor || "").trim())
     ? { nivel: "ok", texto: "Dentro do esperado" }
@@ -263,6 +280,7 @@ function Consultas() {
   const [arquivosExames, setArquivosExames] = useState([]);
   const [previewsExames, setPreviewsExames] = useState([]);
 
+  const [eccTriagem, setEccTriagem] = useState("");
   const [refs, setRefs] = useState(null);
   const [buscandoRefs, setBuscandoRefs] = useState(false);
 
@@ -494,6 +512,7 @@ function Consultas() {
       setPesoAtendimento(dadosTriagem?.peso ?? consulta.peso_atendimento ?? "");
       setTpcSegundos(dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "");
       setMucosas(dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas");
+      setEccTriagem(dadosTriagem?.ecc ?? "");
       setStatusAtendimento("Em Atendimento");
 
       setConsultaEditando({ ...consulta, status: "Em Atendimento" });
@@ -978,6 +997,7 @@ function Consultas() {
     setFrequenciaRespiratoria("");
     setTpcSegundos("");
     setMucosas("Normocoradas");
+    setEccTriagem("");
     setObservacoes("");
     setIndicacaoCirurgia(false);
     setForcarCirurgia(false);
@@ -1209,6 +1229,10 @@ function Consultas() {
   const alertaPeso = avaliarPeso(pesoAtendimento, refs?.peso_ref);
   const alertaTPC = avaliarTPC(tpcSegundos, refs?.tpc);
   const alertaMucosas = avaliarMucosas(mucosas);
+  // ECC: recalcula ao vivo (peso + referência); se não der, usa o valor registrado na triagem
+  const eccCalculado = calcularECC(pesoAtendimento, refs?.peso_ref, refs?.peso_ref_aplicavel);
+  const eccExibido = eccCalculado || (eccTriagem ? { texto: String(eccTriagem), nivel: null } : null);
+  const alertaECC = eccExibido?.nivel ? { nivel: eccExibido.nivel, texto: eccExibido.nivel === "ok" ? "Condição corporal ideal" : eccExibido.nivel === "alto" ? "Condição corporal fora do ideal" : "Condição corporal em atenção" } : null;
 
   const temIndicacaoReal = indicacaoCirurgia || forcarCirurgia;
 
@@ -1320,6 +1344,21 @@ function Consultas() {
                   "cns-peso", "Peso atual (kg)",
                   <input id="cns-peso" type="number" step="0.1" value={pesoAtendimento} onChange={(e) => setPesoAtendimento(e.target.value)} style={estiloAlertaVital(alertaPeso)} />,
                   refTxt("peso_ref"), alertaPeso
+                )}
+                {renderCardVital(
+                  "cns-ecc", "ECC (condição corporal)",
+                  <div
+                    id="cns-ecc"
+                    role="textbox"
+                    aria-readonly="true"
+                    style={{
+                      ...estiloAlertaVital(alertaECC), display: "flex", alignItems: "center",
+                      cursor: "default",
+                    }}
+                  >
+                    {eccExibido ? eccExibido.texto : "Auto-calculado..."}
+                  </div>,
+                  "💡 Ideal: 4 a 5 (Escala 1 a 9)", alertaECC
                 )}
                 {renderCardVital(
                   "cns-temp", "Temperatura (°C)",
