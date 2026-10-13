@@ -58,8 +58,12 @@ const avaliarTPC = (valor, refTexto) => {
   return null;
 };
 
-// ECC (Escore de Condição Corporal, escala 1-9): mesma regra automática da Triagem,
-// calculada a partir do peso atual e da faixa de peso de referência da espécie.
+const avaliarMucosas = (valor) =>
+  /^normocorada/i.test(String(valor || "").trim())
+    ? { nivel: "ok", texto: "Dentro do esperado" }
+    : { nivel: "atencao", texto: "Mucosa alterada — avaliar" };
+
+// SUGESTÃO de ECC pelo peso (mesma regra da Triagem). Não substitui a palpação: o veterinário confirma ou edita.
 const calcularECC = (peso, pesoRef, aplicavel = true) => {
   if (aplicavel === false) return { texto: "Avaliar clinicamente (filhote)", nivel: null };
   const v = parseFloat(peso);
@@ -75,10 +79,31 @@ const calcularECC = (peso, pesoRef, aplicavel = true) => {
   return { texto: "8 a 9 (Obeso)", nivel: "alto" };
 };
 
-const avaliarMucosas = (valor) =>
-  /^normocorada/i.test(String(valor || "").trim())
-    ? { nivel: "ok", texto: "Dentro do esperado" }
-    : { nivel: "atencao", texto: "Mucosa alterada — avaliar" };
+// ECC (escala 1 a 9). O ideal vem do texto de referência da espécie ("Ideal: 5/9" ou "Ideal: 4 a 5").
+const idealECC = (refTexto) => {
+  const t = String(refTexto || "").replace(/\(?\s*escala[^)]*\)?/gi, "");
+  const unico = t.match(/([1-9])\s*\/\s*9/);
+  if (unico) return [Number(unico[1]), Number(unico[1])];
+  const faixa = t.match(/([1-9])\s*(?:a|-|–)\s*([1-9])/i);
+  if (faixa) return [Math.min(Number(faixa[1]), Number(faixa[2])), Math.max(Number(faixa[1]), Number(faixa[2]))];
+  return null;
+};
+
+const avaliarECC = (valor, refTexto) => {
+  const nums = (String(valor || "").match(/\d+/g) || []).slice(0, 2).map(Number);
+  if (nums.length === 0) return null;
+  if (nums.some((n) => n < 1 || n > 9)) return { nivel: "atencao", texto: "Fora da escala (1 a 9)" };
+  const ideal = idealECC(refTexto);
+  if (!ideal) return null; // sem referência confiável, não classifica
+  const lo = Math.min(...nums);
+  const hi = Math.max(...nums);
+  const dist = hi < ideal[0] ? hi - ideal[0] : lo > ideal[1] ? lo - ideal[1] : 0;
+  if (dist === 0) return { nivel: "ok", texto: "Dentro do ideal" };
+  if (Math.abs(dist) === 1) return { nivel: "atencao", texto: dist < 0 ? "Levemente abaixo do ideal" : "Levemente acima do ideal" };
+  return dist < 0
+    ? { nivel: "baixo", texto: "Abaixo do ideal — condição corporal baixa" }
+    : { nivel: "alto", texto: "Acima do ideal — sobrepeso/obesidade" };
+};
 
 const CORES_ALERTA = {
   alto: { cor: "#b91c1c", borda: "#fca5a5", bg: "#fef2f2", icone: "🔴" },
@@ -267,6 +292,7 @@ function Consultas() {
   
   const [tpcSegundos, setTpcSegundos] = useState("");
   const [mucosas, setMucosas] = useState("Normocoradas");
+  const [ecc, setEcc] = useState(""); // Escore de Condição Corporal (1 a 9)
   const [observacoes, setObservacoes] = useState("");
 
   const [indicacaoCirurgia, setIndicacaoCirurgia] = useState(false);
@@ -280,7 +306,6 @@ function Consultas() {
   const [arquivosExames, setArquivosExames] = useState([]);
   const [previewsExames, setPreviewsExames] = useState([]);
 
-  const [eccTriagem, setEccTriagem] = useState("");
   const [refs, setRefs] = useState(null);
   const [buscandoRefs, setBuscandoRefs] = useState(false);
 
@@ -512,7 +537,7 @@ function Consultas() {
       setPesoAtendimento(dadosTriagem?.peso ?? consulta.peso_atendimento ?? "");
       setTpcSegundos(dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "");
       setMucosas(dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas");
-      setEccTriagem(dadosTriagem?.ecc ?? "");
+      setEcc(dadosTriagem?.ecc ?? consulta.ecc ?? "");
       setStatusAtendimento("Em Atendimento");
 
       setConsultaEditando({ ...consulta, status: "Em Atendimento" });
@@ -550,6 +575,7 @@ function Consultas() {
       if (frequenciaRespiratoria) formData.append("frequencia_respiratoria", frequenciaRespiratoria);
       if (tpcSegundos) formData.append("tpc_segundos", tpcSegundos);
       if (mucosas) formData.append("mucosas", mucosas);
+      if (ecc) formData.append("ecc", ecc);
       formData.append("solicitar_exames_preventivos", solicitarExamesPreventivos ? "true" : "false");
 
       if (arquivosExames.length > 0) {
@@ -997,7 +1023,7 @@ function Consultas() {
     setFrequenciaRespiratoria("");
     setTpcSegundos("");
     setMucosas("Normocoradas");
-    setEccTriagem("");
+    setEcc("");
     setObservacoes("");
     setIndicacaoCirurgia(false);
     setForcarCirurgia(false);
@@ -1063,6 +1089,7 @@ function Consultas() {
         frequencia_respiratoria: frequenciaRespiratoria !== "" ? Number(frequenciaRespiratoria) : null,
         tpc_segundos: tpcSegundos !== "" ? Number(tpcSegundos) : null,
         mucosas: mucosas || "Normocoradas",
+        ecc: ecc || null,
         parecer_copiloto: parecerCompletoIA || null,
         exames_anexados: arquivosExames.length > 0 ? arquivosExames.map(f => f.name).join(", ") : null,
         observacoes: observacoes || null,
@@ -1229,10 +1256,9 @@ function Consultas() {
   const alertaPeso = avaliarPeso(pesoAtendimento, refs?.peso_ref);
   const alertaTPC = avaliarTPC(tpcSegundos, refs?.tpc);
   const alertaMucosas = avaliarMucosas(mucosas);
-  // ECC: recalcula ao vivo (peso + referência); se não der, usa o valor registrado na triagem
-  const eccCalculado = calcularECC(pesoAtendimento, refs?.peso_ref, refs?.peso_ref_aplicavel);
-  const eccExibido = eccCalculado || (eccTriagem ? { texto: String(eccTriagem), nivel: null } : null);
-  const alertaECC = eccExibido?.nivel ? { nivel: eccExibido.nivel, texto: eccExibido.nivel === "ok" ? "Condição corporal ideal" : eccExibido.nivel === "alto" ? "Condição corporal fora do ideal" : "Condição corporal em atenção" } : null;
+  const alertaECC = avaliarECC(ecc, refs?.ecc_ref);
+  const sugestaoECC = calcularECC(pesoAtendimento, refs?.peso_ref, refs?.peso_ref_aplicavel);
+  const mostrarSugestaoECC = !ecc && Boolean(sugestaoECC?.nivel);
 
   const temIndicacaoReal = indicacaoCirurgia || forcarCirurgia;
 
@@ -1346,21 +1372,6 @@ function Consultas() {
                   refTxt("peso_ref"), alertaPeso
                 )}
                 {renderCardVital(
-                  "cns-ecc", "ECC (condição corporal)",
-                  <div
-                    id="cns-ecc"
-                    role="textbox"
-                    aria-readonly="true"
-                    style={{
-                      ...estiloAlertaVital(alertaECC), display: "flex", alignItems: "center",
-                      cursor: "default",
-                    }}
-                  >
-                    {eccExibido ? eccExibido.texto : "Auto-calculado..."}
-                  </div>,
-                  "💡 Ideal: 4 a 5 (Escala 1 a 9)", alertaECC
-                )}
-                {renderCardVital(
                   "cns-temp", "Temperatura (°C)",
                   <input id="cns-temp" type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} style={estiloAlertaVital(alertaTemp)} />,
                   refTxt("temperatura"), alertaTemp
@@ -1389,6 +1400,23 @@ function Consultas() {
                     <option value="Ictéricas">Ictéricas</option>
                   </select>,
                   refTxt("mucosas"), alertaMucosas
+                )}
+                {renderCardVital(
+                  "cns-ecc", "ECC (1 a 9)",
+                  <input id="cns-ecc" type="text" value={ecc} onChange={(e) => setEcc(e.target.value)} placeholder="Ex.: 5" maxLength={60} style={estiloAlertaVital(alertaECC)} />,
+                  <>
+                    {refTxt("ecc_ref")}
+                    {mostrarSugestaoECC && (
+                      <span style={{ display: "block", marginTop: "4px", color: "#475569" }}>
+                        Sugestão pelo peso: {sugestaoECC.texto} (confirme na palpação){" "}
+                        <button type="button" onClick={() => setEcc(sugestaoECC.texto)}
+                          style={{ border: "none", background: "none", color: "#0369a1", cursor: "pointer", fontSize: "11px", fontWeight: 700, padding: 0, textDecoration: "underline" }}>
+                          Usar
+                        </button>
+                      </span>
+                    )}
+                  </>,
+                  alertaECC
                 )}
               </div>
 
