@@ -314,7 +314,7 @@ function Checkin() {
                   style={{ 
                     display: "flex", 
                     justifyContent: "space-between", 
-                    alignItems: "center", 
+                    alignItems: "flex-start", 
                     padding: "24px", 
                     backgroundColor: "#ffffff", 
                     borderRadius: "16px", 
@@ -323,7 +323,8 @@ function Checkin() {
                     boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
                     transition: "transform 0.2s, box-shadow 0.2s",
                     cursor: "default",
-                    textAlign: "left" 
+                    textAlign: "left",
+                    overflow: "hidden"
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.transform = "translateY(-2px)";
@@ -334,7 +335,7 @@ function Checkin() {
                     e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.05)";
                   }}
                 >
-                  <div style={{ display: "flex", gap: "20px", alignItems: "center", flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", gap: "20px", alignItems: "flex-start", flex: 1, minWidth: 0, overflow: "hidden" }}>
                     {/* Avatar Gigante */}
                     <div style={{ 
                       backgroundColor: avatarBg, 
@@ -350,52 +351,73 @@ function Checkin() {
                       {renderizarIconeAnimal(especie, false, iconColor, "large")}
                     </div>
 
-                    {/* Coluna Central com Textos Livres (Sem corte de reticências) */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1, minWidth: 0 }}>
+                    {/* Coluna Central com Textos Seguros e Flexíveis */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0, overflow: "hidden" }}>
                       
                       {/* Código na Frente do Nome e Espécie/Raça */}
-                      <div style={{ fontSize: "18px", fontWeight: "800", color: "#111827", lineHeight: "1.3" }}>
+                      <div style={{ fontSize: "18px", fontWeight: "800", color: "#111827", lineHeight: "1.3", wordBreak: "break-word" }}>
                         <span style={{ color: "#4f46e5", marginRight: "6px" }}>{item.codigo}</span>
                         - {nomePet} <span style={{ fontWeight: "500", color: "#4b5563", fontSize: "15px" }}>({especie}{raca})</span>
                       </div>
 
                       {/* Tutor */}
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#4b5563", fontSize: "15px" }}>
-                        <FaUser size={14} color="#9ca3af" />
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#4b5563", fontSize: "15px", wordBreak: "break-word" }}>
+                        <FaUser size={14} color="#9ca3af" style={{ flexShrink: 0 }} />
                         <span>Tutor: <strong style={{ color: "#111827" }}>{nomeTutor}</strong></span>
                       </div>
 
-                      {/* Sintomas com Cores Dinâmicas */}
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "2px" }}>
-                        <span style={{ fontSize: "14px", fontWeight: "600", color: "#9ca3af" }}>Sintomas:</span>
+                      {/* Sintomas com Quebra de Linha Limpa */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "2px", width: "100%", overflow: "hidden" }}>
+                        <span style={{ fontSize: "14px", fontWeight: "600", color: "#9ca3af" }}>Sintomas / Queixa:</span>
                         {tagsSintomas.length === 0 ? (
                           <span style={{ fontSize: "14px", color: "#6b7280" }}>-</span>
                         ) : (
-                          tagsSintomas.map((tag, idx) => {
-                            const colors = obterCorSintoma(tag);
-                            return (
-                              <span 
-                                key={idx}
-                                style={{ 
-                                  backgroundColor: colors.bg, 
-                                  color: colors.text, 
-                                  padding: "4px 12px", 
-                                  borderRadius: "20px", 
-                                  fontSize: "13px",
-                                  fontWeight: "700"
-                                }}
-                              >
-                                {tag}
-                              </span>
-                            );
-                          })
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                            {tagsSintomas.map((tag, idx) => {
+                              const colors = obterCorSintoma(tag);
+                              return (
+                                <span 
+                                  key={idx}
+                                  style={{ 
+                                    backgroundColor: colors.bg, 
+                                    color: colors.text, 
+                                    padding: "4px 12px", 
+                                    borderRadius: "20px", 
+                                    fontSize: "13px",
+                                    fontWeight: "700",
+                                    wordBreak: "break-word"
+                                  }}
+                                >
+                                  {tag}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {item.queixa_principal && item.queixa_principal.length > 30 && tagsSintomas.length <= 1 && (
+                          <p style={{ 
+                            fontSize: "13px", 
+                            color: "#4b5563", 
+                            margin: 0, 
+                            overflowWrap: "break-word", 
+                            wordBreak: "break-word",
+                            lineHeight: "1.4",
+                            maxHeight: "3.8em",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical"
+                          }}>
+                            {item.queixa_principal}
+                          </p>
                         )}
                       </div>
                     </div>
                   </div>
 
                   {/* Coluna Direita (Status e Botão) */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between", height: "90px", flexShrink: 0, marginLeft: "16px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between", minHeight: "90px", flexShrink: 0, marginLeft: "16px" }}>
                     <span style={{ 
                       backgroundColor: "#fef3c7", 
                       color: "#b45309", 
@@ -406,7 +428,8 @@ function Checkin() {
                       display: "flex",
                       alignItems: "center",
                       gap: "6px",
-                      boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)"
+                      boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                      whiteSpace: "nowrap"
                     }}>
                       <FaClock size={14} color="#b45309" />
                       Aguardando Triagem
@@ -427,7 +450,8 @@ function Checkin() {
                         alignItems: "center",
                         justifyContent: "center",
                         transition: "background 0.2s, transform 0.2s",
-                        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)"
+                        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
+                        marginTop: "16px"
                       }}
                       onMouseOver={(e) => {
                         e.currentTarget.style.backgroundColor = "#fca5a5";
