@@ -290,7 +290,7 @@ function Checkin() {
         {filaCheckin.length === 0 ? (
           <p style={{ color: "#6b7280", textAlign: "center", padding: "40px 20px", fontSize: "15px" }}>Nenhum paciente aguardando atendimento no momento.</p>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))", gap: "24px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))", gridAutoRows: "260px", gap: "24px" }}>
             {filaCheckin.map((item) => {
               const a = animais.find((itemAnim) => itemAnim.id === Number(item.animal_id));
               const t = a ? tutores.find((tutor) => tutor.id === a.tutor_id) : null;
@@ -305,6 +305,11 @@ function Checkin() {
                 .map((tag) => tag.trim())
                 .filter(Boolean);
 
+              // Altura do card é fixa: mostramos até 2 tags e um contador "+N" para o resto.
+              const MAX_TAGS_VISIVEIS = 2;
+              const tagsVisiveis = tagsSintomas.slice(0, MAX_TAGS_VISIVEIS);
+              const tagsOcultas = tagsSintomas.slice(MAX_TAGS_VISIVEIS);
+
               const avatarBg = obterCorAvatar(especie);
               const iconColor = obterCorIcone(especie);
 
@@ -315,6 +320,8 @@ function Checkin() {
                     display: "flex", 
                     justifyContent: "space-between", 
                     alignItems: "flex-start", 
+                    boxSizing: "border-box",
+                    height: "100%",
                     padding: "24px", 
                     backgroundColor: "#ffffff", 
                     borderRadius: "16px", 
@@ -355,29 +362,36 @@ function Checkin() {
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0, overflow: "hidden" }}>
                       
                       {/* Código na Frente do Nome e Espécie/Raça */}
-                      <div style={{ fontSize: "18px", fontWeight: "800", color: "#111827", lineHeight: "1.3", wordBreak: "break-word" }}>
+                      <div
+                        title={`${item.codigo} - ${nomePet} (${especie}${raca})`}
+                        style={{ fontSize: "18px", fontWeight: "800", color: "#111827", lineHeight: "1.3", wordBreak: "break-word", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", flexShrink: 0 }}
+                      >
                         <span style={{ color: "#4f46e5", marginRight: "6px" }}>{item.codigo}</span>
                         - {nomePet} <span style={{ fontWeight: "500", color: "#4b5563", fontSize: "15px" }}>({especie}{raca})</span>
                       </div>
 
                       {/* Tutor */}
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#4b5563", fontSize: "15px", wordBreak: "break-word" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#4b5563", fontSize: "15px", flexShrink: 0, minWidth: 0 }}>
                         <FaUser size={14} color="#9ca3af" style={{ flexShrink: 0 }} />
-                        <span>Tutor: <strong style={{ color: "#111827" }}>{nomeTutor}</strong></span>
+                        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }} title={nomeTutor}>Tutor: <strong style={{ color: "#111827" }}>{nomeTutor}</strong></span>
                       </div>
 
                       {/* Sintomas com Quebra de Linha Limpa */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "2px", width: "100%", overflow: "hidden" }}>
-                        <span style={{ fontSize: "14px", fontWeight: "600", color: "#9ca3af" }}>Sintomas / Queixa:</span>
+                      <div
+                        title={item.queixa_principal || ""}
+                        style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "2px", width: "100%", flex: 1, minHeight: 0, overflow: "hidden" }}
+                      >
+                        <span style={{ fontSize: "14px", fontWeight: "600", color: "#9ca3af", flexShrink: 0 }}>Sintomas / Queixa:</span>
                         {tagsSintomas.length === 0 ? (
                           <span style={{ fontSize: "14px", color: "#6b7280" }}>-</span>
                         ) : (
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                            {tagsSintomas.map((tag, idx) => {
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", flexShrink: 0 }}>
+                            {tagsVisiveis.map((tag, idx) => {
                               const colors = obterCorSintoma(tag);
                               return (
                                 <span 
                                   key={idx}
+                                  title={tag}
                                   style={{ 
                                     backgroundColor: colors.bg, 
                                     color: colors.text, 
@@ -385,13 +399,26 @@ function Checkin() {
                                     borderRadius: "20px", 
                                     fontSize: "13px",
                                     fontWeight: "700",
-                                    wordBreak: "break-word"
+                                    lineHeight: "18px",
+                                    boxSizing: "border-box",
+                                    maxWidth: "100%",
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis"
                                   }}
                                 >
                                   {tag}
                                 </span>
                               );
                             })}
+                            {tagsOcultas.length > 0 && (
+                              <span
+                                title={tagsOcultas.join(", ")}
+                                style={{ backgroundColor: "#f3f4f6", color: "#4b5563", padding: "4px 10px", borderRadius: "20px", fontSize: "13px", fontWeight: "700", lineHeight: "18px", flexShrink: 0 }}
+                              >
+                                +{tagsOcultas.length}
+                              </span>
+                            )}
                           </div>
                         )}
                         {item.queixa_principal && item.queixa_principal.length > 30 && tagsSintomas.length <= 1 && (
