@@ -23,6 +23,7 @@ import Cirurgia from "./pages/Cirurgia";
 import Financeiro from "./pages/Financeiro";
 import PainelChamadas from "./pages/PainelChamadas";
 import ConfiguracoesIA from "./pages/ConfiguracoesIA";
+import BibliotecaIA from "./pages/BibliotecaIA";
 
 // Componente para validar e proteger as rotas dinamicamente
 function RotaProtegida({ children }) {
@@ -189,6 +190,13 @@ function App() {
               <ConfiguracoesIA />
             </RotaProtegida>
           }
+        />
+
+        <Route 
+          path="/biblioteca-ia" 
+          element={
+            <BibliotecaIA />
+          } 
         />
 
         <Route 
