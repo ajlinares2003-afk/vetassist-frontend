@@ -15,7 +15,8 @@ import {
   MdLocalHospital,
   MdAttachMoney,
   MdCalendarToday,
-  MdSmartToy
+  MdSmartToy,
+  MdMenuBook
 } from "react-icons/md";
 
 function Layout({ children }) {
@@ -49,6 +50,7 @@ function Layout({ children }) {
     { nome: "Financeiro & Caixa", rota: "/financeiro", icone: <MdAttachMoney size={20} />, perfis: ["ADMIN", "RECEPCAO"] },
     { nome: "Usuários & Perfis", rota: "/usuarios", icone: <MdAdminPanelSettings size={20} />, perfis: ["ADMIN", "RECEPCAO"] },
     { nome: "Configurações de IA", rota: "/configuracoes-ia", icone: <MdSmartToy size={20} />, perfis: ["ADMIN"] },
+    { nome: "Biblioteca de IA", rota: "/biblioteca-ia", icone: <MdMenuBook size={20} />, perfis: ["ADMIN"] },
   ];
 
   const itensPermitidos = menuConfig.filter((item) => item.perfis.includes(perfilUsuario));
