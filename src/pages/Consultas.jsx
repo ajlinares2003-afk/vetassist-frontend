@@ -307,6 +307,9 @@ function Consultas() {
   const [previewsExames, setPreviewsExames] = useState([]);
 
   const [refs, setRefs] = useState(null);
+  const [modalValidarRefAberto, setModalValidarRefAberto] = useState(false);
+  const [validandoRef, setValidandoRef] = useState(false);
+  const [erroValidarRef, setErroValidarRef] = useState("");
   const [buscandoRefs, setBuscandoRefs] = useState(false);
 
   // Receita médica
@@ -408,6 +411,39 @@ function Consultas() {
     buscarReferenciasSalvas();
     return () => { cancelado = true; };
   }, [animalId]);
+
+  const recarregarRefs = async () => {
+    if (!animalId) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.get(`/triagem/referencias-salvas/${animalId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setRefs(res.data || null);
+    } catch (err) {
+      console.warn("Erro ao recarregar referências:", err);
+    }
+  };
+
+  // Confirma a referência da biblioteca (status PENDENTE -> VALIDADO). Vale para todo o perfil.
+  const validarReferencia = async () => {
+    if (!refs?.referencia_id || validandoRef) return;
+    setValidandoRef(true);
+    setErroValidarRef("");
+    try {
+      const token = localStorage.getItem("token");
+      await api.post(`/triagem/referencias/${refs.referencia_id}/validar`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await recarregarRefs();
+      setModalValidarRefAberto(false);
+      setMensagemSucesso("✅ Referência validada e registrada com o seu usuário.");
+    } catch (err) {
+      setErroValidarRef(err.response?.data?.detail || "Não foi possível validar a referência.");
+    } finally {
+      setValidandoRef(false);
+    }
+  };
 
   const tratarSessaoExpirada = () => {
     localStorage.removeItem("token");
@@ -1301,7 +1337,16 @@ function Consultas() {
         .join(" - ")
     : animalId ? "Carregando paciente..." : "Nenhum paciente selecionado";
 
-  const refsPendentes = Boolean(animalId && refs?.fonte_ref && /pendente/i.test(refs.fonte_ref));
+  const refsPendentes = Boolean(
+    animalId && refs && (
+      refs.status_ref
+        ? ["PENDENTE", "RASCUNHO"].includes(refs.status_ref)
+        : /pendente/i.test(refs.fonte_ref || "")
+    )
+  );
+  // Só ADMIN e VETERINARIO validam (o backend também exige), e só linhas PENDENTE (não RASCUNHO).
+  const podeValidarRef = ["ADMIN", "VETERINARIO"].includes(String(localStorage.getItem("perfil") || "").toUpperCase());
+  const refValidavel = Boolean(animalId && refs?.referencia_id && refs?.status_ref === "PENDENTE" && podeValidarRef);
   const analiseDesabilitada = carregandoCopiloto || !queixaPrincipal.trim();
 
   const removerArquivoExame = (idx) => setArquivosExames((prev) => prev.filter((_, i) => i !== idx));
@@ -1469,6 +1514,15 @@ function Consultas() {
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", backgroundColor: "#fffbeb", color: "#92400e", border: "1px solid #fcd34d", borderRadius: "999px", padding: "4px 10px", fontSize: "12px", fontWeight: 600 }}>
                     <span aria-hidden="true">!</span> Referências pendentes de validação veterinária
                   </span>
+                )}
+                {refValidavel && (
+                  <button
+                    type="button"
+                    onClick={() => { setErroValidarRef(""); setModalValidarRefAberto(true); }}
+                    style={{ backgroundColor: "#ffffff", color: "#92400e", border: "1px solid #f59e0b", borderRadius: "8px", padding: "8px 12px", cursor: "pointer", fontWeight: 700, fontSize: "13px" }}
+                  >
+                    ✔ Validar referência
+                  </button>
                 )}
                 <button
                   type="button"
@@ -1771,6 +1825,44 @@ function Consultas() {
                 <MdPrint size={16} /> Imprimir
               </button>
               <button onClick={() => setConsultaDetalhes(null)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE VALIDAÇÃO DA REFERÊNCIA */}
+      {modalValidarRefAberto && refs && (
+        <div role="dialog" aria-modal="true" aria-label="Validar referência" style={estiloOverlay}>
+          <div style={{ ...estiloCaixaModal, maxWidth: "540px" }}>
+            <h3 style={{ margin: "0 0 12px 0", color: "#111827" }}>Validar referência veterinária</h3>
+            <div style={{ fontSize: "13px", color: "#374151", lineHeight: 1.6, backgroundColor: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "12px", marginBottom: "12px" }}>
+              <div><strong>Perfil:</strong> {refs.perfil_ref}</div>
+              <div><strong>Sexo:</strong> {refs.sexo_ref || "—"} · <strong>Faixa etária:</strong> {refs.faixa_ref || refs.faixa_etaria || "—"}</div>
+              <div><strong>Peso:</strong> {String(refs.peso_ref || "").replace("💡 ", "")}</div>
+              <div><strong>Temperatura:</strong> {refs.temperatura}</div>
+              <div><strong>FC:</strong> {refs.fc}</div>
+              <div><strong>FR:</strong> {refs.fr}</div>
+              <div><strong>TPC:</strong> {refs.tpc} · <strong>Mucosas:</strong> {String(refs.mucosas || "").replace("💡 ", "")}</div>
+              <div><strong>ECC:</strong> {String(refs.ecc_ref || "").replace("💡 ", "")}</div>
+            </div>
+            <div role="alert" style={{ backgroundColor: "#fffbeb", color: "#92400e", border: "1px solid #fcd34d", padding: "10px 12px", borderRadius: "8px", marginBottom: "12px", fontSize: "13px" }}>
+              Esta validação vale para <strong>todos os pacientes futuros</strong> deste perfil, sexo e faixa etária, não só para este atendimento. Confirme apenas se você conferiu os valores acima contra uma fonte confiável.
+              {refs.ref_adulta_fallback && (
+                <div style={{ marginTop: "6px", fontWeight: 600 }}>
+                  Atenção: esta é a referência de ADULTO, usada porque não há linha para a faixa etária deste paciente.
+                </div>
+              )}
+            </div>
+            {erroValidarRef && (
+              <div role="alert" style={{ backgroundColor: "#fee2e2", color: "#991b1b", padding: "10px 12px", borderRadius: "8px", marginBottom: "12px", fontSize: "13px", fontWeight: 500 }}>
+                {erroValidarRef}
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button onClick={() => setModalValidarRefAberto(false)} disabled={validandoRef} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}>Cancelar</button>
+              <button onClick={validarReferencia} disabled={validandoRef} style={{ backgroundColor: validandoRef ? "#9ca3af" : "#15803d", color: "white", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: validandoRef ? "not-allowed" : "pointer", fontWeight: "600" }}>
+                {validandoRef ? "Validando..." : "Confirmar validação"}
+              </button>
             </div>
           </div>
         </div>
