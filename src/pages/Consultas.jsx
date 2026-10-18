@@ -1540,7 +1540,7 @@ function Consultas() {
               {!queixaPrincipal.trim()
                 ? "Preencha a queixa principal para liberar a análise. "
                 : ""}
-              A análise da IA é apoio à decisão e precisa ser validada pelo veterinário responsável.
+              A análise da IA é uma ferramenta de apoio à decisão e deve ser validada pelo médico-veterinário responsável.
             </p>
 
             {carregandoCopiloto && (
