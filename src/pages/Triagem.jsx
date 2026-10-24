@@ -33,23 +33,32 @@ const extrairFaixas = (texto) => {
   return { repouso: pegar("Repouso"), clinica: pegar("Cl[ií]nica") };
 };
 
+// Classificação em 3 níveis (mesma regra da tela de Atendimento):
+//   🟢 verde    -> dentro da faixa de REPOUSO
+//   🟡 amarelo  -> fora do repouso, mas dentro do envelope clínico (estresse / consultório): reavaliar após repouso
+//   🔴 vermelho -> fora do envelope das duas faixas (união de repouso e clínica)
+// O limite do vermelho é a UNIÃO das faixas: usar só a clínica marcava como crítico valores que estão
+// no repouso quando as faixas se sobrepõem de forma assimétrica (ex.: repouso 120-160 e clínica 130-180).
 const avaliarSinal = (valor, refTexto, unidade, dica = "") => {
   const v = parseFloat(valor);
   if (isNaN(v)) return null;
   const { repouso, clinica } = extrairFaixas(refTexto);
-  const lim = clinica || repouso;
-  if (!lim) return null;
-  if (v > lim[1]) return { nivel: "alto", texto: `Acima do limite clínico (≤ ${lim[1]} ${unidade})${dica}` };
-  if (v < lim[0]) return { nivel: "baixo", texto: `Abaixo do limite clínico (≥ ${lim[0]} ${unidade})${dica}` };
+  const faixas = [repouso, clinica].filter(Boolean);
+  if (faixas.length === 0) return null; // sem referência confiável, não classifica
+  const min = Math.min(...faixas.map((f) => f[0]));
+  const max = Math.max(...faixas.map((f) => f[1]));
+  if (v > max) return { nivel: "alto", texto: `Acima do limite clínico (≤ ${max} ${unidade})` };
+  if (v < min) return { nivel: "baixo", texto: `Abaixo do limite clínico (≥ ${min} ${unidade})` };
   if (repouso && v > repouso[1]) return { nivel: "atencao", texto: `Acima da faixa de repouso (≤ ${repouso[1]} ${unidade})${dica}` };
   if (repouso && v < repouso[0]) return { nivel: "atencao", texto: `Abaixo da faixa de repouso (≥ ${repouso[0]} ${unidade})${dica}` };
-  return null;
+  return { nivel: "ok", texto: "Dentro do esperado" };
 };
 
 const CORES_ALERTA = {
   alto: { cor: "#b91c1c", borda: "#fca5a5", bg: "#fef2f2", icone: "🔴" },
   baixo: { cor: "#b91c1c", borda: "#fca5a5", bg: "#fef2f2", icone: "🔴" },
   atencao: { cor: "#b45309", borda: "#fcd34d", bg: "#fffbeb", icone: "⚠️" },
+  ok: { cor: "#15803d", borda: "#86efac", bg: "#f0fdf4", icone: "✓" },
 };
 
 const renderAlertaSinal = (alerta) =>
@@ -60,7 +69,9 @@ const renderAlertaSinal = (alerta) =>
   ) : null;
 
 const estiloAlerta = (alerta) =>
-  alerta
+  alerta?.nivel === "ok"
+    ? { ...estiloInput, border: `1px solid ${CORES_ALERTA.ok.borda}`, backgroundColor: "#ffffff", color: "#14532d", fontWeight: "600" }
+    : alerta
     ? { ...estiloInput, border: `1px solid ${CORES_ALERTA[alerta.nivel].borda}`, backgroundColor: CORES_ALERTA[alerta.nivel].bg, color: CORES_ALERTA[alerta.nivel].cor, fontWeight: "700" }
     : estiloInput;
 
@@ -538,8 +549,8 @@ function Triagem() {
   };
 
   const alertaTemp = avaliarSinal(temperatura, refsDinamicas.temp, "°C", " — reavaliar após repouso");
-  const alertaFC = avaliarSinal(frequenciaCardiaca, refsDinamicas.fc, "bpm");
-  const alertaFR = avaliarSinal(frequenciaRespiratoria, refsDinamicas.fr, "ir/min");
+  const alertaFC = avaliarSinal(frequenciaCardiaca, refsDinamicas.fc, "bpm", " — reavaliar após repouso");
+  const alertaFR = avaliarSinal(frequenciaRespiratoria, refsDinamicas.fr, "ir/min", " — reavaliar após repouso");
 
   const alertaDesidratacao = (() => {
     if (desidratacao === "" || parseInt(desidratacao) !== 0) return null;
