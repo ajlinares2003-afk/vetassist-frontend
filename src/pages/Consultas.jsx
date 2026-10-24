@@ -1286,9 +1286,12 @@ function Consultas() {
     !animalId ? "Selecione o paciente..." :
     refs ? refs[campo] : "Referência indisponível. Consulte o veterinário";
 
-  const alertaTemp = avaliarSinal(temperatura, refs?.temperatura, "°C", " — reavaliar após repouso");
-  const alertaFC = avaliarSinal(frequenciaCardiaca, refs?.fc, "bpm");
-  const alertaFR = avaliarSinal(frequenciaRespiratoria, refs?.fr, "ir/min");
+  // Sem referência para a faixa etária do paciente (usou-se a de adulto): não classifica temperatura,
+  // FC e FR, para a tela não alertar com uma faixa que o próprio aviso manda ignorar.
+  const semFaixaEtaria = !!refs?.ref_adulta_fallback;
+  const alertaTemp = semFaixaEtaria ? null : avaliarSinal(temperatura, refs?.temperatura, "°C", " — reavaliar após repouso");
+  const alertaFC = semFaixaEtaria ? null : avaliarSinal(frequenciaCardiaca, refs?.fc, "bpm");
+  const alertaFR = semFaixaEtaria ? null : avaliarSinal(frequenciaRespiratoria, refs?.fr, "ir/min");
   const alertaPeso = avaliarPeso(pesoAtendimento, refs?.peso_ref);
   const alertaTPC = avaliarTPC(tpcSegundos, refs?.tpc);
   const alertaMucosas = avaliarMucosas(mucosas);
