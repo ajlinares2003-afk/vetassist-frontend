@@ -15,14 +15,23 @@ const extrairFaixas = (texto) => {
   return { repouso: pegar("Repouso"), clinica: pegar("Cl[ií]nica") };
 };
 
+// Classificação em 3 níveis (Verde / Amarelo / Vermelho) cruzando o valor com a matriz de duplo limiar
+// do perfil do paciente (espécie, porte e faixa etária), já resolvida em refTexto:
+//   🟢 verde    -> dentro da faixa de REPOUSO (fisiológico ideal)
+//   🟡 amarelo  -> fora do repouso, mas dentro do ENVELOPE clínico (estresse / "jaleco branco"): reavaliar após repouso
+//   🔴 vermelho -> fora do envelope das duas faixas (instabilidade, dor, febre alta, choque...)
+// O envelope é a união de repouso e clínica. Usar só a clínica estaria errado quando as faixas se
+// sobrepõem de forma assimétrica (ex.: repouso 120-160 e clínica 130-180: um valor 125 é repouso, não crítico).
 const avaliarSinal = (valor, refTexto, unidade, dica = "") => {
   const v = parseFloat(valor);
   if (isNaN(v)) return null;
   const { repouso, clinica } = extrairFaixas(refTexto);
-  const lim = clinica || repouso;
-  if (!lim) return null;
-  if (v > lim[1]) return { nivel: "alto", texto: `Acima do limite clínico (≤ ${lim[1]} ${unidade})${dica}` };
-  if (v < lim[0]) return { nivel: "baixo", texto: `Abaixo do limite clínico (≥ ${lim[0]} ${unidade})${dica}` };
+  const faixas = [repouso, clinica].filter(Boolean);
+  if (faixas.length === 0) return null; // sem referência confiável, não classifica
+  const min = Math.min(...faixas.map((f) => f[0]));
+  const max = Math.max(...faixas.map((f) => f[1]));
+  if (v > max) return { nivel: "alto", texto: `Acima do limite clínico (≤ ${max} ${unidade})` };
+  if (v < min) return { nivel: "baixo", texto: `Abaixo do limite clínico (≥ ${min} ${unidade})` };
   if (repouso && v > repouso[1]) return { nivel: "atencao", texto: `Acima da faixa de repouso (≤ ${repouso[1]} ${unidade})${dica}` };
   if (repouso && v < repouso[0]) return { nivel: "atencao", texto: `Abaixo da faixa de repouso (≥ ${repouso[0]} ${unidade})${dica}` };
   return { nivel: "ok", texto: "Dentro do esperado" };
@@ -1290,8 +1299,8 @@ function Consultas() {
   // FC e FR, para a tela não alertar com uma faixa que o próprio aviso manda ignorar.
   const semFaixaEtaria = !!refs?.ref_adulta_fallback;
   const alertaTemp = semFaixaEtaria ? null : avaliarSinal(temperatura, refs?.temperatura, "°C", " — reavaliar após repouso");
-  const alertaFC = semFaixaEtaria ? null : avaliarSinal(frequenciaCardiaca, refs?.fc, "bpm");
-  const alertaFR = semFaixaEtaria ? null : avaliarSinal(frequenciaRespiratoria, refs?.fr, "ir/min");
+  const alertaFC = semFaixaEtaria ? null : avaliarSinal(frequenciaCardiaca, refs?.fc, "bpm", " — reavaliar após repouso");
+  const alertaFR = semFaixaEtaria ? null : avaliarSinal(frequenciaRespiratoria, refs?.fr, "ir/min", " — reavaliar após repouso");
   const alertaPeso = avaliarPeso(pesoAtendimento, refs?.peso_ref);
   const alertaTPC = avaliarTPC(tpcSegundos, refs?.tpc);
   const alertaMucosas = avaliarMucosas(mucosas);
