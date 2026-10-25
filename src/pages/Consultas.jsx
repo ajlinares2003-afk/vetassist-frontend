@@ -1450,7 +1450,7 @@ function Consultas() {
                 )}
                 {renderCardVital(
                   "cns-tpc", "TPC (segundos)",
-                  <input id="cns-tpc" type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloAlertaVital(alertaTPC)} />,
+                  <input id="cns-tpc" type="number" step="0.1" min="0" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloAlertaVital(alertaTPC)} />,
                   refTxt("tpc"), alertaTPC
                 )}
                 {renderCardVital(

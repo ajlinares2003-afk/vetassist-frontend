@@ -245,7 +245,7 @@ function Triagem() {
   }, [peso, refsDinamicas.pesoRef, refsDinamicas.pesoAplicavel]);
 
   useEffect(() => {
-    const tpcNum = parseInt(tpcSegundos);
+    const tpcNum = parseFloat(tpcSegundos);
     if (isNaN(tpcNum)) {
       setDesidratacao("");
       return;
@@ -265,7 +265,7 @@ function Triagem() {
   }, [tpcSegundos, mucosas]);
 
   useEffect(() => {
-    const tpcNum = parseInt(tpcEstavel);
+    const tpcNum = parseFloat(tpcEstavel);
     const tpcCritico = !isNaN(tpcNum) && tpcNum >= 3 && tpcNum <= TPC_PLAUSIVEL[1];
 
     const tempNum = parseFloat(temperaturaEstavel);
@@ -484,7 +484,7 @@ function Triagem() {
         temperatura: temperatura ? parseFloat(temperatura) : null,
         frequencia_cardiaca: frequenciaCardiaca ? parseInt(frequenciaCardiaca) : null,
         frequencia_respiratoria: frequenciaRespiratoria ? parseInt(frequenciaRespiratoria) : null,
-        tpc_segundos: tpcSegundos ? parseInt(tpcSegundos) : null,
+        tpc_segundos: tpcSegundos ? parseFloat(tpcSegundos) : null,
         mucosas: mucosas || "Normocoradas"
       };
 
@@ -528,7 +528,7 @@ function Triagem() {
         temperatura: temperatura ? parseFloat(temperatura) : null,
         frequencia_cardiaca: frequenciaCardiaca ? parseInt(frequenciaCardiaca) : null,
         frequencia_respiratoria: frequenciaRespiratoria ? parseInt(frequenciaRespiratoria) : null,
-        tpc_segundos: tpcSegundos ? parseInt(tpcSegundos) : null,
+        tpc_segundos: tpcSegundos ? parseFloat(tpcSegundos) : null,
         mucosas: mucosas || "Normocoradas",
         desidratacao_percentual: desidratacao ? parseInt(desidratacao) : null,
         queixa_principal: queixaPrincipal,
@@ -653,7 +653,7 @@ function Triagem() {
 
         <div>
           <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>TPC (segundos)</label>
-          <input type="number" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
+          <input type="number" step="0.1" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
           <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>💡 {refsDinamicas.tpc}</span>
         </div>
 
