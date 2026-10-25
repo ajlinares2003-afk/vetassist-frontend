@@ -129,7 +129,10 @@ function Triagem() {
       fonteRef: "📚 Fonte: Aguardando diretrizes científicas...",
       pesoAplicavel: true,
       faixaEtaria: "",
-      nomeCientifico: ""
+      nomeCientifico: "",
+      refAdultaFallback: false,
+      correspondencia: null,
+      validada: false
   });
   const [buscandoRefs, setBuscandoRefs] = useState(false);
 
@@ -189,6 +192,9 @@ function Triagem() {
           pesoAplicavel: res.data.peso_ref_aplicavel !== false,
           faixaEtaria: res.data.faixa_etaria || "",
           nomeCientifico: res.data.nome_cientifico || "",
+          refAdultaFallback: !!res.data.ref_adulta_fallback,
+          correspondencia: res.data.correspondencia || null,
+          validada: !!res.data.validada,
         });
       } catch (err) {
         console.warn("Erro ao buscar referências dinâmicas da IA:", err);
@@ -245,7 +251,7 @@ function Triagem() {
   }, [peso, refsDinamicas.pesoRef, refsDinamicas.pesoAplicavel]);
 
   useEffect(() => {
-    const tpcNum = parseFloat(tpcSegundos);
+    const tpcNum = parseFloat(String(tpcSegundos).replace(",", "."));
     if (isNaN(tpcNum)) {
       setDesidratacao("");
       return;
@@ -253,9 +259,9 @@ function Triagem() {
 
     if (tpcNum <= 2 && mucosas === "Normocoradas") {
       setDesidratacao("0");
-    } else if (tpcNum === 2 && (mucosas.includes("Hipocoradas") || mucosas.includes("Pálidas"))) {
+    } else if (tpcNum <= 2 && (mucosas.includes("Hipocoradas") || mucosas.includes("Pálidas"))) {
       setDesidratacao("5");
-    } else if (tpcNum === 3 || mucosas.includes("Cianóticas")) {
+    } else if ((tpcNum >= 3 && tpcNum < 4) || mucosas.includes("Cianóticas")) {
       setDesidratacao("8");
     } else if (tpcNum >= 4) {
       setDesidratacao("10");
@@ -265,7 +271,7 @@ function Triagem() {
   }, [tpcSegundos, mucosas]);
 
   useEffect(() => {
-    const tpcNum = parseFloat(tpcEstavel);
+    const tpcNum = parseFloat(String(tpcEstavel).replace(",", "."));
     const tpcCritico = !isNaN(tpcNum) && tpcNum >= 3 && tpcNum <= TPC_PLAUSIVEL[1];
 
     const tempNum = parseFloat(temperaturaEstavel);
@@ -484,7 +490,7 @@ function Triagem() {
         temperatura: temperatura ? parseFloat(temperatura) : null,
         frequencia_cardiaca: frequenciaCardiaca ? parseInt(frequenciaCardiaca) : null,
         frequencia_respiratoria: frequenciaRespiratoria ? parseInt(frequenciaRespiratoria) : null,
-        tpc_segundos: tpcSegundos ? parseFloat(tpcSegundos) : null,
+        tpc_segundos: tpcSegundos !== "" && !isNaN(parseFloat(tpcSegundos)) ? parseFloat(tpcSegundos) : null,
         mucosas: mucosas || "Normocoradas"
       };
 
@@ -528,7 +534,7 @@ function Triagem() {
         temperatura: temperatura ? parseFloat(temperatura) : null,
         frequencia_cardiaca: frequenciaCardiaca ? parseInt(frequenciaCardiaca) : null,
         frequencia_respiratoria: frequenciaRespiratoria ? parseInt(frequenciaRespiratoria) : null,
-        tpc_segundos: tpcSegundos ? parseFloat(tpcSegundos) : null,
+        tpc_segundos: tpcSegundos !== "" && !isNaN(parseFloat(tpcSegundos)) ? parseFloat(tpcSegundos) : null,
         mucosas: mucosas || "Normocoradas",
         desidratacao_percentual: desidratacao ? parseInt(desidratacao) : null,
         queixa_principal: queixaPrincipal,
@@ -548,9 +554,12 @@ function Triagem() {
     }
   };
 
-  const alertaTemp = avaliarSinal(temperatura, refsDinamicas.temp, "°C", " — reavaliar após repouso");
-  const alertaFC = avaliarSinal(frequenciaCardiaca, refsDinamicas.fc, "bpm", " — reavaliar após repouso");
-  const alertaFR = avaliarSinal(frequenciaRespiratoria, refsDinamicas.fr, "ir/min", " — reavaliar após repouso");
+  // Sem referência para a faixa etária do paciente (usou-se a de adulto): não classifica temperatura, FC e FR
+  // (nem dispara a sugestão de Urgente por eles), igual à tela de Atendimento.
+  const semFaixaEtaria = refsDinamicas.refAdultaFallback;
+  const alertaTemp = semFaixaEtaria ? null : avaliarSinal(temperatura, refsDinamicas.temp, "°C", " — reavaliar após repouso");
+  const alertaFC = semFaixaEtaria ? null : avaliarSinal(frequenciaCardiaca, refsDinamicas.fc, "bpm", " — reavaliar após repouso");
+  const alertaFR = semFaixaEtaria ? null : avaliarSinal(frequenciaRespiratoria, refsDinamicas.fr, "ir/min", " — reavaliar após repouso");
 
   const alertaDesidratacao = (() => {
     if (desidratacao === "" || parseInt(desidratacao) !== 0) return null;
@@ -561,9 +570,9 @@ function Triagem() {
       : null;
   })();
 
-  const alertaTempEstavel = avaliarSinal(temperaturaEstavel, refsDinamicas.temp, "°C");
-  const alertaFCEstavel = avaliarSinal(fcEstavel, refsDinamicas.fc, "bpm");
-  const alertaFREstavel = avaliarSinal(frEstavel, refsDinamicas.fr, "ir/min");
+  const alertaTempEstavel = semFaixaEtaria ? null : avaliarSinal(temperaturaEstavel, refsDinamicas.temp, "°C");
+  const alertaFCEstavel = semFaixaEtaria ? null : avaliarSinal(fcEstavel, refsDinamicas.fc, "bpm");
+  const alertaFREstavel = semFaixaEtaria ? null : avaliarSinal(frEstavel, refsDinamicas.fr, "ir/min");
   const sinaisAlterados = [
     ["Temp", alertaTempEstavel], ["FC", alertaFCEstavel], ["FR", alertaFREstavel],
   ].filter(([, a]) => a && a.nivel === "alto").map(([nome]) => nome);
@@ -621,6 +630,11 @@ function Triagem() {
           <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>ECC (Condição Corporal)</label>
           <input type="text" value={ecc} onChange={(e) => setEcc(e.target.value)} style={{ ...estiloInput, backgroundColor: ecc ? "#f0fdf4" : "white", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado..." />
           <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>{refsDinamicas.eccRef}</span>
+          {["porte", "grupo"].includes(refsDinamicas.correspondencia) && ecc && (
+            <span style={{ fontSize: "10px", color: "#b45309", display: "block", marginTop: "3px" }}>
+              ⚠️ Estimado pelo peso com perfil escolhido só pelo porte: confirme pela palpação
+            </span>
+          )}
         </div>
 
         <div>
@@ -653,7 +667,7 @@ function Triagem() {
 
         <div>
           <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>TPC (segundos)</label>
-          <input type="number" step="0.1" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
+          <input type="number" step="0.1" min="0" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
           <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>💡 {refsDinamicas.tpc}</span>
         </div>
 
@@ -689,7 +703,7 @@ function Triagem() {
             placeholder="Relato do tutor..." 
           />
           <span style={{ fontSize: "10px", color: "#64748b", display: "block", marginTop: "4px", fontStyle: "normal" }}>
-            * ⚠️ <strong>PENDENTE</strong> de validação veterinária. {refsDinamicas.fonteRef}
+            {!refsDinamicas.validada && !String(refsDinamicas.fonteRef).includes("PENDENTE") && !String(refsDinamicas.fonteRef).includes("RASCUNHO") ? "* ⚠️ Referência ainda não validada por veterinário. " : ""}{refsDinamicas.fonteRef}
           </span>
           {(refsDinamicas.nomeCientifico || refsDinamicas.faixaEtaria) && (
             <span style={{ fontSize: "10px", color: "#6b7280", display: "block", marginTop: "2px" }}>
