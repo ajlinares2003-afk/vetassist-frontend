@@ -1301,7 +1301,12 @@ function Consultas() {
   const alertaTemp = semFaixaEtaria ? null : avaliarSinal(temperatura, refs?.temperatura, "°C", " — reavaliar após repouso");
   const alertaFC = semFaixaEtaria ? null : avaliarSinal(frequenciaCardiaca, refs?.fc, "bpm", " — reavaliar após repouso");
   const alertaFR = semFaixaEtaria ? null : avaliarSinal(frequenciaRespiratoria, refs?.fr, "ir/min", " — reavaliar após repouso");
-  const alertaPeso = avaliarPeso(pesoAtendimento, refs?.peso_ref);
+  // Perfil escolhido só pelo porte/grupo (sem a raça): peso fora da faixa pode ser perfil errado, não paciente fora do padrão.
+  const perfilGenerico = ["porte", "grupo"].includes(refs?.correspondencia);
+  const alertaPesoBruto = avaliarPeso(pesoAtendimento, refs?.peso_ref);
+  const alertaPeso = alertaPesoBruto && alertaPesoBruto.nivel === "atencao" && perfilGenerico
+    ? { nivel: "atencao", texto: `${alertaPesoBruto.texto} — perfil escolhido só pelo porte: confira raça e porte no cadastro` }
+    : alertaPesoBruto;
   const alertaTPC = avaliarTPC(tpcSegundos, refs?.tpc);
   const alertaMucosas = avaliarMucosas(mucosas);
   const alertaECC = avaliarECC(ecc, refs?.ecc_ref);
