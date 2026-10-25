@@ -12,7 +12,9 @@ function ConfiguracoesIA() {
     groq_model_2: "",
     groq_api_key_2: "",
     gemini_model: "",
-    gemini_api_key: ""
+    gemini_api_key: "",
+    gemini_model_2: "",
+    gemini_api_key_2: ""
   });
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -44,7 +46,9 @@ function ConfiguracoesIA() {
           groq_model_2: res.data.groq_model_2 || "",
           groq_api_key_2: res.data.groq_api_key_2 || "",
           gemini_model: res.data.gemini_model || "",
-          gemini_api_key: res.data.gemini_api_key || ""
+          gemini_api_key: res.data.gemini_api_key || "",
+          gemini_model_2: res.data.gemini_model_2 || "",
+          gemini_api_key_2: res.data.gemini_api_key_2 || ""
         });
       }
     } catch (err) {
@@ -129,6 +133,78 @@ function ConfiguracoesIA() {
         ) : (
           <form onSubmit={salvarConfiguracoes} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             
+            {/* CARD GEMINI */}
+            <div style={estiloCard}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                <label style={estiloLabel}>Google Gemini (Modelo Principal)</label>
+                <button
+                  type="button"
+                  onClick={() => testarModelo("gemini", "gemini_model", "gemini_api_key")}
+                  disabled={testandoProvedor === "gemini_api_key"}
+                  style={estiloBotaoTeste}
+                >
+                  {testandoProvedor === "gemini_api_key" ? "Testando..." : "Testar Conexão"}
+                </button>
+              </div>
+              <input
+                type="text"
+                value={modelos.gemini_model}
+                onChange={(e) => setModelos({ ...modelos, gemini_model: e.target.value })}
+                style={{ ...estiloInput, marginBottom: "10px" }}
+                placeholder="Ex: gemini-3.6-flash"
+              />
+              <label style={estiloSubLabel}>Chave API Gemini</label>
+              <input
+                type="password"
+                value={modelos.gemini_api_key}
+                onChange={(e) => setModelos({ ...modelos, gemini_api_key: e.target.value })}
+                style={estiloInput}
+                placeholder="Insira a chave API do Google Gemini"
+              />
+              {statusTeste.gemini_api_key && (
+                <div style={statusTeste.gemini_api_key.sucesso ? estiloSucesso : estiloErro}>
+                  {statusTeste.gemini_api_key.sucesso ? <MdCheckCircle size={16} /> : <MdError size={16} />}
+                  <span>{statusTeste.gemini_api_key.sucesso ? `Resposta: ${statusTeste.gemini_api_key.resposta}` : statusTeste.gemini_api_key.erro}</span>
+                </div>
+              )}
+            </div>
+
+            {/* CARD GEMINI RESERVA */}
+            <div style={estiloCard}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                <label style={estiloLabel}>Google Gemini (Modelo Reserva)</label>
+                <button
+                  type="button"
+                  onClick={() => testarModelo("gemini_2", "gemini_model_2", "gemini_api_key_2")}
+                  disabled={testandoProvedor === "gemini_api_key_2"}
+                  style={estiloBotaoTeste}
+                >
+                  {testandoProvedor === "gemini_api_key_2" ? "Testando..." : "Testar Conexão"}
+                </button>
+              </div>
+              <input
+                type="text"
+                value={modelos.gemini_model_2}
+                onChange={(e) => setModelos({ ...modelos, gemini_model_2: e.target.value })}
+                style={{ ...estiloInput, marginBottom: "10px" }}
+                placeholder="Outro modelo Gemini (a cota é por modelo)"
+              />
+              <label style={estiloSubLabel}>Chave API Gemini (opcional: vazia usa a do modelo principal)</label>
+              <input
+                type="password"
+                value={modelos.gemini_api_key_2}
+                onChange={(e) => setModelos({ ...modelos, gemini_api_key_2: e.target.value })}
+                style={estiloInput}
+                placeholder="Deixe vazio para usar a chave do Gemini principal"
+              />
+              {statusTeste.gemini_api_key_2 && (
+                <div style={statusTeste.gemini_api_key_2.sucesso ? estiloSucesso : estiloErro}>
+                  {statusTeste.gemini_api_key_2.sucesso ? <MdCheckCircle size={16} /> : <MdError size={16} />}
+                  <span>{statusTeste.gemini_api_key_2.sucesso ? `Resposta: ${statusTeste.gemini_api_key_2.resposta}` : statusTeste.gemini_api_key_2.erro}</span>
+                </div>
+              )}
+            </div>
+
             {/* CARD GROQ 1 */}
             <div style={estiloCard}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
@@ -197,42 +273,6 @@ function ConfiguracoesIA() {
                 <div style={statusTeste.groq_api_key_2.sucesso ? estiloSucesso : estiloErro}>
                   {statusTeste.groq_api_key_2.sucesso ? <MdCheckCircle size={16} /> : <MdError size={16} />}
                   <span>{statusTeste.groq_api_key_2.sucesso ? `Resposta: ${statusTeste.groq_api_key_2.resposta}` : statusTeste.groq_api_key_2.erro}</span>
-                </div>
-              )}
-            </div>
-
-            {/* CARD GEMINI */}
-            <div style={estiloCard}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                <label style={estiloLabel}>Google Gemini (Modelo Principal)</label>
-                <button
-                  type="button"
-                  onClick={() => testarModelo("gemini", "gemini_model", "gemini_api_key")}
-                  disabled={testandoProvedor === "gemini_api_key"}
-                  style={estiloBotaoTeste}
-                >
-                  {testandoProvedor === "gemini_api_key" ? "Testando..." : "Testar Conexão"}
-                </button>
-              </div>
-              <input
-                type="text"
-                value={modelos.gemini_model}
-                onChange={(e) => setModelos({ ...modelos, gemini_model: e.target.value })}
-                style={{ ...estiloInput, marginBottom: "10px" }}
-                placeholder="Ex: gemini-3.6-flash"
-              />
-              <label style={estiloSubLabel}>Chave API Gemini</label>
-              <input
-                type="password"
-                value={modelos.gemini_api_key}
-                onChange={(e) => setModelos({ ...modelos, gemini_api_key: e.target.value })}
-                style={estiloInput}
-                placeholder="Insira a chave API do Google Gemini"
-              />
-              {statusTeste.gemini_api_key && (
-                <div style={statusTeste.gemini_api_key.sucesso ? estiloSucesso : estiloErro}>
-                  {statusTeste.gemini_api_key.sucesso ? <MdCheckCircle size={16} /> : <MdError size={16} />}
-                  <span>{statusTeste.gemini_api_key.sucesso ? `Resposta: ${statusTeste.gemini_api_key.resposta}` : statusTeste.gemini_api_key.erro}</span>
                 </div>
               )}
             </div>
