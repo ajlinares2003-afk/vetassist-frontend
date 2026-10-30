@@ -56,7 +56,10 @@ const avaliarTPC = (valor, refTexto) => {
   const limite = t.match(/(?:menos de|at[eé]|inferior a|<|≤)\s*(\d+(?:[.,]\d+)?)/i);
   if (limite) {
     const max = parseFloat(limite[1].replace(",", "."));
-    return v <= max ? { nivel: "ok", texto: "Dentro do esperado" } : { nivel: "atencao", texto: `Acima do esperado (≤ ${max} s)` };
+    if (v <= max) return { nivel: "ok", texto: "Dentro do esperado" };
+    // TPC de 3 s ou mais indica perfusão comprometida (mesmo corte da regra de emergência da Triagem).
+    return v >= 3 ? { nivel: "alto", texto: `Acima do esperado (≤ ${max} s): perfusão comprometida` }
+                  : { nivel: "atencao", texto: `Acima do esperado (≤ ${max} s)` };
   }
   const faixa = t.match(/(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/);
   if (faixa) {
@@ -67,10 +70,12 @@ const avaliarTPC = (valor, refTexto) => {
   return null;
 };
 
-const avaliarMucosas = (valor) =>
-  /^normocorada/i.test(String(valor || "").trim())
-    ? { nivel: "ok", texto: "Dentro do esperado" }
-    : { nivel: "atencao", texto: "Mucosa alterada — avaliar" };
+const avaliarMucosas = (valor) => {
+  const t = String(valor || "").trim();
+  if (/^normocorada/i.test(t)) return { nivel: "ok", texto: "Dentro do esperado" };
+  if (/cian[oó]tic/i.test(t)) return { nivel: "alto", texto: "Mucosa cianótica: sinal de hipoxemia, avaliar já" };
+  return { nivel: "atencao", texto: "Mucosa alterada — avaliar" };
+};
 
 // SUGESTÃO de ECC pelo peso (mesma regra da Triagem). Não substitui a palpação: o veterinário confirma ou edita.
 const calcularECC = (peso, pesoRef, aplicavel = true) => {

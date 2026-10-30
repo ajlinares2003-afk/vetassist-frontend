@@ -75,6 +75,22 @@ const estiloAlerta = (alerta) =>
     ? { ...estiloInput, border: `1px solid ${CORES_ALERTA[alerta.nivel].borda}`, backgroundColor: CORES_ALERTA[alerta.nivel].bg, color: CORES_ALERTA[alerta.nivel].cor, fontWeight: "700" }
     : estiloInput;
 
+const avaliarMucosas = (valor) => {
+  const t = String(valor || "").trim();
+  if (/^normocorada/i.test(t)) return { nivel: "ok", texto: "Dentro do esperado" };
+  if (/cian[oó]tic/i.test(t)) return { nivel: "alto", texto: "Mucosa cianótica: sinal de hipoxemia, avaliar já" };
+  return { nivel: "atencao", texto: "Mucosa alterada — avaliar" };
+};
+
+// Desidratação estimada: < 5% normal; 5 a 7% atenção; 8% ou mais, grave.
+const avaliarDesidratacao = (valor) => {
+  const v = parseFloat(valor);
+  if (isNaN(v)) return null;
+  if (v >= 8) return { nivel: "alto", texto: "Desidratação estimada grave (≥ 8%)" };
+  if (v >= 5) return { nivel: "atencao", texto: "Desidratação estimada moderada (5 a 7%)" };
+  return null;
+};
+
 function useValorEstavel(valor, ms = 1200) {
   const [estavel, setEstavel] = useState(valor);
   useEffect(() => {
@@ -561,7 +577,11 @@ function Triagem() {
   const alertaFC = semFaixaEtaria ? null : avaliarSinal(frequenciaCardiaca, refsDinamicas.fc, "bpm", " — reavaliar após repouso");
   const alertaFR = semFaixaEtaria ? null : avaliarSinal(frequenciaRespiratoria, refsDinamicas.fr, "ir/min", " — reavaliar após repouso");
 
+  const alertaMucosas = mucosas ? avaliarMucosas(mucosas) : null;
+  const alertaDesidratacaoNivel = avaliarDesidratacao(desidratacao);
+
   const alertaDesidratacao = (() => {
+    if (alertaDesidratacaoNivel) return alertaDesidratacaoNivel;
     if (desidratacao === "" || parseInt(desidratacao) !== 0) return null;
     const q = normalizarTexto(queixaPrincipal);
     const sugereHidrico = /(bebe\w* mais|mais agua|polidipsia|urin\w* (com )?mais|poliuria|vomit|diarre|nao (bebe|quer beber))/.test(q);
@@ -673,7 +693,7 @@ function Triagem() {
 
         <div>
           <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>Mucosas</label>
-          <select value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={estiloInput}>
+          <select value={mucosas} onChange={(e) => setMucosas(e.target.value)} style={alertaMucosas && alertaMucosas.nivel !== "ok" ? estiloAlerta(alertaMucosas) : estiloInput}>
             <option value="Normocoradas">Normocoradas (Rosadas)</option>
             <option value="Hipocoradas / Pálidas">Hipocoradas / Pálidas</option>
             <option value="Cianóticas">Cianóticas (Roxas)</option>
@@ -681,6 +701,7 @@ function Triagem() {
             <option value="Congestas / Hiperêmicas">Congestas / Vermelhas</option>
           </select>
           <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>{refsDinamicas.mucosasRef}</span>
+          {alertaMucosas && alertaMucosas.nivel !== "ok" ? renderAlertaSinal(alertaMucosas) : null}
         </div>
       </div>
 
@@ -688,7 +709,7 @@ function Triagem() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "16px", alignItems: "start" }}>
         <div>
           <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>Desidratação (%) — IA</label>
-          <input type="number" value={desidratacao} onChange={(e) => setDesidratacao(e.target.value)} style={{ ...estiloInput, backgroundColor: "#f0fdf4", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado..." />
+          <input type="number" value={desidratacao} onChange={(e) => setDesidratacao(e.target.value)} style={alertaDesidratacaoNivel ? estiloAlerta(alertaDesidratacaoNivel) : { ...estiloInput, backgroundColor: "#f0fdf4", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado..." />
           <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>💡 Normal: &lt; 5% (TPC/Mucosas)</span>
           {renderAlertaSinal(alertaDesidratacao)}
         </div>
