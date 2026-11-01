@@ -1317,7 +1317,8 @@ function Consultas() {
   const alertaFR = semFaixaEtaria ? null : avaliarSinal(frequenciaRespiratoria, refs?.fr, "ir/min", " — reavaliar após repouso");
   // Perfil escolhido só pelo porte/grupo (sem a raça): peso fora da faixa pode ser perfil errado, não paciente fora do padrão.
   const perfilGenerico = ["porte", "grupo"].includes(refs?.correspondencia);
-  const alertaPesoBruto = avaliarPeso(pesoAtendimento, refs?.peso_ref);
+  // Peso de referência de adulto não se aplica a filhote (plano B): não compara.
+  const alertaPesoBruto = refs?.peso_ref_aplicavel === false ? null : avaliarPeso(pesoAtendimento, refs?.peso_ref);
   const alertaPeso = alertaPesoBruto && alertaPesoBruto.nivel === "atencao" && perfilGenerico
     ? { nivel: "atencao", texto: `${alertaPesoBruto.texto} — perfil escolhido só pelo porte: confira raça e porte no cadastro` }
     : alertaPesoBruto;
