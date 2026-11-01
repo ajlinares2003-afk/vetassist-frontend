@@ -75,6 +75,28 @@ const estiloAlerta = (alerta) =>
     ? { ...estiloInput, border: `1px solid ${CORES_ALERTA[alerta.nivel].borda}`, backgroundColor: CORES_ALERTA[alerta.nivel].bg, color: CORES_ALERTA[alerta.nivel].cor, fontWeight: "700" }
     : estiloInput;
 
+// TPC: referências como "Até 2 segundos" (limite superior) ou faixa "1 - 2". Igual à tela de Atendimento.
+const avaliarTPC = (valor, refTexto) => {
+  const v = parseFloat(valor);
+  const t = String(refTexto || "");
+  if (isNaN(v)) return null;
+  const limite = t.match(/(?:menos de|at[eé]|inferior a|<|≤)\s*(\d+(?:[.,]\d+)?)/i);
+  if (limite) {
+    const max = parseFloat(limite[1].replace(",", "."));
+    if (v <= max) return { nivel: "ok", texto: "Dentro do esperado" };
+    // TPC de 3 s ou mais indica perfusão comprometida (mesmo corte da regra de emergência).
+    return v >= 3 ? { nivel: "alto", texto: `Acima do esperado (≤ ${max} s): perfusão comprometida` }
+                  : { nivel: "atencao", texto: `Acima do esperado (≤ ${max} s)` };
+  }
+  const faixa = t.match(/(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/);
+  if (faixa) {
+    const min = parseFloat(faixa[1].replace(",", "."));
+    const max = parseFloat(faixa[2].replace(",", "."));
+    return v >= min && v <= max ? { nivel: "ok", texto: "Dentro do esperado" } : { nivel: "atencao", texto: `Fora da faixa esperada (${min} - ${max} s)` };
+  }
+  return null;
+};
+
 const avaliarMucosas = (valor) => {
   const t = String(valor || "").trim();
   if (/^normocorada/i.test(t)) return { nivel: "ok", texto: "Dentro do esperado" };
@@ -577,6 +599,7 @@ function Triagem() {
   const alertaFC = semFaixaEtaria ? null : avaliarSinal(frequenciaCardiaca, refsDinamicas.fc, "bpm", " — reavaliar após repouso");
   const alertaFR = semFaixaEtaria ? null : avaliarSinal(frequenciaRespiratoria, refsDinamicas.fr, "ir/min", " — reavaliar após repouso");
 
+  const alertaTPC = avaliarTPC(tpcSegundos, refsDinamicas.tpc);
   const alertaMucosas = mucosas ? avaliarMucosas(mucosas) : null;
   const alertaDesidratacaoNivel = avaliarDesidratacao(desidratacao);
 
@@ -687,8 +710,9 @@ function Triagem() {
 
         <div>
           <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>TPC (segundos)</label>
-          <input type="number" step="0.1" min="0" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloInput} placeholder="Ex: 2" />
+          <input type="number" step="0.1" min="0" value={tpcSegundos} onChange={(e) => setTpcSegundos(e.target.value)} style={estiloAlerta(alertaTPC)} placeholder="Ex: 2" />
           <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>💡 {refsDinamicas.tpc}</span>
+          {renderAlertaSinal(alertaTPC)}
         </div>
 
         <div>
