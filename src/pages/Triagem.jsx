@@ -155,6 +155,9 @@ function Triagem() {
   const tpcEstavel = useValorEstavel(tpcSegundos);
   const fcEstavel = useValorEstavel(frequenciaCardiaca);
   const frEstavel = useValorEstavel(frequenciaRespiratoria);
+  const queixaEstavel = useValorEstavel(queixaPrincipal);
+  const classificacaoManual = useRef(false);   // o veterinário escolheu o nível com o clique: a avaliação automática não o troca
+  const autoAvaliacoes = useRef(0);            // limite de avaliações automáticas por atendimento (poupa a cota da IA)
 
   const [refsDinamicas, setRefsDinamicas] = useState({
       pesoRef: "💡 Ref. Peso: Selecione o paciente...",
@@ -188,6 +191,8 @@ function Triagem() {
     setManterClassificacao(false);
     setAutoUrgente(null);
     emergenciaAuto.current = null;
+    classificacaoManual.current = false;
+    autoAvaliacoes.current = 0;
   }, [atendimentoSelecionado]);
 
   useEffect(() => {
@@ -315,8 +320,10 @@ function Triagem() {
     const tempNum = parseFloat(temperaturaEstavel);
     const tempPlausivel = !isNaN(tempNum) && tempNum >= TEMP_PLAUSIVEL[0] && tempNum <= TEMP_PLAUSIVEL[1];
     const tempCritica = tempPlausivel && (tempNum <= 35.0 || tempNum >= 40.5);
+    const queixaNorm = String(queixaEstavel || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const queixaCritica = /inconsciente|inconsciencia|desmai|decubito/.test(queixaNorm);
 
-    if (tpcCritico || tempCritica) {
+    if (tpcCritico || tempCritica || queixaCritica) {
       if (!emergenciaAuto.current) {
         emergenciaAuto.current = { classificacao: classificacaoRisco, justificativa, origem: origemJustificativa };
       }
@@ -326,6 +333,7 @@ function Triagem() {
       const motivos = [];
       if (tpcCritico) motivos.push(`TPC ${tpcNum}s (perfusão comprometida)`);
       if (tempCritica) motivos.push(`Temperatura ${tempNum}°C`);
+      if (queixaCritica) motivos.push("queixa compatível com inconsciência/decúbito");
 
       setJustificativa(
         `⚠️ EMERGÊNCIA CLÍNICA (Regra Automática): ${motivos.join(' e ')}. ` +
@@ -340,7 +348,7 @@ function Triagem() {
       setOrigemJustificativa(anterior.origem || "ia");
       setManterClassificacao(false);
     }
-  }, [tpcEstavel, temperaturaEstavel]);
+  }, [tpcEstavel, temperaturaEstavel, queixaEstavel]);
 
   const carregarDados = async (loaderPrincipal = false) => {
     if (loaderPrincipal) setCarregando(true);
@@ -505,8 +513,9 @@ function Triagem() {
     }
   };
 
-  const sugerirClassificacaoIA = async () => {
+  const sugerirClassificacaoIA = async (silencioso = false) => {
     if (!temperatura && !frequenciaCardiaca) {
+      if (silencioso === true) return;
       setMensagem({ tipo: "erro", texto: "Por favor, preencha pelo menos a temperatura e a frequência cardíaca antes de avaliar com a IA." });
       return;
     }
@@ -533,6 +542,7 @@ function Triagem() {
       };
 
       const res = await api.post("/triagem/avaliar-ia", payloadIA, config);
+      if (silencioso === true && classificacaoManual.current) return;   // escolheu enquanto a IA respondia
       if (res.data?.classificacao_risco) {
         setClassificacaoRisco(res.data.classificacao_risco);
         setJustificativa(res.data.justificativa || "");
@@ -542,6 +552,22 @@ function Triagem() {
       console.warn("Aviso ao consultar IA na Triagem:", err);
     }
   };
+
+  // Avaliação automática do nível de urgência: roda sozinha quando os sinais vitais e a queixa estabilizam,
+  // sem o veterinário precisar clicar em "Avaliar com IA". Não troca um nível escolhido à mão, não roda se a
+  // regra de emergência já classificou, e é limitada a poucas chamadas por atendimento (poupa a cota da IA).
+  useEffect(() => {
+    if (!atendimentoSelecionado || classificacaoManual.current || emergenciaAuto.current) return;
+    if (!temperaturaEstavel || !fcEstavel || !String(queixaEstavel || "").trim()) return;
+    if (autoAvaliacoes.current >= 5) return;
+    const t = setTimeout(() => {
+      if (classificacaoManual.current || emergenciaAuto.current) return;
+      autoAvaliacoes.current += 1;
+      sugerirClassificacaoIA(true);
+    }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atendimentoSelecionado, queixaEstavel, temperaturaEstavel, fcEstavel, frEstavel, tpcEstavel, mucosas]);
 
   const salvarTriagemExistente = async () => {
     if (!queixaPrincipal) return setMensagem({ tipo: "erro", texto: "Informe a queixa principal do paciente." });
@@ -811,7 +837,7 @@ function Triagem() {
           <div style={{ marginBottom: "20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
               <label style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
-              <button type="button" onClick={sugerirClassificacaoIA} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}>
+              <button type="button" onClick={() => { classificacaoManual.current = false; sugerirClassificacaoIA(); }} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}>
                 <MdAutoAwesome /> Avaliar com IA
               </button>
             </div>
@@ -824,7 +850,7 @@ function Triagem() {
                   <button
                     key={cor}
                     type="button"
-                    onClick={() => setClassificacaoRisco(cor)}
+                    onClick={() => { classificacaoManual.current = true; setClassificacaoRisco(cor); }}
                     style={{
                       padding: "12px 6px",
                       borderRadius: "8px",
