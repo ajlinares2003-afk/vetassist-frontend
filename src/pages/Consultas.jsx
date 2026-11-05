@@ -1236,7 +1236,7 @@ function Consultas() {
     let linhasProcessadas = [];
 
     if (linhasBrutas.length <= 1 && textoLimpo.length > 80) {
-      const fragmentos = textoLimpo.split(/(?=[A-Z][a-zà-ú\s]+:|-|\u2022)/);
+      const fragmentos = textoLimpo.split(/(?=[A-Z][a-zà-ú\s]+:|(?<=\s)-\s|\u2022)/);
       linhasProcessadas = fragmentos.length > 1 ? fragmentos : [textoLimpo];
     } else {
       linhasProcessadas = linhasBrutas.filter(l => l.trim() !== "");
