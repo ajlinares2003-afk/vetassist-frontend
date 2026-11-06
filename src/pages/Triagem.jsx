@@ -104,6 +104,14 @@ const avaliarMucosas = (valor) => {
   return { nivel: "atencao", texto: "Mucosa alterada — avaliar" };
 };
 
+// Suspeita cardíaca na queixa: mucosa pálida e TPC prolongado refletem baixo débito, não desidratação.
+const queixaSugereCardiopatia = (texto) => {
+  const q = String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const cardiaco = /(sincope|desmai|cardiopat|cardiomiopat|sopro|arritmia|edema pulmonar|insuficiencia cardiaca|dispneia|esforco respirat|taquipneia|respiracao (mais )?(forcada|ofegante|dificil)|tosse noturna)/.test(q);
+  const hidrico = /(desidrat|vomit|diarre|poliuria|polidipsia|nao (bebe|quer beber)|pele (seca|sem elasticidade))/.test(q);
+  return cardiaco && !hidrico;
+};
+
 // Desidratação estimada: < 5% normal; 5 a 7% atenção; 8% ou mais, grave.
 const avaliarDesidratacao = (valor) => {
   const v = parseFloat(valor);
@@ -300,6 +308,12 @@ function Triagem() {
       return;
     }
 
+    // suspeita cardíaca sem sinal hídrico: não estimar desidratação por mucosas/TPC (evita induzir fluidoterapia)
+    if (queixaSugereCardiopatia(queixaEstavel) && (tpcNum > 2 || !/^normocorada/i.test(String(mucosas || "")))) {
+      setDesidratacao("");
+      return;
+    }
+
     if (tpcNum <= 2 && mucosas === "Normocoradas") {
       setDesidratacao("0");
     } else if (tpcNum <= 2 && (mucosas.includes("Hipocoradas") || mucosas.includes("Pálidas"))) {
@@ -311,7 +325,7 @@ function Triagem() {
     } else {
       setDesidratacao("5");
     }
-  }, [tpcSegundos, mucosas]);
+  }, [tpcSegundos, mucosas, queixaEstavel]);
 
   useEffect(() => {
     const tpcNum = parseFloat(String(tpcEstavel).replace(",", "."));
@@ -631,6 +645,9 @@ function Triagem() {
 
   const alertaDesidratacao = (() => {
     if (alertaDesidratacaoNivel) return alertaDesidratacaoNivel;
+    if (desidratacao === "" && queixaSugereCardiopatia(queixaEstavel) && (parseFloat(String(tpcSegundos).replace(",", ".")) > 2 || (mucosas && !/^normocorada/i.test(mucosas)))) {
+      return { nivel: "atencao", texto: "Suspeita cardíaca: mucosa pálida/TPC prolongado indicam baixo débito, não desidratação. Evitar fluidoterapia sem avaliação." };
+    }
     if (desidratacao === "" || parseInt(desidratacao) !== 0) return null;
     const q = normalizarTexto(queixaPrincipal);
     const sugereHidrico = /(bebe\w* mais|mais agua|polidipsia|urin\w* (com )?mais|poliuria|vomit|diarre|nao (bebe|quer beber))/.test(q);

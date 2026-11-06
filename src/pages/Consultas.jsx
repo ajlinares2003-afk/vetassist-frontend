@@ -1254,13 +1254,16 @@ function Consultas() {
           const original = linha.trim();
           const temMarcador = /^[-*•]\s+/.test(original);
           const todoNegrito = /^\*\*[^*]+\*\*:?$/.test(original);
-          const ehTituloSecao = !temMarcador && (
+          // "- Título:" curto, terminado em ":" e sem texto depois, é título de seção mesmo com hífen
+          // (o modelo às vezes envia os títulos como itens de lista)
+          const tituloComMarcador = temMarcador && linhaTrim.length <= 80 && /:\s*$/.test(linhaTrim);
+          const ehTituloSecao = tituloComMarcador || !temMarcador && (
             linhaTrim.endsWith(":") || todoNegrito || /^#{1,4}\s/.test(original) ||
             (linhaTrim.match(/^[A-ZÀ-Ú][a-za-zà-ú\s]+$/) && linhaTrim.length < 35)
           );
 
           if (ehTituloSecao) {
-            const tituloLimpo = linhaTrim.replace(/^#{1,4}\s+/, "").replace(/^- /, "").replace(/:$/, "").trim();
+            const tituloLimpo = linhaTrim.replace(/^#{1,4}\s+/, "").replace(/^[-*•]\s+/, "").replace(/:$/, "").trim();
             return (
               <div key={idx} style={{ fontWeight: "bold", color: "#166534", fontSize: "14px", marginTop: "12px", marginBottom: "4px", textAlign: "left" }}>
                 {tituloLimpo}:
