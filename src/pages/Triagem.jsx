@@ -314,7 +314,8 @@ function Triagem() {
       return;
     }
 
-    if (tpcNum <= 2 && mucosas === "Normocoradas") {
+    if (tpcNum <= 2 && (mucosas === "Normocoradas" || /Congestas|Ict[ée]ricas/.test(String(mucosas || "")))) {
+      // TPC normal com mucosa congesta (febre, excitação, sepse) ou ictérica não indica desidratação por si só
       setDesidratacao("0");
     } else if (tpcNum <= 2 && (mucosas.includes("Hipocoradas") || mucosas.includes("Pálidas"))) {
       setDesidratacao("5");

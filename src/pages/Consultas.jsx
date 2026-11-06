@@ -1478,6 +1478,7 @@ function Consultas() {
                     <option value="Hipocoradas / Pálidas">Hipocoradas / Pálidas</option>
                     <option value="Cianóticas">Cianóticas</option>
                     <option value="Ictéricas">Ictéricas</option>
+                    <option value="Congestas / Hiperêmicas">Congestas / Vermelhas</option>
                   </select>,
                   refTxt("mucosas"), alertaMucosas
                 )}
