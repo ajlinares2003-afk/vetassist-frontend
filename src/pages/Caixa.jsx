@@ -11,6 +11,10 @@ const FORMAS = ["Dinheiro", "Pix", "Cartão de débito", "Cartão de crédito", 
 const CATEGORIAS = ["CONSULTA", "RETORNO", "EXAME", "MEDICAMENTO", "PROCEDIMENTO", "INTERNACAO", "CIRURGIA", "INSUMO", "OUTRO"];
 const ROTULO_CAT = { CONSULTA: "Consulta", RETORNO: "Retorno", EXAME: "Exame", MEDICAMENTO: "Medicamento", PROCEDIMENTO: "Procedimento", INTERNACAO: "Internação", CIRURGIA: "Cirurgia", INSUMO: "Insumo", OUTRO: "Outro" };
 
+const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+const dataSo = (iso) => (iso ? new Date(iso).toLocaleDateString("pt-BR") : "-");
+const mesAtual = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
+
 const estiloInput = { padding: "7px 9px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "13px", boxSizing: "border-box", width: "100%" };
 const mensagemApi = (error, padrao) => {
   const d = error?.response?.data?.detail;
@@ -24,6 +28,8 @@ function Caixa() {
   const cfg = () => ({ headers: { Authorization: `Bearer ${token()}` } });
 
   const [aba, setAba] = useState("AGUARDANDO_PAGAMENTO");
+  const [mesLab, setMesLab] = useState(mesAtual());
+  const [resumoLab, setResumoLab] = useState(null);
   const [lista, setLista] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -45,7 +51,60 @@ function Caixa() {
     if (!["ADMIN", "RECEPCAO"].includes(perfil)) { navigate("/dashboard"); return; }
     carregarPrecos();
   }, []);
-  useEffect(() => { carregarLista(); }, [aba]);
+  useEffect(() => { if (aba === "LAB") carregarLab(); else carregarLista(); }, [aba, mesLab]);
+
+  const carregarLab = async () => {
+    setCarregando(true); setErro("");
+    try {
+      const res = await api.get(`/contas/laboratorio/resumo?mes=${mesLab}`, cfg());
+      setResumoLab(res.data);
+    } catch (e) {
+      setResumoLab(null);
+      setErro(mensagemApi(e, "Não foi possível carregar o relatório do laboratório."));
+    } finally { setCarregando(false); }
+  };
+
+  const imprimirRecibo = async () => {
+    setErroConta("");
+    try {
+      const { data } = await api.get(`/contas/${conta.id}/recibo`, cfg());
+      const cl = data.clinica || {}, at = data.atendimento || {}, ct = data.conta || {};
+      const linhasItens = (ct.itens || []).map((i) => `<tr><td>${esc(i.descricao)}</td><td class="n">${esc(i.quantidade)}</td><td class="n">${esc(moeda(i.valor_unitario))}</td><td class="n">${esc(moeda(i.valor_total))}</td></tr>`).join("");
+      const meds = (data.medicamentos || []).map((m) => `<li>${esc(m.medicamento)}${m.dosagem ? ` — ${esc(m.dosagem)}` : ""}${m.frequencia ? `, ${esc(m.frequencia)}` : ""}${m.duracao ? `, ${esc(m.duracao)}` : ""}${m.tipo_uso ? ` <em>(${esc(m.tipo_uso)})</em>` : ""}</li>`).join("");
+      const exClin = (ct.itens || []).filter((i) => i.categoria === "EXAME").map((i) => `<li>${esc(i.descricao)}${i.destino === "PARCEIRO" ? " <em>(laboratório parceiro)</em>" : ""}</li>`).join("");
+      const exExt = String(ct.exames_externos || "").split(";").map((x) => x.trim()).filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join("");
+      const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Recibo ${esc(ct.consulta_codigo)}</title>
+<style>body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:28px;max-width:780px}h1{font-size:18px;margin:0}h2{font-size:14px;margin:18px 0 6px;border-bottom:1px solid #999;padding-bottom:3px}
+table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ddd;padding:5px 6px;text-align:left}th{background:#f3f4f6}.n{text-align:right}.sm{font-size:11px;color:#444}.ass{margin-top:46px;text-align:center}.ass div{border-top:1px solid #000;width:320px;margin:0 auto;padding-top:4px}
+@media print{button{display:none}}</style></head><body>
+<button onclick="window.print()">Imprimir / salvar PDF</button>
+<h1>${esc(cl.nome || "Clínica veterinária")}</h1>
+<div class="sm">${[cl.cnpj ? `CNPJ: ${esc(cl.cnpj)}` : "", esc(cl.endereco || ""), esc(cl.telefone || "")].filter(Boolean).join(" • ")}</div>
+<h2>Recibo e relatório de atendimento veterinário (para reembolso)</h2>
+<p><b>Atendimento:</b> ${esc(ct.consulta_codigo)} em ${esc(dataSo(at.data_consulta))}<br>
+<b>Tutor:</b> ${esc(at.tutor_nome)}${at.tutor_cpf ? ` — CPF ${esc(at.tutor_cpf)}` : ""}<br>
+<b>Paciente:</b> ${esc(at.animal_nome)} (${esc([at.especie, at.raca, at.sexo, at.idade].filter(Boolean).join(", "))})${at.microchip ? ` — microchip ${esc(at.microchip)}` : ""}<br>
+<b>Médico-veterinário:</b> ${esc(at.vet_nome)}${at.vet_crmv ? ` — CRMV ${esc(at.vet_crmv)}` : ""}</p>
+<h2>Relatório clínico</h2>
+<p><b>Queixa principal:</b> ${esc(at.queixa_principal)}<br>
+<b>Exame físico:</b> ${esc(at.exame_fisico || "-")}<br>
+<b>Suspeita diagnóstica:</b> ${esc(at.suspeita_diagnostica || "-")}</p>
+${meds ? `<p><b>Medicações prescritas/aplicadas:</b></p><ul>${meds}</ul>` : ""}
+${exClin ? `<p><b>Exames realizados (cobrados nesta conta):</b></p><ul>${exClin}</ul>` : ""}
+${exExt ? `<p><b>Exames encaminhados a laboratório externo (pagos diretamente pelo tutor ao laboratório):</b></p><ul>${exExt}</ul>` : ""}
+<h2>Serviços e valores</h2>
+<table><thead><tr><th>Descrição</th><th class="n">Qtd</th><th class="n">Valor unit.</th><th class="n">Total</th></tr></thead><tbody>${linhasItens}</tbody></table>
+<p class="n">Subtotal: ${esc(moeda(ct.subtotal))}${Number(ct.desconto) > 0 ? ` &nbsp; Desconto: ${esc(moeda(ct.desconto))}` : ""}<br><b>Total pago: ${esc(moeda(ct.total))}</b> — ${esc(ct.forma_pagamento || "-")} em ${esc(dataSo(ct.paga_em))}</p>
+<div class="ass"><div>${esc(at.vet_nome || "Médico-veterinário responsável")}${at.vet_crmv ? ` — CRMV ${esc(at.vet_crmv)}` : ""}</div></div>
+<p class="sm">Este documento é um recibo e relatório clínico para apresentação ao plano de saúde. Não substitui nota fiscal de serviço.</p>
+</body></html>`;
+      const w = window.open("", "_blank");
+      if (!w) { setErroConta("O navegador bloqueou a janela de impressão. Libere pop-ups para este site."); return; }
+      w.document.open(); w.document.write(html); w.document.close();
+    } catch (e) {
+      setErroConta(mensagemApi(e, "Não foi possível gerar o recibo."));
+    }
+  };
 
   const carregarLista = async () => {
     setCarregando(true);
@@ -104,14 +163,17 @@ function Caixa() {
   const adicionarDaTabela = () => {
     const p = precos.find((x) => String(x.id) === String(precoEscolhido));
     if (!p) return;
-    setItens((prev) => [...prev, { _k: `t-${p.id}-${Math.random().toString(36).slice(2, 6)}`, categoria: p.categoria, descricao: p.nome, quantidade: 1, valor_unitario: p.valor, origem: "MANUAL", sem_preco: false, nota: null }]);
+    setItens((prev) => [...prev, { _k: `t-${p.id}-${Math.random().toString(36).slice(2, 6)}`, categoria: p.categoria, descricao: p.nome, quantidade: 1, valor_unitario: p.valor, origem: "MANUAL", sem_preco: false, nota: null,
+      destino: p.categoria === "EXAME" ? (p.custo_parceiro != null ? "PARCEIRO" : "CLINICA") : null,
+      custo_laboratorio: p.categoria === "EXAME" ? (p.custo_parceiro ?? null) : null, laboratorio: p.categoria === "EXAME" ? (p.laboratorio || null) : null }]);
     setPrecoEscolhido("");
   };
 
   const corpoEdicao = () => ({
     itens: itens
       .filter((i) => String(i.descricao || "").trim())
-      .map((i) => ({ categoria: i.categoria, descricao: String(i.descricao).trim(), quantidade: arred(i.quantidade), valor_unitario: arred(i.valor_unitario), origem: i.origem || "MANUAL", sem_preco: Boolean(i.sem_preco), nota: i.nota || null })),
+      .map((i) => ({ categoria: i.categoria, descricao: String(i.descricao).trim(), quantidade: arred(i.quantidade), valor_unitario: arred(i.valor_unitario), origem: i.origem || "MANUAL", sem_preco: Boolean(i.sem_preco), nota: i.nota || null,
+        destino: i.categoria === "EXAME" ? (i.destino || null) : null, custo_laboratorio: i.custo_laboratorio ?? null, laboratorio: i.laboratorio || null })),
     desconto: descontoNum,
     observacoes: observacoes.trim() || null,
   });
@@ -188,9 +250,50 @@ function Caixa() {
         <div style={{ display: "flex", gap: "8px", marginBottom: "14px", alignItems: "center" }}>
           {abaBtn("AGUARDANDO_PAGAMENTO", "💳 Aguardando pagamento")}
           {abaBtn("PAGA", "✅ Pagas")}
-          <button type="button" onClick={carregarLista} title="Atualizar" style={{ marginLeft: "auto", border: "1px solid #d1d5db", backgroundColor: "#fff", borderRadius: "8px", padding: "7px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "13px" }}><MdRefresh size={16} /> Atualizar</button>
+          {abaBtn("LAB", "🧪 Laboratório parceiro")}
+          <button type="button" onClick={aba === "LAB" ? carregarLab : carregarLista} title="Atualizar" style={{ marginLeft: "auto", border: "1px solid #d1d5db", backgroundColor: "#fff", borderRadius: "8px", padding: "7px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "13px" }}><MdRefresh size={16} /> Atualizar</button>
         </div>
 
+        {aba === "LAB" && (
+          <div style={{ backgroundColor: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", padding: "16px", marginBottom: "14px" }}>
+            <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap", marginBottom: "12px" }}>
+              <label style={{ fontSize: "13px", color: "#475569" }}>Mês{" "}
+                <input type="month" value={mesLab} onChange={(e) => e.target.value && setMesLab(e.target.value)} style={{ ...estiloInput, width: "auto" }} />
+              </label>
+              <span style={{ fontSize: "12px", color: "#6b7280" }}>Exames de laboratório parceiro em contas já pagas. Use para conferir a fatura mensal do laboratório.</span>
+            </div>
+            {carregando ? <div style={{ color: "#6b7280" }}>Carregando...</div> : !resumoLab || resumoLab.itens.length === 0 ? (
+              <div style={{ color: "#6b7280", fontSize: "14px" }}>Nenhum exame de laboratório parceiro pago neste mês.</div>
+            ) : (
+              <>
+                <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "12px", fontSize: "14px" }}>
+                  <div>Cobrado dos tutores: <strong>{moeda(resumoLab.total_cobrado)}</strong></div>
+                  <div>Custo dos laboratórios: <strong>{moeda(resumoLab.total_custo)}</strong></div>
+                  <div>Margem: <strong>{moeda(resumoLab.total_margem)}</strong></div>
+                </div>
+                {resumoLab.itens_sem_custo > 0 && <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e", padding: "8px 12px", borderRadius: "8px", fontSize: "13px", marginBottom: "10px" }}>⚠️ {resumoLab.itens_sem_custo} exame(s) sem custo cadastrado: cadastre o custo na Tabela de Preços para a margem ficar correta.</div>}
+                <div style={{ overflowX: "auto", marginBottom: "12px" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                    <thead><tr style={{ backgroundColor: "#f8fafc", color: "#475569", textAlign: "left" }}><th style={{ padding: "8px" }}>Laboratório</th><th style={{ padding: "8px" }}>Exames</th><th style={{ padding: "8px", textAlign: "right" }}>Cobrado</th><th style={{ padding: "8px", textAlign: "right" }}>Custo</th><th style={{ padding: "8px", textAlign: "right" }}>Margem</th></tr></thead>
+                    <tbody>{resumoLab.laboratorios.map((g) => (
+                      <tr key={g.laboratorio} style={{ borderTop: "1px solid #f1f5f9" }}><td style={{ padding: "8px", fontWeight: 600 }}>{g.laboratorio}</td><td style={{ padding: "8px" }}>{g.exames}</td><td style={{ padding: "8px", textAlign: "right" }}>{moeda(g.cobrado)}</td><td style={{ padding: "8px", textAlign: "right" }}>{moeda(g.custo)}</td><td style={{ padding: "8px", textAlign: "right" }}>{moeda(g.margem)}</td></tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", minWidth: "640px" }}>
+                    <thead><tr style={{ backgroundColor: "#f8fafc", color: "#475569", textAlign: "left" }}><th style={{ padding: "8px" }}>Pago em</th><th style={{ padding: "8px" }}>Atendimento</th><th style={{ padding: "8px" }}>Paciente</th><th style={{ padding: "8px" }}>Exame</th><th style={{ padding: "8px" }}>Laboratório</th><th style={{ padding: "8px", textAlign: "right" }}>Cobrado</th><th style={{ padding: "8px", textAlign: "right" }}>Custo</th></tr></thead>
+                    <tbody>{resumoLab.itens.map((i, idx) => (
+                      <tr key={`${i.conta_id}-${idx}`} style={{ borderTop: "1px solid #f1f5f9" }}><td style={{ padding: "8px" }}>{dataBR(i.paga_em)}</td><td style={{ padding: "8px" }}>{i.consulta_codigo}</td><td style={{ padding: "8px" }}>{i.animal_nome}</td><td style={{ padding: "8px" }}>{i.exame}</td><td style={{ padding: "8px" }}>{i.laboratorio}</td><td style={{ padding: "8px", textAlign: "right" }}>{moeda(i.cobrado)}</td><td style={{ padding: "8px", textAlign: "right" }}>{i.custo == null ? "—" : moeda(i.custo)}</td></tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {aba !== "LAB" && (
         <div style={{ backgroundColor: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
             <thead>
@@ -221,6 +324,7 @@ function Caixa() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {conta && (
@@ -235,6 +339,7 @@ function Caixa() {
             </div>
 
             {conta.retorno_gratuito && <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #86efac", color: "#166534", padding: "8px 12px", borderRadius: "8px", fontSize: "13px", marginBottom: "10px" }}>🔁 Retorno do mesmo problema (consulta sem cobrança){conta.retorno_motivo ? `: ${conta.retorno_motivo}` : ""}</div>}
+            {conta.exames_externos && <div style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e40af", padding: "8px 12px", borderRadius: "8px", fontSize: "13px", marginBottom: "10px" }}>🧪 Exames em laboratório externo (tutor paga direto): {conta.exames_externos}</div>}
             {conta.avisos && <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e", padding: "8px 12px", borderRadius: "8px", fontSize: "13px", marginBottom: "10px" }}>⚠️ {conta.avisos.split(" | ").join(" ")}</div>}
             {conta.status === "PAGA" && <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #86efac", color: "#166534", padding: "8px 12px", borderRadius: "8px", fontSize: "13px", marginBottom: "10px" }}>✅ Paga em {dataBR(conta.paga_em)} — {conta.forma_pagamento || "-"}</div>}
 
@@ -255,6 +360,7 @@ function Caixa() {
                       <td style={{ padding: "6px 8px" }}>
                         <input disabled={somenteLeitura} value={i.descricao} maxLength={300} onChange={(e) => alterarItem(i._k, "descricao", e.target.value)} style={estiloInput} />
                         {i.sem_preco && arred(i.valor_unitario) === 0 && <div style={{ color: "#b45309", fontSize: "11px", marginTop: "2px" }}>⚠️ Sem preço cadastrado — defina o valor ou remova o item.</div>}
+                        {i.categoria === "EXAME" && i.destino === "PARCEIRO" && <div style={{ color: "#6d28d9", fontSize: "11px", marginTop: "2px" }}>🧪 Laboratório parceiro{i.laboratorio ? ` (${i.laboratorio})` : ""} — custo: {i.custo_laboratorio != null ? moeda(i.custo_laboratorio) : "não cadastrado"}</div>}
                         {i.nota && !(i.sem_preco && arred(i.valor_unitario) === 0) && <div style={{ color: "#6b7280", fontSize: "11px", marginTop: "2px" }}>{i.nota}</div>}
                       </td>
                       <td style={{ padding: "6px 8px" }}><input disabled={somenteLeitura} type="number" min="0" step="0.01" value={i.quantidade} onChange={(e) => alterarItem(i._k, "quantidade", e.target.value)} style={estiloInput} /></td>
@@ -308,6 +414,7 @@ function Caixa() {
                 )}
               </div>
               <div style={{ display: "flex", gap: "10px" }}>
+                {conta.status === "PAGA" && <button type="button" onClick={imprimirRecibo} style={{ border: "1px solid #a7f3d0", backgroundColor: "#ecfdf5", color: "#065f46", borderRadius: "8px", padding: "9px 16px", cursor: "pointer", fontWeight: 600 }}>🖨 Recibo e relatório (reembolso)</button>}
                 <button type="button" onClick={() => setConta(null)} style={{ border: "1px solid #d1d5db", backgroundColor: "#fff", borderRadius: "8px", padding: "9px 16px", cursor: "pointer", fontWeight: 600 }}>Fechar</button>
                 {!somenteLeitura && (
                   <>

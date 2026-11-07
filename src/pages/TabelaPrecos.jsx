@@ -12,7 +12,7 @@ const mensagemApi = (error, padrao) => {
   const d = error?.response?.data?.detail;
   return typeof d === "string" && d ? d : padrao;
 };
-const novoVazio = () => ({ id: null, categoria: "CONSULTA", nome: "", palavras_chave: "", unidade: "un", valor: 0, ativo: true });
+const novoVazio = () => ({ id: null, categoria: "CONSULTA", nome: "", palavras_chave: "", unidade: "un", valor: 0, custo_parceiro: "", laboratorio: "", ativo: true });
 
 function TabelaPrecos() {
   const navigate = useNavigate();
@@ -45,7 +45,9 @@ function TabelaPrecos() {
     setErro(""); setSucesso("");
     const l = editando;
     if (!l.nome.trim() || l.nome.trim().length < 2) { setErro("Informe o nome do item."); return; }
-    const corpo = { categoria: l.categoria, nome: l.nome.trim(), palavras_chave: (l.palavras_chave || "").trim() || null, unidade: l.unidade, valor: Number(l.valor) || 0, ativo: Boolean(l.ativo) };
+    const corpo = { categoria: l.categoria, nome: l.nome.trim(), palavras_chave: (l.palavras_chave || "").trim() || null, unidade: l.unidade, valor: Number(l.valor) || 0,
+      custo_parceiro: l.categoria === "EXAME" && l.custo_parceiro !== "" && l.custo_parceiro != null ? Number(l.custo_parceiro) : null,
+      laboratorio: l.categoria === "EXAME" ? ((l.laboratorio || "").trim() || null) : null, ativo: Boolean(l.ativo) };
     setSalvando(true);
     try {
       if (l.id) await api.put(`/contas/precos/${l.id}`, corpo, cfg());
@@ -63,7 +65,7 @@ function TabelaPrecos() {
   const alternarAtivo = async (l) => {
     setErro(""); setSucesso("");
     try {
-      await api.put(`/contas/precos/${l.id}`, { categoria: l.categoria, nome: l.nome, palavras_chave: l.palavras_chave, unidade: l.unidade, valor: l.valor, ativo: !l.ativo }, cfg());
+      await api.put(`/contas/precos/${l.id}`, { categoria: l.categoria, nome: l.nome, palavras_chave: l.palavras_chave, unidade: l.unidade, valor: l.valor, custo_parceiro: l.custo_parceiro, laboratorio: l.laboratorio, ativo: !l.ativo }, cfg());
       carregar();
     } catch (e) {
       setErro(mensagemApi(e, "Não foi possível alterar o item."));
@@ -155,6 +157,16 @@ function TabelaPrecos() {
                   <input type="number" min="0" step="0.01" value={editando.valor} onChange={(e) => setEditando({ ...editando, valor: e.target.value })} style={estiloInput} />
                 </label>
               </div>
+              {editando.categoria === "EXAME" && (
+                <div style={{ display: "flex", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
+                  <label style={{ fontSize: "12px", color: "#475569", flex: 1 }}>Custo do laboratório parceiro (R$) — opcional
+                    <input type="number" min="0" step="0.01" value={editando.custo_parceiro ?? ""} onChange={(e) => setEditando({ ...editando, custo_parceiro: e.target.value })} style={estiloInput} />
+                  </label>
+                  <label style={{ fontSize: "12px", color: "#475569", flex: 1 }}>Laboratório parceiro — opcional
+                    <input type="text" maxLength={120} value={editando.laboratorio || ""} onChange={(e) => setEditando({ ...editando, laboratorio: e.target.value })} style={estiloInput} />
+                  </label>
+                </div>
+              )}
               <label style={{ fontSize: "13px", color: "#374151", display: "flex", gap: "6px", alignItems: "center" }}>
                 <input type="checkbox" checked={editando.ativo} onChange={(e) => setEditando({ ...editando, ativo: e.target.checked })} /> Ativo
               </label>

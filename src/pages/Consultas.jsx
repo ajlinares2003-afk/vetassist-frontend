@@ -372,6 +372,7 @@ function Consultas() {
   const [retornoDias, setRetornoDias] = useState("");
   const [finalizando, setFinalizando] = useState(false);
   const [erroFinalizar, setErroFinalizar] = useState("");
+  const [examesFinal, setExamesFinal] = useState([]);   // exames do atendimento com o destino escolhido ao finalizar
   const [mensagemSucesso, setMensagemSucesso] = useState("");
   
   const [consultaParaExcluir, setConsultaParaExcluir] = useState(null);
@@ -1121,9 +1122,14 @@ function Consultas() {
     setEhRetorno(false);
     setRetornoMotivo("");
     setRetornoDias("");
+    setExamesFinal([]);
     setModalFinalizar(true);
     try {
       const token = localStorage.getItem("token");
+      try {
+        const rex = await api.get(`/contas/exames-da-consulta/${consultaEditando.id}`, { headers: { Authorization: `Bearer ${token}` } });
+        setExamesFinal((rex.data || []).map((e) => ({ ...e, destino: e.destino_sugerido || "CLINICA" })));
+      } catch { setExamesFinal([]); }
       const res = await api.get(`/contas/retorno-sugerido/${consultaEditando.id}`, { headers: { Authorization: `Bearer ${token}` } });
       setRetornoInfo(res.data);
       setEhRetorno(Boolean(res.data?.sugerido));
@@ -1140,6 +1146,7 @@ function Consultas() {
     await salvarConsulta({
       finalizar: true,
       dados: {
+        exames: examesFinal.map((e) => ({ nome: e.nome, destino: e.destino })),
         retorno_gratuito: marcaRetorno,
         retorno_consulta_origem_id: marcaRetorno ? origem.id : null,
         retorno_motivo: marcaRetorno ? (retornoMotivo.trim() || null) : null,
@@ -1936,6 +1943,26 @@ function Consultas() {
             ) : (
               <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "14px" }}>
                 {retornoInfo ? "Nenhum atendimento anterior finalizado deste paciente: consulta cobrada normalmente." : "Verificando atendimentos anteriores..."}
+              </div>
+            )}
+
+            {examesFinal.length > 0 && (
+              <div style={{ marginBottom: "14px", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "10px 12px" }}>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#111827", marginBottom: "6px" }}>🧪 Onde cada exame será realizado?</div>
+                <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "8px" }}>
+                  Na clínica: cobrado do tutor. Laboratório parceiro: a clínica cobra o tutor e paga o laboratório depois. Laboratório externo: o tutor paga direto ao laboratório (não entra na conta).
+                </div>
+                {examesFinal.map((e, idx) => (
+                  <div key={`${e.nome}-${idx}`} style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "6px", flexWrap: "wrap" }}>
+                    <span style={{ flex: "1 1 200px", fontSize: "13px", color: "#111827" }}>{e.nome}</span>
+                    <select value={e.destino} onChange={(ev) => setExamesFinal((lista) => lista.map((x, i) => (i === idx ? { ...x, destino: ev.target.value } : x)))}
+                      style={{ padding: "6px 8px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "13px" }}>
+                      <option value="CLINICA">Na clínica</option>
+                      <option value="PARCEIRO">Laboratório parceiro (intermediação)</option>
+                      <option value="EXTERNO">Laboratório externo (tutor paga direto)</option>
+                    </select>
+                  </div>
+                ))}
               </div>
             )}
 
