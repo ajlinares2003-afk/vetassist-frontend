@@ -138,7 +138,7 @@ ${exExt ? `<p><b>Exames encaminhados a laboratório externo (pagos diretamente p
 
   const preencherPainel = (c) => {
     setConta(c);
-    setItens((c.itens || []).map((i, idx) => ({ ...i, _k: `${i.id || "n"}-${idx}-${Math.random().toString(36).slice(2, 6)}` })));
+    setItens((c.itens || []).map((i, idx) => ({ ...i, valor_unitario: arred(i.valor_unitario).toFixed(2), _k: `${i.id || "n"}-${idx}-${Math.random().toString(36).slice(2, 6)}` })));
     setDesconto(c.desconto ? String(c.desconto) : "");
     setObservacoes(c.observacoes || "");
     setForma(c.forma_pagamento && c.forma_pagamento !== "Isento" ? c.forma_pagamento : "");
@@ -159,11 +159,11 @@ ${exExt ? `<p><b>Exames encaminhados a laboratório externo (pagos diretamente p
     }));
   const removerItem = (k) => setItens((prev) => prev.filter((i) => i._k !== k));
   const adicionarManual = () =>
-    setItens((prev) => [...prev, { _k: `m-${Math.random().toString(36).slice(2, 8)}`, categoria: "OUTRO", descricao: "", quantidade: 1, valor_unitario: 0, origem: "MANUAL", sem_preco: false, nota: null }]);
+    setItens((prev) => [...prev, { _k: `m-${Math.random().toString(36).slice(2, 8)}`, categoria: "OUTRO", descricao: "", quantidade: 1, valor_unitario: "0.00", origem: "MANUAL", sem_preco: false, nota: null }]);
   const adicionarDaTabela = () => {
     const p = precos.find((x) => String(x.id) === String(precoEscolhido));
     if (!p) return;
-    setItens((prev) => [...prev, { _k: `t-${p.id}-${Math.random().toString(36).slice(2, 6)}`, categoria: p.categoria, descricao: p.nome, quantidade: 1, valor_unitario: p.valor, origem: "MANUAL", sem_preco: false, nota: null,
+    setItens((prev) => [...prev, { _k: `t-${p.id}-${Math.random().toString(36).slice(2, 6)}`, categoria: p.categoria, descricao: p.nome, quantidade: 1, valor_unitario: arred(p.valor).toFixed(2), origem: "MANUAL", sem_preco: false, nota: null,
       destino: p.categoria === "EXAME" ? (p.custo_parceiro != null ? "PARCEIRO" : "CLINICA") : null,
       custo_laboratorio: p.categoria === "EXAME" ? (p.custo_parceiro ?? null) : null, laboratorio: p.categoria === "EXAME" ? (p.laboratorio || null) : null }]);
     setPrecoEscolhido("");
@@ -364,7 +364,7 @@ ${exExt ? `<p><b>Exames encaminhados a laboratório externo (pagos diretamente p
                         {i.nota && !(i.sem_preco && arred(i.valor_unitario) === 0) && <div style={{ color: "#6b7280", fontSize: "11px", marginTop: "2px" }}>{i.nota}</div>}
                       </td>
                       <td style={{ padding: "6px 8px" }}><input disabled={somenteLeitura} type="number" min="0" step="0.01" value={i.quantidade} onChange={(e) => alterarItem(i._k, "quantidade", e.target.value)} style={estiloInput} /></td>
-                      <td style={{ padding: "6px 8px" }}><input disabled={somenteLeitura} type="number" min="0" step="0.01" value={i.valor_unitario} onChange={(e) => alterarItem(i._k, "valor_unitario", e.target.value)} style={estiloInput} /></td>
+                      <td style={{ padding: "6px 8px" }}><input disabled={somenteLeitura} type="number" min="0" step="0.01" value={i.valor_unitario} onChange={(e) => alterarItem(i._k, "valor_unitario", e.target.value)} onBlur={(e) => alterarItem(i._k, "valor_unitario", arred(e.target.value).toFixed(2))} style={estiloInput} /></td>
                       <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 600, paddingTop: "12px" }}>{moeda(arred(i.quantidade) * arred(i.valor_unitario))}</td>
                       <td style={{ padding: "6px 0" }}>{!somenteLeitura && <button type="button" onClick={() => removerItem(i._k)} title="Remover item" style={{ border: "none", background: "none", cursor: "pointer", color: "#b91c1c" }}><MdDelete size={18} /></button>}</td>
                     </tr>
