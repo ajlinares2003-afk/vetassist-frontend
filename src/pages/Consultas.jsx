@@ -1930,9 +1930,11 @@ function Consultas() {
                       <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeTemperatura(c.temperatura)}</td>
                       <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeStatus(c.status)}</td>
                       <td style={{ padding: "14px", display: "flex", justifyContent: "center", gap: "6px", whiteSpace: "nowrap" }}>
+                        {!STATUS_FINALIZADOS.includes(c.status) && (
                         <button onClick={(e) => chamarPaciente(c, e)} style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}>
                           <MdCampaign size={16} /> Chamar
                         </button>
+                        )}
                         {!STATUS_FINALIZADOS.includes(c.status) && (
                           <button onClick={() => iniciarAtendimentoVeterinario(c)} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
                             💉 Atender
@@ -1944,9 +1946,11 @@ function Consultas() {
                         <button onClick={() => setConsultaDetalhes(c)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
                           <MdVisibility size={16} /> Ver
                         </button>
+                        {!STATUS_FINALIZADOS.includes(c.status) && (
                         <button onClick={() => { setConsultaParaExcluir(c); setModalExclusaoAberto(true); }} style={{ backgroundColor: "#fee2e2", color: "#991b1b", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}>
                           <MdDelete size={16} /> Excluir
                         </button>
+                        )}
                       </td>
                     </tr>
                   ))
