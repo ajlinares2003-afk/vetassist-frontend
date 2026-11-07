@@ -372,6 +372,9 @@ function Consultas() {
   const [retornoDias, setRetornoDias] = useState("");
   const [finalizando, setFinalizando] = useState(false);
   const [erroFinalizar, setErroFinalizar] = useState("");
+  const [aplicClinica, setAplicClinica] = useState([]);      // medicações aplicadas NA CLÍNICA (não vão para o tutor; geram cobrança)
+  const [aplicAlterada, setAplicAlterada] = useState(false);  // true = há mudança ainda não gravada no prontuário
+  const [salvandoAplic, setSalvandoAplic] = useState(false);
   const [examesFinal, setExamesFinal] = useState([]);   // exames do atendimento com o destino escolhido ao finalizar
   const [mensagemSucesso, setMensagemSucesso] = useState("");
   
@@ -384,6 +387,21 @@ function Consultas() {
     carregarUsuarios();
     carregarTutores();
   }, []);
+
+  // carrega as aplicações na clínica já gravadas ao abrir um atendimento
+  useEffect(() => {
+    const id = consultaEditando?.id;
+    if (!id) return;
+    let cancelado = false;
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await api.get(`/atendimento-ia/aplicacoes-clinica/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!cancelado) { setAplicClinica((res.data || []).map((i) => ({ ...i, _id: novoId() }))); setAplicAlterada(false); }
+      } catch { /* sem registro ainda */ }
+    })();
+    return () => { cancelado = true; };
+  }, [consultaEditando?.id]);
 
   useEffect(() => {
     let timer1, timer2;
@@ -715,6 +733,13 @@ function Consultas() {
       });
       setItensReceita((res.data.itens || []).map((i) => ({ ...i, _id: novoId() })));
       setAlertasReceita(res.data.alertas || []);
+      const novas = (res.data.aplicacoes_clinica || []).map((i) => ({ ...i, _id: novoId() }));
+      setAplicClinica((ant) => {
+        // mantém o que já estava gravado/lançado à mão que a IA não repetiu; a sugestão nova substitui o que ela mesma gerou
+        const nomes = new Set(novas.map((n) => String(n.medicamento || "").toLowerCase()));
+        return [...novas, ...ant.filter((a) => a.manual && !nomes.has(String(a.medicamento || "").toLowerCase()))];
+      });
+      setAplicAlterada(true);
       setPesoUsadoReceita(res.data.peso_usado ?? null);
     } catch (error) {
       setErroReceita(mensagemApi(error, "Não foi possível gerar a sugestão de receita."));
@@ -761,6 +786,37 @@ function Consultas() {
       _id: novoId(), medicamento: "", dosagem: "", frequencia: "", duracao: "",
       tipo_uso: "A_CONFIRMAR", observacoes: "", quantidade: "", controlado: false,
     }]);
+  };
+
+  const aplicClinicaValidas = aplicClinica.filter((i) => String(i.medicamento || "").trim());
+  const alterarAplic = (id, campo, valor) => { setAplicAlterada(true); setAplicClinica((prev) => prev.map((i) => (i._id === id ? { ...i, [campo]: valor } : i))); };
+  const removerAplic = (id) => { setAplicAlterada(true); setAplicClinica((prev) => prev.filter((i) => i._id !== id)); };
+  const adicionarAplic = () => { setAplicAlterada(true); setAplicClinica((prev) => [...prev, { _id: novoId(), manual: true, medicamento: "", dosagem: "", frequencia: "", duracao: "", quantidade: "", observacoes: "" }]); };
+
+  const gravarAplicacoes = async (config) => {
+    const cfgReq = config || { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } };
+    await api.post("/atendimento-ia/aplicacoes-clinica", {
+      consulta_id: consultaEditando.id,
+      itens: aplicClinicaValidas.map((i) => ({
+        medicamento: String(i.medicamento).trim(), dosagem: i.dosagem || null, frequencia: i.frequencia || null,
+        duracao: i.duracao || null, observacoes: i.observacoes || null, recomendacoes: i.recomendacoes || null, quantidade: i.quantidade || null,
+      })),
+    }, cfgReq);
+    setAplicAlterada(false);
+  };
+
+  const salvarAplicacoesNoProntuario = async () => {
+    if (!consultaEditando?.id) { setErroReceita("Abra o atendimento pela lista (botão Atender) para gravar as aplicações."); return; }
+    setSalvandoAplic(true);
+    setErroReceita("");
+    try {
+      await gravarAplicacoes();
+      setMensagemSucesso("✅ Aplicações na clínica registradas no prontuário!");
+    } catch (error) {
+      setErroReceita(mensagemApi(error, "Não foi possível registrar as aplicações na clínica."));
+    } finally {
+      setSalvandoAplic(false);
+    }
   };
 
   const itensReceitaValidos = itensReceita.filter((i) => i.medicamento.trim());
@@ -1097,6 +1153,8 @@ function Consultas() {
     setModalReceita(false);
     setItensReceita([]);
     setAlertasReceita([]);
+    setAplicClinica([]);
+    setAplicAlterada(false);
     setObsReceita("");
     setPesoUsadoReceita(null);
     setReceitaConferida(false);
@@ -1212,6 +1270,7 @@ function Consultas() {
 
       let conta = null;
       if (finalizar && consultaEditando) {
+        if (aplicAlterada) await gravarAplicacoes(config);   // as aplicações na clínica alimentam a cobrança
         // o prontuário já foi gravado acima; agora trava e envia a conta para o Caixa
         conta = (await api.post(`/contas/finalizar/${consultaEditando.id}`, finalizar.dados, config)).data;
       }
@@ -1909,6 +1968,18 @@ function Consultas() {
               O prontuário será gravado e travado, e a conta (consulta, medicações aplicadas na clínica e exames com preço cadastrado) segue para a recepção revisar e cobrar.
             </p>
 
+            {aplicClinicaValidas.length > 0 && (
+              <div style={{ border: "1px solid #c4b5fd", backgroundColor: "#f5f3ff", borderRadius: "8px", padding: "10px 12px", marginBottom: "14px" }}>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#4c1d95", marginBottom: "4px" }}>💉 Medicações aplicadas na clínica (serão cobradas)</div>
+                <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px", color: "#3b0764", lineHeight: 1.5 }}>
+                  {aplicClinicaValidas.map((i) => <li key={i._id}>{i.medicamento}{i.quantidade ? ` — ${i.quantidade}` : ""}</li>)}
+                </ul>
+                <div style={{ fontSize: "11px", color: "#6b21a8", marginTop: "4px" }}>
+                  O valor sai da Tabela de Preços (categoria Medicamento) pela quantidade informada. Para ajustar, edite as aplicações na tela da receita; a recepção também pode corrigir a quantidade no Caixa.
+                </div>
+              </div>
+            )}
+
             {((itensReceita.length > 0 && !receitaSalva) || (examesSugeridos.length > 0 && !examesSalvos)) && (
               <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e", padding: "10px 12px", borderRadius: "8px", fontSize: "13px", marginBottom: "14px" }}>
                 ⚠️ {itensReceita.length > 0 && !receitaSalva ? "A receita ainda não foi salva no prontuário. " : ""}
@@ -2118,9 +2189,35 @@ function Consultas() {
               </ul>
             )}
 
+            <div style={{ border: "1px solid #c4b5fd", backgroundColor: "#faf5ff", borderRadius: "8px", padding: "12px", marginBottom: "12px" }}>
+              <div style={{ fontSize: "14px", fontWeight: 700, color: "#4c1d95" }}>💉 Aplicações na clínica (não vão para o tutor)</div>
+              <div style={{ fontSize: "12px", color: "#6b21a8", margin: "2px 0 8px" }}>
+                Ficam registradas no prontuário e entram na conta na finalização, com a quantidade abaixo (nº de aplicações ou mL).
+              </div>
+              {aplicClinica.length === 0 && <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "8px" }}>Nenhuma aplicação na clínica registrada.</div>}
+              {aplicClinica.map((a) => (
+                <div key={a._id} style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1.4fr 2fr auto", gap: "6px", marginBottom: "6px", alignItems: "center" }}>
+                  <input value={a.medicamento || ""} onChange={(e) => alterarAplic(a._id, "medicamento", e.target.value)} placeholder="Medicamento" style={{ ...estiloInput, height: "34px", fontSize: "12px" }} />
+                  <input value={a.dosagem || ""} onChange={(e) => alterarAplic(a._id, "dosagem", e.target.value)} placeholder="Dose" style={{ ...estiloInput, height: "34px", fontSize: "12px" }} />
+                  <input value={a.frequencia || ""} onChange={(e) => alterarAplic(a._id, "frequencia", e.target.value)} placeholder="Frequência" style={{ ...estiloInput, height: "34px", fontSize: "12px" }} />
+                  <input value={a.quantidade || ""} onChange={(e) => alterarAplic(a._id, "quantidade", e.target.value)} placeholder="Ex.: 2 (duas) aplicações (total ≈ 3,07 mL)" title="Quantidade usada para cobrar: nº de aplicações ou volume total em mL" style={{ ...estiloInput, height: "34px", fontSize: "12px" }} />
+                  <button type="button" onClick={() => removerAplic(a._id)} title="Remover" style={{ border: "none", background: "none", color: "#b91c1c", cursor: "pointer", fontSize: "16px" }}>🗑</button>
+                </div>
+              ))}
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "6px" }}>
+                <button type="button" onClick={adicionarAplic} style={{ border: "1px dashed #7c3aed", background: "#fff", color: "#5b21b6", borderRadius: "6px", padding: "6px 12px", cursor: "pointer", fontWeight: 600, fontSize: "12px" }}>+ Adicionar aplicação</button>
+                <button type="button" disabled={salvandoAplic || !aplicAlterada || !consultaEditando?.id} onClick={salvarAplicacoesNoProntuario}
+                  style={{ border: "none", borderRadius: "6px", padding: "6px 12px", fontWeight: 600, fontSize: "12px", cursor: aplicAlterada ? "pointer" : "default", backgroundColor: aplicAlterada && consultaEditando?.id ? "#7c3aed" : "#e5e7eb", color: aplicAlterada && consultaEditando?.id ? "#fff" : "#6b7280" }}>
+                  {salvandoAplic ? "Salvando..." : aplicAlterada ? "Registrar aplicações no prontuário" : "✓ Registradas no prontuário"}
+                </button>
+              </div>
+            </div>
+
             {!carregandoReceita && !erroReceita && itensReceita.length === 0 && (
               <div style={{ padding: "14px", backgroundColor: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: "8px", fontSize: "13px", color: "#475569", marginBottom: "12px" }}>
-                A IA não sugeriu medicação para este parecer. Você pode adicionar medicamentos manualmente.
+                {aplicClinica.length > 0
+                  ? "Nenhuma medicação para o tutor levar para casa; as aplicações na clínica estão acima. Você pode adicionar medicamentos manualmente."
+                  : "A IA não sugeriu medicação para este parecer. Você pode adicionar medicamentos manualmente."}
               </div>
             )}
 
