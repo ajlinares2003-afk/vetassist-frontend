@@ -190,6 +190,8 @@ const ehControlado = (i) =>
     : Boolean(i.controlado) || REGEX_CONTROLADOS.test(semAcento(i.medicamento)) || /controle especial/i.test(i.observacoes || "");
 // Dados da clínica (endereço, cidade, UF, telefone) lembrados neste navegador para a receita de controle especial
 // Status em que o paciente ainda não foi liberado pela triagem (não aparece na fila de consulta)
+const STATUS_FINALIZADOS = ["FINALIZADO", "Finalizado", "Aguardando Pagamento"];
+const moeda = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const STATUS_ANTES_DA_CONSULTA = [
   "AGUARDANDO_TRIAGEM", "Aguardando Triagem", "Aguardando Triagem (Recepção)",
   "Chamando para Triagem", "Em Triagem",
@@ -362,6 +364,14 @@ function Consultas() {
 
   const [busca, setBusca] = useState("");
   const [mensagemErro, setMensagemErro] = useState("");
+  // finalização do atendimento (conta / retorno)
+  const [modalFinalizar, setModalFinalizar] = useState(false);
+  const [retornoInfo, setRetornoInfo] = useState(null);
+  const [ehRetorno, setEhRetorno] = useState(false);
+  const [retornoMotivo, setRetornoMotivo] = useState("");
+  const [retornoDias, setRetornoDias] = useState("");
+  const [finalizando, setFinalizando] = useState(false);
+  const [erroFinalizar, setErroFinalizar] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
   
   const [consultaParaExcluir, setConsultaParaExcluir] = useState(null);
@@ -1101,7 +1111,46 @@ function Consultas() {
     setHistorico([]);
   };
 
-  const salvarConsulta = async () => {
+  const abrirFinalizar = async () => {
+    if (!consultaEditando?.id) {
+      setMensagemErro("Abra o atendimento pela lista (botão Atender) para finalizar.");
+      return;
+    }
+    setErroFinalizar("");
+    setRetornoInfo(null);
+    setEhRetorno(false);
+    setRetornoMotivo("");
+    setRetornoDias("");
+    setModalFinalizar(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.get(`/contas/retorno-sugerido/${consultaEditando.id}`, { headers: { Authorization: `Bearer ${token}` } });
+      setRetornoInfo(res.data);
+      setEhRetorno(Boolean(res.data?.sugerido));
+    } catch {
+      setRetornoInfo({ sugerido: false, origem: null, prazo_padrao: 15 });
+    }
+  };
+
+  const confirmarFinalizar = async () => {
+    setFinalizando(true);
+    setErroFinalizar("");
+    const origem = retornoInfo?.origem;
+    const marcaRetorno = Boolean(ehRetorno && origem);
+    await salvarConsulta({
+      finalizar: true,
+      dados: {
+        retorno_gratuito: marcaRetorno,
+        retorno_consulta_origem_id: marcaRetorno ? origem.id : null,
+        retorno_motivo: marcaRetorno ? (retornoMotivo.trim() || null) : null,
+        retorno_dias: retornoDias !== "" ? Number(retornoDias) : null,
+      },
+    });
+    setFinalizando(false);
+  };
+
+  const salvarConsulta = async (arg) => {
+    const finalizar = arg && arg.finalizar ? arg : null;   // chamado pelo onClick recebe o evento, que não tem "finalizar"
     try {
       setMensagemErro("");
       setMensagemSucesso("");
@@ -1154,12 +1203,26 @@ function Consultas() {
         await api.post("/consultas/", novaConsulta, config);
       }
 
+      let conta = null;
+      if (finalizar && consultaEditando) {
+        // o prontuário já foi gravado acima; agora trava e envia a conta para o Caixa
+        conta = (await api.post(`/contas/finalizar/${consultaEditando.id}`, finalizar.dados, config)).data;
+      }
+
       limparFormulario();
       setMostrarFormulario(false);
+      setModalFinalizar(false);
       carregarConsultas();
-      setMensagemSucesso("✅ Atendimento clínico salvo com sucesso!");
+      if (conta) {
+        const semPreco = (conta.itens || []).some((i) => i.sem_preco);
+        setMensagemSucesso(`✅ Atendimento finalizado. Conta de ${moeda(conta.total)} enviada ao Caixa.` +
+          (semPreco ? " Há itens sem preço cadastrado: a recepção ou o administrador precisa definir os valores." : ""));
+      } else {
+        setMensagemSucesso("✅ Atendimento clínico salvo com sucesso!");
+      }
     } catch (error) {
-      setMensagemErro(`❌ ${error.response?.data?.detail || error.message}`);
+      const msg = `❌ ${error.response?.data?.detail || error.message}`;
+      if (finalizar) setErroFinalizar(msg); else setMensagemErro(msg);
     }
   };
 
@@ -1216,6 +1279,7 @@ function Consultas() {
       "Chamando para Consulta": { bg: "#fee2e2", color: "#991b1b", label: "📢 Chamando..." },
       FINALIZADO: { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
       "Finalizado": { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
+      "Aguardando Pagamento": { bg: "#fef3c7", color: "#92400e", label: "💳 Aguardando Pagamento" },
       CANCELADO: { bg: "#fee2e2", color: "#991b1b", label: "❌ Cancelado" }
     };
     const conf = configs[statusVal] || { bg: "#f1f5f9", color: "#475569", label: String(statusVal) };
@@ -1286,7 +1350,7 @@ function Consultas() {
 
   const consultasFiltradas = consultas.filter((c) => {
     const statusVal = c.status || "";
-    const ehFinalizado = ["FINALIZADO", "CONCLUIDA", "Concluída", "CANCELADO", "Finalizado", "Cancelado"].includes(statusVal);
+    const ehFinalizado = ["FINALIZADO", "CONCLUIDA", "Concluída", "CANCELADO", "Finalizado", "Cancelado", "Aguardando Pagamento"].includes(statusVal);
     // Quem ainda está na triagem/recepção/vacina NÃO entra na fila de consulta (só em "Todos").
     if (abaAtiva === "ativos" && (ehFinalizado || STATUS_ANTES_DA_CONSULTA.includes(statusVal))) return false;
     if (abaAtiva === "finalizados" && !ehFinalizado) return false;
@@ -1743,6 +1807,9 @@ function Consultas() {
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
               <button type="button" onClick={() => { limparFormulario(); setMostrarFormulario(false); }} style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Fechar</button>
+              {consultaEditando?.id && !(forcarCirurgia || indicacaoCirurgia) && (
+                <button type="button" onClick={abrirFinalizar} title="Grava o prontuário, trava o atendimento e envia a conta para o Caixa" style={{ backgroundColor: "#2563eb", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "700", boxShadow: "0 2px 4px rgba(37, 99, 235, 0.35)" }}>🏁 Finalizar atendimento</button>
+              )}
               <button type="button" onClick={salvarConsulta} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "700", boxShadow: "0 2px 4px rgba(22, 163, 74, 0.35)" }}>Salvar atendimento</button>
             </div>
           </div>
@@ -1800,9 +1867,11 @@ function Consultas() {
                         <button onClick={(e) => chamarPaciente(c, e)} style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}>
                           <MdCampaign size={16} /> Chamar
                         </button>
-                        <button onClick={() => iniciarAtendimentoVeterinario(c)} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
-                          💉 Atender
-                        </button>
+                        {!STATUS_FINALIZADOS.includes(c.status) && (
+                          <button onClick={() => iniciarAtendimentoVeterinario(c)} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
+                            💉 Atender
+                          </button>
+                        )}
                         <button onClick={() => abrirHistorico(c.animal_id)} title="Receitas e exames anteriores do paciente" style={{ backgroundColor: "#f3f4f6", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
                           📋 Histórico
                         </button>
@@ -1822,6 +1891,70 @@ function Consultas() {
             </table>
           </div>
         </>
+      )}
+
+      {/* MODAL: FINALIZAR ATENDIMENTO */}
+      {modalFinalizar && (
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1100, padding: "20px" }}>
+          <div style={{ backgroundColor: "white", padding: "26px", borderRadius: "12px", maxWidth: "560px", width: "100%", maxHeight: "88vh", overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.15)" }}>
+            <h3 style={{ margin: "0 0 6px", color: "#1e1b4b" }}>🏁 Finalizar atendimento</h3>
+            <p style={{ margin: "0 0 14px", color: "#4b5563", fontSize: "14px" }}>
+              O prontuário será gravado e travado, e a conta (consulta, medicações aplicadas na clínica e exames com preço cadastrado) segue para a recepção revisar e cobrar.
+            </p>
+
+            {((itensReceita.length > 0 && !receitaSalva) || (examesSugeridos.length > 0 && !examesSalvos)) && (
+              <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e", padding: "10px 12px", borderRadius: "8px", fontSize: "13px", marginBottom: "14px" }}>
+                ⚠️ {itensReceita.length > 0 && !receitaSalva ? "A receita ainda não foi salva no prontuário. " : ""}
+                {examesSugeridos.length > 0 && !examesSalvos ? "Os exames ainda não foram salvos no prontuário. " : ""}
+                Só o que estiver salvo entra na conta; salve antes de finalizar, se for o caso.
+              </div>
+            )}
+
+            {retornoInfo?.origem ? (
+              <div style={{ border: "1px solid #e5e7eb", borderRadius: "10px", padding: "12px 14px", marginBottom: "14px", backgroundColor: "#f9fafb" }}>
+                <div style={{ fontSize: "13px", color: "#374151", marginBottom: "8px" }}>
+                  Último atendimento finalizado deste paciente: <strong>{retornoInfo.origem.codigo || `#${retornoInfo.origem.id}`}</strong> em {retornoInfo.origem.data ? retornoInfo.origem.data.split("-").reverse().join("/") : "-"}
+                  {retornoInfo.origem.dias_desde != null ? ` (há ${retornoInfo.origem.dias_desde} dia(s))` : ""}.
+                  {retornoInfo.origem.queixa ? <> Queixa: <em>{String(retornoInfo.origem.queixa).slice(0, 140)}</em></> : null}
+                </div>
+                <div style={{ fontSize: "12px", color: retornoInfo.sugerido ? "#166534" : "#92400e", marginBottom: "8px" }}>
+                  {retornoInfo.sugerido
+                    ? `Dentro do prazo de retorno sem cobrança (${retornoInfo.origem.prazo_dias} dias).`
+                    : `Fora do prazo de retorno sem cobrança (${retornoInfo.origem.prazo_dias} dias).`}
+                </div>
+                <label style={{ display: "flex", gap: "8px", alignItems: "flex-start", fontSize: "14px", cursor: "pointer", fontWeight: 600, color: "#111827" }}>
+                  <input type="checkbox" checked={ehRetorno} onChange={(e) => setEhRetorno(e.target.checked)} style={{ marginTop: "3px" }} />
+                  <span>É retorno do MESMO problema (consulta sem cobrança)
+                    <span style={{ display: "block", fontWeight: 400, color: "#6b7280", fontSize: "12px" }}>Se o motivo for novo, deixe desmarcado: a consulta é cobrada normalmente. Exames e medicações do retorno continuam cobrados.</span>
+                  </span>
+                </label>
+                {ehRetorno && (
+                  <input type="text" value={retornoMotivo} onChange={(e) => setRetornoMotivo(e.target.value)} maxLength={500} placeholder="Observação (opcional): ex. reavaliação da ferida cirúrgica"
+                    style={{ width: "100%", marginTop: "8px", padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "13px", boxSizing: "border-box" }} />
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "14px" }}>
+                {retornoInfo ? "Nenhum atendimento anterior finalizado deste paciente: consulta cobrada normalmente." : "Verificando atendimentos anteriores..."}
+              </div>
+            )}
+
+            <label style={{ display: "block", fontSize: "13px", color: "#374151", marginBottom: "14px" }}>
+              Prazo de retorno sem cobrança para este caso (dias) — opcional
+              <input type="number" min="1" max="365" value={retornoDias} onChange={(e) => setRetornoDias(e.target.value)} placeholder={`Padrão: ${retornoInfo?.prazo_padrao || 15} dias`}
+                style={{ display: "block", width: "180px", marginTop: "4px", padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "13px" }} />
+            </label>
+
+            {erroFinalizar && <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", padding: "10px 12px", borderRadius: "8px", fontSize: "13px", marginBottom: "12px" }}>{erroFinalizar}</div>}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button type="button" disabled={finalizando} onClick={() => setModalFinalizar(false)} style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}>Cancelar</button>
+              <button type="button" disabled={finalizando || !retornoInfo} onClick={confirmarFinalizar} style={{ backgroundColor: finalizando ? "#93c5fd" : "#2563eb", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: finalizando ? "wait" : "pointer", fontWeight: 700 }}>
+                {finalizando ? "Finalizando..." : "Finalizar e enviar para o Caixa"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* MODAL DE DETALHES */}

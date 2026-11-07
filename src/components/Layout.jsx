@@ -48,6 +48,8 @@ function Layout({ children }) {
     { nome: "Centro Cirúrgico", rota: "/cirurgias", icone: <MdLocalHospital size={20} />, perfis: ["ADMIN", "VETERINARIO"] },
     { nome: "Prontuários", rota: "/prontuarios", icone: <MdFolderShared size={20} />, perfis: ["ADMIN", "VETERINARIO"] },
     { nome: "Financeiro & Caixa", rota: "/financeiro", icone: <MdAttachMoney size={20} />, perfis: ["ADMIN", "RECEPCAO"] },
+    { nome: "Caixa (Contas)", rota: "/caixa", icone: <MdAttachMoney size={20} />, perfis: ["ADMIN", "RECEPCAO"] },
+    { nome: "Tabela de Preços", rota: "/precos", icone: <MdReceiptLong size={20} />, perfis: ["ADMIN"] },
     { nome: "Usuários & Perfis", rota: "/usuarios", icone: <MdAdminPanelSettings size={20} />, perfis: ["ADMIN", "RECEPCAO"] },
     { nome: "Configurações de IA", rota: "/configuracoes-ia", icone: <MdSmartToy size={20} />, perfis: ["ADMIN"] },
     { nome: "Biblioteca de IA", rota: "/biblioteca-ia", icone: <MdMenuBook size={20} />, perfis: ["ADMIN"] },

@@ -24,6 +24,8 @@ import Financeiro from "./pages/Financeiro";
 import PainelChamadas from "./pages/PainelChamadas";
 import ConfiguracoesIA from "./pages/ConfiguracoesIA";
 import BibliotecaIA from "./pages/BibliotecaIA";
+import Caixa from "./pages/Caixa";
+import TabelaPrecos from "./pages/TabelaPrecos";
 
 // Componente para validar e proteger as rotas dinamicamente
 function RotaProtegida({ children }) {
@@ -134,6 +136,26 @@ function App() {
           element={
             <RotaProtegida>
               <Financeiro />
+            </RotaProtegida>
+          }
+        />
+
+        {/* Caixa: contas dos atendimentos finalizados (recepção) */}
+        <Route
+          path="/caixa"
+          element={
+            <RotaProtegida>
+              <Caixa />
+            </RotaProtegida>
+          }
+        />
+
+        {/* Tabela de preços (ADMIN) */}
+        <Route
+          path="/precos"
+          element={
+            <RotaProtegida>
+              <TabelaPrecos />
             </RotaProtegida>
           }
         />
