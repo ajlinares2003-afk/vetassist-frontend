@@ -372,6 +372,7 @@ function Consultas() {
   const [retornoDias, setRetornoDias] = useState("");
   const [finalizando, setFinalizando] = useState(false);
   const [erroFinalizar, setErroFinalizar] = useState("");
+  const [receitaGerada, setReceitaGerada] = useState(false);   // a sugestão da IA já foi pedida neste atendimento
   const [aplicClinica, setAplicClinica] = useState([]);      // medicações aplicadas NA CLÍNICA (não vão para o tutor; geram cobrança)
   const [aplicAlterada, setAplicAlterada] = useState(false);  // true = há mudança ainda não gravada no prontuário
   const [salvandoAplic, setSalvandoAplic] = useState(false);
@@ -741,6 +742,7 @@ function Consultas() {
       });
       setAplicAlterada(true);
       setPesoUsadoReceita(res.data.peso_usado ?? null);
+      setReceitaGerada(true);
     } catch (error) {
       setErroReceita(mensagemApi(error, "Não foi possível gerar a sugestão de receita."));
     } finally {
@@ -766,7 +768,8 @@ function Consultas() {
     if (vet) setEmitente((prev) => ({ ...prev, nome: vet.nome || prev.nome, crmv: vet.crmv || prev.crmv }));
     setModalReceita(true);
     // Reabrir não apaga o que o veterinário já editou; "Gerar novamente" refaz a sugestão.
-    if (itensReceita.length === 0 && !carregandoReceita) gerarReceitaIA();
+    // Só gera sozinha na primeira vez: se já há sugestão gerada ou aplicações registradas no prontuário, não busca de novo.
+    if (!receitaGerada && itensReceita.length === 0 && aplicClinica.length === 0 && !carregandoReceita) gerarReceitaIA();
   };
 
   const alterarItemReceita = (id, campo, valor) => {
@@ -1155,6 +1158,7 @@ function Consultas() {
     setAlertasReceita([]);
     setAplicClinica([]);
     setAplicAlterada(false);
+    setReceitaGerada(false);
     setObsReceita("");
     setPesoUsadoReceita(null);
     setReceitaConferida(false);
