@@ -191,6 +191,7 @@ const ehControlado = (i) =>
 // Dados da clínica (endereço, cidade, UF, telefone) lembrados neste navegador para a receita de controle especial
 // Status em que o paciente ainda não foi liberado pela triagem (não aparece na fila de consulta)
 const STATUS_FINALIZADOS = ["FINALIZADO", "Finalizado", "Aguardando Pagamento"];
+const ehInternado = (st) => String(st || "").startsWith("Em Internação");
 const moeda = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const STATUS_ANTES_DA_CONSULTA = [
   "AGUARDANDO_TRIAGEM", "Aguardando Triagem", "Aguardando Triagem (Recepção)",
@@ -619,9 +620,11 @@ function Consultas() {
       setTpcSegundos(dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "");
       setMucosas(dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas");
       setEcc(dadosTriagem?.ecc ?? consulta.ecc ?? "");
-      setStatusAtendimento("Em Atendimento");
+      // paciente internado continua com o status de internação ao reabrir o atendimento
+      const statusAoAbrir = ehInternado(consulta.status) ? consulta.status : "Em Atendimento";
+      setStatusAtendimento(statusAoAbrir);
 
-      setConsultaEditando({ ...consulta, status: "Em Atendimento" });
+      setConsultaEditando({ ...consulta, status: statusAoAbrir });
       setMostrarFormulario(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
       carregarConsultas();
@@ -1368,6 +1371,8 @@ function Consultas() {
       FINALIZADO: { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
       "Finalizado": { bg: "#dcfce7", color: "#166534", label: "✅ Finalizado" },
       "Aguardando Pagamento": { bg: "#fef3c7", color: "#92400e", label: "💳 Aguardando Pagamento" },
+      "Em Internação UTI": { bg: "#fee2e2", color: "#991b1b", label: "🏥 Em Internação — UTI" },
+      "Em Internação": { bg: "#ede9fe", color: "#5b21b6", label: "🏥 Em Internação" },
       CANCELADO: { bg: "#fee2e2", color: "#991b1b", label: "❌ Cancelado" }
     };
     const conf = configs[statusVal] || { bg: "#f1f5f9", color: "#475569", label: String(statusVal) };
@@ -1971,7 +1976,7 @@ function Consultas() {
                       <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeTemperatura(c.temperatura)}</td>
                       <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeStatus(c.status)}</td>
                       <td style={{ padding: "14px", display: "flex", justifyContent: "center", gap: "6px", whiteSpace: "nowrap" }}>
-                        {!STATUS_FINALIZADOS.includes(c.status) && (
+                        {!STATUS_FINALIZADOS.includes(c.status) && !ehInternado(c.status) && (
                         <button onClick={(e) => chamarPaciente(c, e)} style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}>
                           <MdCampaign size={16} /> Chamar
                         </button>
@@ -1987,7 +1992,7 @@ function Consultas() {
                         <button onClick={() => setConsultaDetalhes(c)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
                           <MdVisibility size={16} /> Ver
                         </button>
-                        {!STATUS_FINALIZADOS.includes(c.status) && (
+                        {!STATUS_FINALIZADOS.includes(c.status) && !ehInternado(c.status) && (
                         <button onClick={() => { setConsultaParaExcluir(c); setModalExclusaoAberto(true); }} style={{ backgroundColor: "#fee2e2", color: "#991b1b", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}>
                           <MdDelete size={16} /> Excluir
                         </button>
