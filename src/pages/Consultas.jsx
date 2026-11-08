@@ -312,6 +312,7 @@ function Consultas() {
   const [observacoes, setObservacoes] = useState("");
 
   const [indicacaoCirurgia, setIndicacaoCirurgia] = useState(false);
+  const [indicacaoInternacao, setIndicacaoInternacao] = useState(null);   // { nivel, motivo } sugerido pelo Copiloto
   const [forcarCirurgia, setForcarCirurgia] = useState(false);
   const [justificativaCirurgica, setJustificativaCirurgica] = useState("");
   const [solicitarExamesPreventivos, setSolicitarExamesPreventivos] = useState(false);
@@ -677,6 +678,7 @@ function Consultas() {
       setSuspeitaDiagnostica(suspeitaPura);
       setSugestoesCopiloto(response.data.sugestoes || "");
 
+      setIndicacaoInternacao(response.data.indicacao_internacao || null);
       if (response.data.indicacao_cirurgia !== undefined) {
         setIndicacaoCirurgia(response.data.indicacao_cirurgia);
         setJustificativaCirurgica(response.data.justificativa_cirurgica || "");
@@ -1159,6 +1161,7 @@ function Consultas() {
     setAplicClinica([]);
     setAplicAlterada(false);
     setReceitaGerada(false);
+    setIndicacaoInternacao(null);
     setObsReceita("");
     setPesoUsadoReceita(null);
     setReceitaConferida(false);
@@ -1220,6 +1223,7 @@ function Consultas() {
 
   const salvarConsulta = async (arg) => {
     const finalizar = arg && arg.finalizar ? arg : null;   // chamado pelo onClick recebe o evento, que não tem "finalizar"
+    const internar = arg && arg.internar ? arg : null;     // grava o atendimento e abre a Internação já preenchida
     try {
       setMensagemErro("");
       setMensagemSucesso("");
@@ -1270,6 +1274,20 @@ function Consultas() {
         await api.put(`/consultas/${consultaEditando.id}`, novaConsulta, config);
       } else {
         await api.post("/consultas/", novaConsulta, config);
+      }
+
+      if (internar && consultaEditando) {
+        if (aplicAlterada) await gravarAplicacoes(config);
+        const destino = {
+          animalId: Number(animalId),
+          consultaId: consultaEditando.id,
+          nivel: indicacaoInternacao?.nivel || "MODERADO",
+          motivo: String(indicacaoInternacao?.motivo || suspeitaDiagnostica || queixaPrincipal || "").slice(0, 200),
+        };
+        limparFormulario();
+        setMostrarFormulario(false);
+        navigate("/internacao", { state: destino });
+        return;
       }
 
       let conta = null;
@@ -1822,6 +1840,19 @@ function Consultas() {
                 </label>
               </div>
 
+              {indicacaoInternacao && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", backgroundColor: indicacaoInternacao.nivel === "CRITICO" ? "#fef2f2" : "#fffbeb", border: `1px solid ${indicacaoInternacao.nivel === "CRITICO" ? "#fca5a5" : "#fcd34d"}`, padding: "10px 14px", borderRadius: "8px", marginBottom: "10px" }}>
+                  <div style={{ flex: 1, minWidth: "200px" }}>
+                    <div style={{ fontSize: "13px", fontWeight: "bold", color: indicacaoInternacao.nivel === "CRITICO" ? "#991b1b" : "#92400e" }}>
+                      🏥 Internação recomendada ({indicacaoInternacao.nivel === "CRITICO" ? "crítico / UTI" : "moderado"})
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#475569", marginTop: "2px", lineHeight: 1.4 }}>{indicacaoInternacao.motivo}. A decisão é do veterinário.</div>
+                  </div>
+                  {consultaEditando?.id && animalId && (
+                    <button type="button" onClick={() => salvarConsulta({ internar: true })} style={{ backgroundColor: indicacaoInternacao.nivel === "CRITICO" ? "#dc2626" : "#d97706", color: "white", border: "none", padding: "8px 14px", borderRadius: "8px", cursor: "pointer", fontWeight: 700, fontSize: "13px" }}>Encaminhar para internação</button>
+                  )}
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", backgroundColor: temIndicacaoReal ? "#dcfce7" : "#ffffff", border: `1px solid ${temIndicacaoReal ? "#86efac" : "#e2e8f0"}`, padding: "10px 14px", borderRadius: "8px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: "200px" }}>
                   <span style={{ fontSize: "18px" }} aria-hidden="true">{temIndicacaoReal ? "🔪" : "➕"}</span>
@@ -1874,6 +1905,12 @@ function Consultas() {
               >
                 📋 Histórico
               </button>
+              {consultaEditando?.id && animalId && !indicacaoInternacao && (
+                <button type="button" onClick={() => salvarConsulta({ internar: true })} title="Grava o atendimento e abre a Internação com o paciente preenchido"
+                  style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>
+                  🏥 Internar
+                </button>
+              )}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
               <button type="button" onClick={() => { limparFormulario(); setMostrarFormulario(false); }} style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Fechar</button>

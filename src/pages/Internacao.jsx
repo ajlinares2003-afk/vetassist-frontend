@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { 
   MdHotel, 
   MdCheckCircle, 
@@ -15,6 +15,9 @@ import Layout from "../components/Layout";
 
 function Internacao() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [consultaOrigemId, setConsultaOrigemId] = useState(null);   // atendimento que originou a internação
+  const [prefOrigem, setPrefOrigem] = useState(null);
   const [internacoes, setInternacoes] = useState([]);
   const [animais, setAnimais] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -75,7 +78,13 @@ function Internacao() {
       if (location.state.motivo) {
         setMotivo(location.state.motivo);
       }
+      if (location.state.nivel) {
+        setNivelCriticidade(String(location.state.nivel).toUpperCase());
+      }
+      setConsultaOrigemId(location.state.consultaId || null);
+      setPrefOrigem({ nivel: String(location.state.nivel || "").toUpperCase() });
       setMostrarForm(true);
+      navigate(location.pathname, { replace: true, state: null });   // não reabre o formulário ao atualizar a página
     }
   }, [location.state]);
 
@@ -96,6 +105,14 @@ function Internacao() {
       console.error("Erro ao carregar internações", err);
     }
   };
+
+  // Vindo de um atendimento crítico: sugere um leito de UTI livre
+  useEffect(() => {
+    if (prefOrigem?.nivel !== "CRITICO") return;
+    const uti = leitosPadrao.find((l) => l.startsWith("UTI") && !internacoes.some((i) => i.leito === l));
+    if (uti) setLeito(uti);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefOrigem, internacoes]);
 
   const carregarAnimais = async () => {
     try {
@@ -271,6 +288,7 @@ function Internacao() {
       const token = localStorage.getItem("token");
       await api.post("/internacoes/", {
         animal_id: Number(animalId),
+        consulta_id: consultaOrigemId || null,
         leito,
         nivel_criticidade: nivelCriticidade,
         motivo
@@ -281,6 +299,8 @@ function Internacao() {
       setMensagemSucesso("✅ Paciente internado/em observação com sucesso!");
       setAnimalId("");
       setMotivo("");
+      setConsultaOrigemId(null);
+      setPrefOrigem(null);
       setMostrarForm(false);
       carregarInternacoes();
     } catch (err) {
