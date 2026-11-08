@@ -11,6 +11,7 @@ import { FaDog, FaCat, FaFish, FaDove, FaHorse, FaFrog, FaBug, FaUser, FaClock }
 import { GiCow, GiPig, GiSheep, GiGoat, GiRabbit } from "react-icons/gi";
 import api from "../api/api";
 import Layout from "../components/Layout";
+import ModalConfirmacao from "../components/ModalConfirmacao";
 
 const CORES_MANCHESTER = {
   VERMELHO: { nome: "Emergência", bg: "#fee2e2", text: "#991b1b", border: "#fca5a5", badge: "🔴 0 min", inactiveBg: "#fff5f5" },
@@ -584,10 +585,13 @@ function Triagem() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [atendimentoSelecionado, queixaEstavel, temperaturaEstavel, fcEstavel, frEstavel, tpcEstavel, mucosas]);
 
-  const salvarTriagemExistente = async () => {
+  const [confirmarUrgente, setConfirmarUrgente] = useState(false);
+
+  const salvarTriagemExistente = async (jaConfirmou = false) => {
     if (!queixaPrincipal) return setMensagem({ tipo: "erro", texto: "Informe a queixa principal do paciente." });
 
-    if (sugerirUrgente && !window.confirm(`Sinais acima do limite (${sinaisAlterados.join(", ")}) + ${sintomasGatilho.join(", ")}, mas a classificação está como "${CORES_MANCHESTER[classificacaoRisco]?.nome}". Finalizar assim mesmo?`)) {
+    if (sugerirUrgente && jaConfirmou !== true) {
+      setConfirmarUrgente(true);
       return;
     }
 
@@ -926,7 +930,7 @@ function Triagem() {
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", borderTop: "2px solid #f3f4f6", paddingTop: "20px", marginTop: "10px" }}>
             <button onClick={() => { setAtendimentoSelecionado(null); limparFormulario(); }} style={{ backgroundColor: "#f3f4f6", color: "#374151", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>Voltar para a Fila</button>
-            <button onClick={salvarTriagemExistente} disabled={carregando} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "12px 30px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>{carregando ? "Enviando..." : "Finalizar Triagem"}</button>
+            <button onClick={() => salvarTriagemExistente()} disabled={carregando} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "12px 30px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>{carregando ? "Enviando..." : "Finalizar Triagem"}</button>
           </div>
         </div>
       ) : (
@@ -1163,6 +1167,11 @@ function Triagem() {
           )}
         </div>
       )}
+    <ModalConfirmacao aberto={confirmarUrgente} titulo="Revisar a classificação de risco"
+        mensagem={<>Há sinais acima do limite ({sinaisAlterados.join(", ")}) junto com {sintomasGatilho.join(", ")}, mas a classificação está como <strong>{CORES_MANCHESTER[classificacaoRisco]?.nome}</strong>. Deseja finalizar a triagem assim mesmo?</>}
+        rotuloConfirmar="Finalizar assim mesmo" rotuloCancelar="Revisar classificação" tom="aviso"
+        onCancelar={() => setConfirmarUrgente(false)}
+        onConfirmar={() => { setConfirmarUrgente(false); salvarTriagemExistente(true); }} />
     </Layout>
   );
 }

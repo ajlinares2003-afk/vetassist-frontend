@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { MdAttachMoney, MdAdd, MdDelete, MdRefresh } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
+import ModalConfirmacao from "../components/ModalConfirmacao";
 
 const moeda = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const arred = (v) => Math.round((Number(v) || 0) * 100) / 100;
@@ -28,6 +29,7 @@ function Caixa() {
   const cfg = () => ({ headers: { Authorization: `Bearer ${token()}` } });
 
   const [aba, setAba] = useState("AGUARDANDO_PAGAMENTO");
+  const [confirmacao, setConfirmacao] = useState(null);   // { titulo, mensagem, rotulo, tom, acao }
   const [mesLab, setMesLab] = useState(mesAtual());
   const [resumoLab, setResumoLab] = useState(null);
   const [lista, setLista] = useState([]);
@@ -191,12 +193,19 @@ ${exExt ? `<p><b>Exames encaminhados a laboratório externo (pagos diretamente p
     finally { setSalvando(false); }
   };
 
-  const aoPagar = async () => {
+  const aoPagar = async (jaConfirmouSemValor = false) => {
     setErroConta(""); setSucesso("");
     if (total > 0 && !FORMAS.includes(forma)) { setErroConta("Escolha a forma de pagamento."); return; }
     let confirmarSemValor = false;
     if (semValor > 0) {
-      if (!window.confirm(`${semValor} item(ns) estão sem valor definido (R$ 0,00). Registrar o pagamento mesmo assim, como cortesia?`)) return;
+      if (jaConfirmouSemValor !== true) {
+        setConfirmacao({
+          titulo: "Itens sem valor definido",
+          mensagem: `${semValor} item(ns) estão com valor R$ 0,00. Se continuar, eles serão registrados como cortesia (sem cobrança). Você pode voltar e informar o valor ou remover o item.`,
+          rotulo: "Registrar como cortesia", tom: "aviso", acao: () => aoPagar(true),
+        });
+        return;
+      }
       confirmarSemValor = true;
     }
     setSalvando(true);
@@ -213,8 +222,13 @@ ${exExt ? `<p><b>Exames encaminhados a laboratório externo (pagos diretamente p
     }
   };
 
+  const pedirReabrir = () => setConfirmacao({
+    titulo: "Reabrir este atendimento?",
+    mensagem: "A conta atual será descartada e o atendimento volta para o veterinário, que poderá corrigir o prontuário e finalizar de novo. Os ajustes feitos nesta conta serão perdidos.",
+    rotulo: "Sim, reabrir", tom: "perigo", icone: "↩️", acao: () => aoReabrir(),
+  });
+
   const aoReabrir = async () => {
-    if (!window.confirm("Reabrir o atendimento? A conta será descartada e o veterinário poderá corrigir o prontuário e finalizar de novo.")) return;
     setSalvando(true); setErroConta("");
     try {
       await api.post(`/contas/${conta.id}/reabrir`, {}, cfg());
@@ -410,7 +424,7 @@ ${exExt ? `<p><b>Exames encaminhados a laboratório externo (pagos diretamente p
             <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "10px", marginTop: "16px" }}>
               <div>
                 {perfil === "ADMIN" && conta.status === "AGUARDANDO_PAGAMENTO" && (
-                  <button type="button" disabled={salvando} onClick={aoReabrir} style={{ border: "1px solid #fca5a5", backgroundColor: "#fff", color: "#b91c1c", borderRadius: "8px", padding: "9px 14px", cursor: "pointer", fontWeight: 600, fontSize: "13px" }}>↩ Reabrir atendimento (ADMIN)</button>
+                  <button type="button" disabled={salvando} onClick={pedirReabrir} style={{ border: "1px solid #fca5a5", backgroundColor: "#fff", color: "#b91c1c", borderRadius: "8px", padding: "9px 14px", cursor: "pointer", fontWeight: 600, fontSize: "13px" }}>↩ Reabrir atendimento (ADMIN)</button>
                 )}
               </div>
               <div style={{ display: "flex", gap: "10px" }}>
@@ -419,7 +433,7 @@ ${exExt ? `<p><b>Exames encaminhados a laboratório externo (pagos diretamente p
                 {!somenteLeitura && (
                   <>
                     <button type="button" disabled={salvando} onClick={aoSalvar} style={{ border: "1px solid #c7d2fe", backgroundColor: "#eef2ff", color: "#3730a3", borderRadius: "8px", padding: "9px 16px", cursor: "pointer", fontWeight: 600 }}>Salvar alterações</button>
-                    <button type="button" disabled={salvando} onClick={aoPagar} style={{ border: "none", backgroundColor: salvando ? "#86efac" : "#16a34a", color: "#fff", borderRadius: "8px", padding: "9px 20px", cursor: salvando ? "wait" : "pointer", fontWeight: 700 }}>Registrar pagamento</button>
+                    <button type="button" disabled={salvando} onClick={() => aoPagar()} style={{ border: "none", backgroundColor: salvando ? "#86efac" : "#16a34a", color: "#fff", borderRadius: "8px", padding: "9px 20px", cursor: salvando ? "wait" : "pointer", fontWeight: 700 }}>Registrar pagamento</button>
                   </>
                 )}
               </div>
@@ -427,6 +441,10 @@ ${exExt ? `<p><b>Exames encaminhados a laboratório externo (pagos diretamente p
           </div>
         </div>
       )}
+    <ModalConfirmacao aberto={Boolean(confirmacao)} titulo={confirmacao?.titulo} mensagem={confirmacao?.mensagem}
+        rotuloConfirmar={confirmacao?.rotulo} tom={confirmacao?.tom} icone={confirmacao?.icone}
+        onCancelar={() => setConfirmacao(null)}
+        onConfirmar={() => { const f = confirmacao?.acao; setConfirmacao(null); if (f) f(); }} />
     </Layout>
   );
 }
