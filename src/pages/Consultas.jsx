@@ -199,6 +199,36 @@ const STATUS_ANTES_DA_CONSULTA = [
   "AGUARDANDO_VACINA", "Aguardando Vacina", "Em Vacinação",
 ];
 
+const STATUS_ENCERRADOS = ["FINALIZADO", "CONCLUIDA", "Concluída", "CANCELADO", "Finalizado", "Cancelado"];
+const ABAS_ATENDIMENTO = [
+  { id: "ativos", rotulo: "🟢 Ativos" },
+  { id: "atendimento", rotulo: "🩺 Em atendimento" },
+  { id: "internados", rotulo: "🏥 Internados" },
+  { id: "cirurgia", rotulo: "🔪 Cirurgia" },
+  { id: "pagamento", rotulo: "💳 Pagamento" },
+  { id: "finalizados", rotulo: "✅ Finalizados" },
+  { id: "todos", rotulo: "📋 Todos" },
+];
+// Cada aba agrupa os status por etapa do fluxo. Status novo cai em "Ativos"/"Todos" mesmo sem aba própria.
+const pertenceAba = (status, aba) => {
+  const st = String(status || "");
+  const encerrado = STATUS_ENCERRADOS.includes(st) || st === "Aguardando Pagamento";
+  const preConsulta = STATUS_ANTES_DA_CONSULTA.includes(st);
+  const internado = ehInternado(st);
+  const cirurgia = st === "Aguardando Cirurgia";
+  const pagamento = st === "Aguardando Pagamento";
+  switch (aba) {
+    case "todos": return true;
+    case "ativos": return !encerrado && !preConsulta;
+    case "atendimento": return !encerrado && !preConsulta && !internado && !cirurgia;
+    case "internados": return internado;
+    case "cirurgia": return cirurgia;
+    case "pagamento": return pagamento;
+    case "finalizados": return encerrado;
+    default: return true;
+  }
+};
+
 const CHAVE_CLINICA = "vetassist_clinica";
 const lerClinicaSalva = () => {
   try {
@@ -1441,12 +1471,12 @@ function Consultas() {
     );
   };
 
+  const contagemAbas = {};
+  ABAS_ATENDIMENTO.forEach((a) => { contagemAbas[a.id] = consultas.filter((c) => pertenceAba(c.status || "", a.id)).length; });
+
   const consultasFiltradas = consultas.filter((c) => {
     const statusVal = c.status || "";
-    const ehFinalizado = ["FINALIZADO", "CONCLUIDA", "Concluída", "CANCELADO", "Finalizado", "Cancelado", "Aguardando Pagamento"].includes(statusVal);
-    // Quem ainda está na triagem/recepção/vacina NÃO entra na fila de consulta (só em "Todos").
-    if (abaAtiva === "ativos" && (ehFinalizado || STATUS_ANTES_DA_CONSULTA.includes(statusVal))) return false;
-    if (abaAtiva === "finalizados" && !ehFinalizado) return false;
+    if (!pertenceAba(statusVal, abaAtiva)) return false;
 
     const termo = busca.toLowerCase();
     const cod = (c.codigo || `CNS-${String(c.id).padStart(4, "0")}`).toLowerCase();
@@ -1932,21 +1962,18 @@ function Consultas() {
       {!mostrarFormulario && (
         <>
           <div role="tablist" aria-label="Filtro de atendimentos" style={{ display: "flex", gap: "6px", backgroundColor: "#e2e8f0", padding: "4px", borderRadius: "10px", marginBottom: "16px", width: "fit-content", maxWidth: "100%", flexWrap: "wrap" }}>
-            {[
-              { id: "ativos", rotulo: "🟢 Ativos" },
-              { id: "finalizados", rotulo: "✅ Finalizados" },
-              { id: "todos", rotulo: "📋 Todos" },
-            ].map((aba) => {
+            {ABAS_ATENDIMENTO.map((aba) => {
               const ativa = abaAtiva === aba.id;
+              const qtd = contagemAbas[aba.id] || 0;
               return (
                 <button
                   key={aba.id}
                   role="tab"
                   aria-selected={ativa}
                   onClick={() => setAbaAtiva(aba.id)}
-                  style={{ backgroundColor: ativa ? "#4f46e5" : "transparent", color: ativa ? "#ffffff" : "#334155", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "13px", boxShadow: ativa ? "0 2px 5px rgba(79, 70, 229, 0.4)" : "none" }}
+                  style={{ backgroundColor: ativa ? "#4f46e5" : "transparent", color: ativa ? "#ffffff" : (qtd === 0 && aba.id !== "todos" ? "#94a3b8" : "#334155"), border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "13px", boxShadow: ativa ? "0 2px 5px rgba(79, 70, 229, 0.4)" : "none" }}
                 >
-                  {aba.rotulo}
+                  {aba.rotulo}{aba.id !== "todos" ? ` (${qtd})` : ""}
                 </button>
               );
             })}
