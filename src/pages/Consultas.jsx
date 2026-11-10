@@ -613,7 +613,8 @@ function Consultas() {
       consulta = atual;
 
       await api.put(`/consultas/${consulta.id}`, {
-        status: "Em Atendimento",
+        // paciente internado (ou aguardando cirurgia) mantém o status ao clicar em Atender
+        status: (ehInternado(consulta.status) || consulta.status === "Aguardando Cirurgia") ? consulta.status : "Em Atendimento",
         queixa_principal: consulta.queixa_principal ?? null,
         historico_clinico: consulta.historico_clinico ?? null,
         sintomas: consulta.sintomas ?? null,
