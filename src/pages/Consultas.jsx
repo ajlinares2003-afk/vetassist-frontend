@@ -614,7 +614,8 @@ function Consultas() {
 
       await api.put(`/consultas/${consulta.id}`, {
         // paciente internado (ou aguardando cirurgia) mantém o status ao clicar em Atender
-        status: (ehInternado(consulta.status) || consulta.status === "Aguardando Cirurgia") ? consulta.status : "Em Atendimento",
+        status: ehInternado(consulta.status) ? consulta.status
+          : (consulta.status === "Aguardando Cirurgia" || consulta.indicacao_cirurgia) ? "Aguardando Cirurgia" : "Em Atendimento",
         queixa_principal: consulta.queixa_principal ?? null,
         historico_clinico: consulta.historico_clinico ?? null,
         sintomas: consulta.sintomas ?? null,
@@ -652,7 +653,8 @@ function Consultas() {
       setMucosas(dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas");
       setEcc(dadosTriagem?.ecc ?? consulta.ecc ?? "");
       // paciente internado continua com o status de internação ao reabrir o atendimento
-      const statusAoAbrir = ehInternado(consulta.status) ? consulta.status : "Em Atendimento";
+      const statusAoAbrir = ehInternado(consulta.status) ? consulta.status
+        : (consulta.status === "Aguardando Cirurgia" || consulta.indicacao_cirurgia) ? "Aguardando Cirurgia" : "Em Atendimento";
       setStatusAtendimento(statusAoAbrir);
 
       setConsultaEditando({ ...consulta, status: statusAoAbrir });
@@ -1272,7 +1274,7 @@ function Consultas() {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
       const cirurgiaFinal = forcarCirurgia || indicacaoCirurgia;
-      let statusFinal = cirurgiaFinal ? "Aguardando Cirurgia" : statusAtendimento;
+      let statusFinal = (cirurgiaFinal || consultaEditando?.indicacao_cirurgia) && !ehInternado(statusAtendimento) ? "Aguardando Cirurgia" : statusAtendimento;
 
       const parecerCompletoIA = [
         suspeitaDiagnostica ? `Suspeita Diagnóstica: ${suspeitaDiagnostica}` : "",
