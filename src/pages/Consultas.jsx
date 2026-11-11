@@ -1522,6 +1522,7 @@ function Consultas() {
   const mostrarSugestaoECC = !ecc && Boolean(sugestaoECC?.nivel);
 
   const temIndicacaoReal = indicacaoCirurgia || forcarCirurgia;
+  const jaInternado = ehInternado(statusAtendimento) || ehInternado(consultaEditando?.status);
 
   const estiloOverlay = { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1100, padding: "20px" };
   const estiloCaixaModal = { backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", maxWidth: "820px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" };
@@ -1878,7 +1879,13 @@ function Consultas() {
                 </label>
               </div>
 
-              {indicacaoInternacao && (
+              {indicacaoInternacao && jaInternado && (
+                <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #86efac", padding: "10px 14px", borderRadius: "8px", marginBottom: "10px" }}>
+                  <div style={{ fontSize: "13px", fontWeight: "bold", color: "#166534" }}>🏥 Paciente já internado</div>
+                  <div style={{ fontSize: "12px", color: "#475569", marginTop: "2px", lineHeight: 1.4 }}>O Copiloto confirma a indicação de internação ({indicacaoInternacao.nivel === "CRITICO" ? "crítico / UTI" : "moderado"}). Registre a evolução na tela de Internação.</div>
+                </div>
+              )}
+              {indicacaoInternacao && !jaInternado && (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", backgroundColor: indicacaoInternacao.nivel === "CRITICO" ? "#fef2f2" : "#fffbeb", border: `1px solid ${indicacaoInternacao.nivel === "CRITICO" ? "#fca5a5" : "#fcd34d"}`, padding: "10px 14px", borderRadius: "8px", marginBottom: "10px" }}>
                   <div style={{ flex: 1, minWidth: "200px" }}>
                     <div style={{ fontSize: "13px", fontWeight: "bold", color: indicacaoInternacao.nivel === "CRITICO" ? "#991b1b" : "#92400e" }}>
@@ -1943,7 +1950,7 @@ function Consultas() {
               >
                 📋 Histórico
               </button>
-              {consultaEditando?.id && animalId && !indicacaoInternacao && (
+              {consultaEditando?.id && animalId && !indicacaoInternacao && !jaInternado && (
                 <button type="button" onClick={() => salvarConsulta({ internar: true })} title="Grava o atendimento e abre a Internação com o paciente preenchido"
                   style={{ backgroundColor: "#ffffff", color: "#374151", border: "1px solid #d1d5db", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>
                   🏥 Internar
