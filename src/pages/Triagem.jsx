@@ -165,6 +165,8 @@ function Triagem() {
   const fcEstavel = useValorEstavel(frequenciaCardiaca);
   const frEstavel = useValorEstavel(frequenciaRespiratoria);
   const queixaEstavel = useValorEstavel(queixaPrincipal);
+  const reqIA = useRef(0);                   // só a avaliação mais recente pode mudar o nível (respostas fora de ordem causavam oscilação)
+  const ultimaAssinaturaIA = useRef("");     // dados da última avaliação automática: sem mudança real, não reavalia
   const classificacaoManual = useRef(false);   // o veterinário escolheu o nível com o clique: a avaliação automática não o troca
   const autoAvaliacoes = useRef(0);            // limite de avaliações automáticas por atendimento (poupa a cota da IA)
 
@@ -203,6 +205,8 @@ function Triagem() {
     emergenciaAuto.current = null;
     classificacaoManual.current = false;
     autoAvaliacoes.current = 0;
+    reqIA.current += 1;
+    ultimaAssinaturaIA.current = "";
   }, [atendimentoSelecionado]);
 
   useEffect(() => {
@@ -558,7 +562,19 @@ function Triagem() {
         mucosas: mucosas || "Normocoradas"
       };
 
-      const res = await api.post("/triagem/avaliar-ia", payloadIA, config);
+      const assinatura = JSON.stringify({ ...payloadIA, ecc: null });
+      if (silencioso === true && assinatura === ultimaAssinaturaIA.current) return;   // nada mudou desde a última avaliação
+      ultimaAssinaturaIA.current = assinatura;
+      const meuId = ++reqIA.current;
+
+      let res;
+      try {
+        res = await api.post("/triagem/avaliar-ia", payloadIA, config);
+      } catch (e) {
+        if (meuId === reqIA.current) ultimaAssinaturaIA.current = "";   // falhou: permite tentar de novo
+        throw e;
+      }
+      if (meuId !== reqIA.current) return;   // chegou uma resposta mais nova (ou outro paciente): descarta esta
       if (silencioso === true && classificacaoManual.current) return;   // escolheu enquanto a IA respondia
       if (res.data?.classificacao_risco) {
         setClassificacaoRisco(res.data.classificacao_risco);
