@@ -165,6 +165,7 @@ function Triagem() {
   const fcEstavel = useValorEstavel(frequenciaCardiaca);
   const frEstavel = useValorEstavel(frequenciaRespiratoria);
   const queixaEstavel = useValorEstavel(queixaPrincipal);
+  const [avaliandoIA, setAvaliandoIA] = useState(false);   // mostra "avaliando nível de urgência" enquanto a IA responde
   const reqIA = useRef(0);                   // só a avaliação mais recente pode mudar o nível (respostas fora de ordem causavam oscilação)
   const ultimaAssinaturaIA = useRef("");     // dados da última avaliação automática: sem mudança real, não reavalia
   const classificacaoManual = useRef(false);   // o veterinário escolheu o nível com o clique: a avaliação automática não o troca
@@ -207,6 +208,7 @@ function Triagem() {
     autoAvaliacoes.current = 0;
     reqIA.current += 1;
     ultimaAssinaturaIA.current = "";
+    setAvaliandoIA(false);
   }, [atendimentoSelecionado]);
 
   useEffect(() => {
@@ -566,15 +568,17 @@ function Triagem() {
       if (silencioso === true && assinatura === ultimaAssinaturaIA.current) return;   // nada mudou desde a última avaliação
       ultimaAssinaturaIA.current = assinatura;
       const meuId = ++reqIA.current;
+      setAvaliandoIA(true);
 
       let res;
       try {
         res = await api.post("/triagem/avaliar-ia", payloadIA, config);
       } catch (e) {
-        if (meuId === reqIA.current) ultimaAssinaturaIA.current = "";   // falhou: permite tentar de novo
+        if (meuId === reqIA.current) { ultimaAssinaturaIA.current = ""; setAvaliandoIA(false); }   // falhou: permite tentar de novo
         throw e;
       }
       if (meuId !== reqIA.current) return;   // chegou uma resposta mais nova (ou outro paciente): descarta esta
+      setAvaliandoIA(false);
       if (silencioso === true && classificacaoManual.current) return;   // escolheu enquanto a IA respondia
       if (res.data?.classificacao_risco) {
         setClassificacaoRisco(res.data.classificacao_risco);
@@ -872,9 +876,14 @@ function Triagem() {
 
           <div style={{ marginBottom: "20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <label style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
-              <button type="button" onClick={() => { classificacaoManual.current = false; sugerirClassificacaoIA(); }} style={{ backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}>
-                <MdAutoAwesome /> Avaliar com IA
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                <label style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Nível de Urgência (Manchester)</label>
+                {avaliandoIA && (
+                  <span className="tg-avaliando" role="status" aria-live="polite"><i /> Aguarde, avaliando nível de urgência...</span>
+                )}
+              </div>
+              <button type="button" disabled={avaliandoIA} onClick={() => { classificacaoManual.current = false; sugerirClassificacaoIA(); }} style={{ opacity: avaliandoIA ? 0.6 : 1, backgroundColor: "#f0f9ff", color: "#0284c7", border: "1px solid #bae6fd", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}>
+                <MdAutoAwesome /> {avaliandoIA ? "Avaliando..." : "Avaliar com IA"}
               </button>
             </div>
 
@@ -1078,6 +1087,9 @@ const CSS_TRIAGEM = `
 .tg-b.chamar{background:#e0f2fe;color:#0369a1}
 .tg-b.iniciar{background:#4f46e5;color:#fff;flex:1;box-shadow:0 6px 14px -8px #4f46e5}
 .tg-vazio{background:#fff;border:2px dashed #cbd5e1;border-radius:20px;text-align:center;padding:46px 20px;color:#64748b}
+.tg-avaliando{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#0369a1;background:#f0f9ff;border:1px solid #bae6fd;padding:3px 11px;border-radius:99px}
+.tg-avaliando i{width:11px;height:11px;border:2px solid #bae6fd;border-top-color:#0284c7;border-radius:50%;display:inline-block;animation:tgGira .8s linear infinite}
+@keyframes tgGira{to{transform:rotate(360deg)}}
 .tg-paciente{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#f0fdfa,#ecfeff);border:1px solid #99f6e4;border-radius:16px;padding:14px 18px;margin-bottom:20px}
 .tg-paciente-ico{width:46px;height:46px;border-radius:14px;background:#ccfbf1;display:flex;align-items:center;justify-content:center;font-size:22px}
 @media (max-width:760px){.tg-kpis{grid-template-columns:1fr 1fr}.tg-busca{grid-column:1 / -1}.tg-grid{grid-template-columns:1fr}}
