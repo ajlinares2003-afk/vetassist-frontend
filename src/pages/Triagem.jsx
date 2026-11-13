@@ -187,6 +187,7 @@ function Triagem() {
   const [buscandoRefs, setBuscandoRefs] = useState(false);
 
   const [mensagem, setMensagem] = useState({ tipo: "", texto: "" });
+  const [buscaFila, setBuscaFila] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [atualizandoSilencioso, setAtualizandoSilencioso] = useState(false);
 
@@ -810,49 +811,46 @@ function Triagem() {
     </>
   );
 
+  const nomeDoPet = (item) => animais.find((x) => x.id === Number(item.animal_id));
+  const filaFiltrada = atendimentosPendentes.filter((item) => {
+    const termo = buscaFila.trim().toLowerCase();
+    if (!termo) return true;
+    const a = nomeDoPet(item);
+    const t = a ? tutores.find((tt) => tt.id === a.tutor_id) : null;
+    const cod = item.codigo || `CNS-${String(item.id).padStart(4, "0")}`;
+    return `${cod} ${a?.nome || ""} ${t?.nome || ""} ${item.queixa_principal || ""}`.toLowerCase().includes(termo);
+  });
+  const qtdChamando = atendimentosPendentes.filter((i) => i.status === "Chamando para Triagem").length;
+
   return (
     <Layout>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
-        <h1 style={{ display: "flex", alignItems: "center", gap: "12px", margin: 0, fontSize: "26px", color: "#1e1b4b" }}>
-          <MdMedicalServices color="#dc2626" size={38} /> Check-in & Triagem (Protocolo Manchester)
-        </h1>
-
+      <style>{CSS_TRIAGEM}</style>
+      <div className="tg-hero">
+        <div>
+          <h1><MdMedicalServices size={30} /> Check-in & Triagem</h1>
+          <p>Classificação de risco pelo Protocolo Manchester</p>
+        </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          {atualizandoSilencioso && (
-            <span style={{ fontSize: "12px", color: "#6366f1", fontWeight: "500" }}>Sincronizando...</span>
-          )}
-          <button
-            onClick={() => carregarDados(true)}
-            style={{
-              backgroundColor: "#ffffff",
-              color: "#374151",
-              border: "1px solid #d1d5db",
-              padding: "10px 18px",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "600",
-              fontSize: "14px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <MdRefresh size={18} /> Atualizar
-          </button>
+          {atualizandoSilencioso && <span className="tg-sync">Sincronizando...</span>}
+          <button className="tg-btn-hero" onClick={() => carregarDados(true)}><MdRefresh size={18} /> Atualizar</button>
         </div>
       </div>
 
       {mensagem.texto && (
-        <div style={{ backgroundColor: mensagem.tipo === "sucesso" ? "#dcfce7" : "#fee2e2", color: mensagem.tipo === "sucesso" ? "#166534" : "#991b1b", padding: "12px 16px", borderRadius: "8px", marginBottom: "15px", fontWeight: "500" }}>
+        <div style={{ backgroundColor: mensagem.tipo === "sucesso" ? "#ecfdf5" : "#fef2f2", color: mensagem.tipo === "sucesso" ? "#065f46" : "#991b1b", border: `1px solid ${mensagem.tipo === "sucesso" ? "#a7f3d0" : "#fecaca"}`, padding: "12px 16px", borderRadius: "12px", marginBottom: "16px", fontWeight: "600" }}>
           {mensagem.texto}
         </div>
       )}
 
       {atendimentoSelecionado ? (
-        <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
-          <h3 style={{ marginTop: 0, color: "#1e1b4b", fontSize: "18px", borderBottom: "2px solid #f3f4f6", paddingBottom: "16px", marginBottom: "20px", fontWeight: "700" }}>
-            🩺 Aferição de Sinais Vitais — {obterHeaderDetalhado(atendimentoSelecionado)}
-          </h3>
+        <div style={{ backgroundColor: "white", padding: "26px", borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 10px 30px -18px rgba(15,23,42,0.35)" }}>
+          <div className="tg-paciente">
+            <div className="tg-paciente-ico">🩺</div>
+            <div>
+              <div style={{ fontSize: "12px", fontWeight: 800, color: "#0f766e", letterSpacing: ".6px", textTransform: "uppercase" }}>Aferição de sinais vitais</div>
+              <div style={{ fontSize: "17px", fontWeight: 800, color: "#0f172a", marginTop: "2px" }}>{obterHeaderDetalhado(atendimentoSelecionado)}</div>
+            </div>
+          </div>
 
           {renderFormularioSinaisVitais()}
 
@@ -874,8 +872,8 @@ function Triagem() {
                     type="button"
                     onClick={() => { classificacaoManual.current = true; setClassificacaoRisco(cor); }}
                     style={{
-                      padding: "12px 6px",
-                      borderRadius: "8px",
+                      padding: "14px 6px",
+                      borderRadius: "14px",
                       border: selecionado ? `2px solid ${item.text}` : `1px solid ${item.border}`,
                       backgroundColor: selecionado ? item.bg : item.inactiveBg,
                       color: item.text,
@@ -883,10 +881,12 @@ function Triagem() {
                       fontSize: "13px",
                       cursor: "pointer",
                       textAlign: "center",
-                      boxShadow: selecionado ? "0 2px 4px rgba(0,0,0,0.08)" : "none",
+                      boxShadow: selecionado ? `0 6px 16px -8px ${item.text}` : "none",
+                      transform: selecionado ? "translateY(-1px)" : "none",
                       transition: "all 0.15s ease-in-out"
                     }}
                   >
+                    <span style={{ display: "block", width: "10px", height: "10px", borderRadius: "50%", backgroundColor: item.text, margin: "0 auto 6px", opacity: selecionado ? 1 : 0.45 }} />
                     {item.nome}
                   </button>
                 );
@@ -934,231 +934,77 @@ function Triagem() {
           </div>
         </div>
       ) : (
-        /* FILA DE ESPERA EM CARDS RETANGULARES (CORRIGIDO PARA LARGURA FLEXÍVEL E TEXTOS LONGOS) */
-        <div style={{ backgroundColor: "white", padding: "28px", borderRadius: "16px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", border: "1px solid #e5e7eb" }}>
-          <h3 style={{ marginTop: 0, color: "#111827", fontSize: "20px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
-            📋 Fila de Espera Atual ({atendimentosPendentes.length} pacientes)
-          </h3>
+        <div>
+          <div className="tg-kpis">
+            <div className="tg-kpi"><b>{atendimentosPendentes.length}</b><span>Na fila de espera</span></div>
+            <div className="tg-kpi"><b style={{ color: qtdChamando ? "#dc2626" : "#0f172a" }}>{qtdChamando}</b><span>Sendo chamados</span></div>
+            <div className="tg-busca">
+              <input placeholder="Buscar por pet, tutor, código ou sintoma..." value={buscaFila} onChange={(e) => setBuscaFila(e.target.value)} />
+            </div>
+          </div>
 
           {atendimentosPendentes.length === 0 ? (
-            <p style={{ color: "#6b7280", textAlign: "center", padding: "40px 20px", fontSize: "15px" }}>Nenhum paciente aguardando triagem no momento. Os pacientes aparecerão aqui assim que realizarem o check-in na recepção.</p>
+            <div className="tg-vazio">
+              <div style={{ fontSize: "46px" }}>🐾</div>
+              <p style={{ fontSize: "17px", fontWeight: 800, color: "#334155", margin: "6px 0 4px" }}>Nenhum paciente aguardando triagem</p>
+              <p style={{ fontSize: "13px", margin: 0 }}>Os pacientes aparecem aqui assim que fazem o check-in na recepção.</p>
+            </div>
+          ) : filaFiltrada.length === 0 ? (
+            <div className="tg-vazio"><p style={{ margin: 0, fontWeight: 700 }}>Nenhum paciente encontrado para "{buscaFila}".</p></div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))", gridAutoRows: "260px", gap: "24px" }}>
-              {atendimentosPendentes.map((item) => {
-                const a = animais.find((itemAnim) => itemAnim.id === Number(item.animal_id));
+            <div className="tg-grid">
+              {filaFiltrada.map((item) => {
+                const a = nomeDoPet(item);
                 const t = a ? tutores.find((tutor) => tutor.id === a.tutor_id) : null;
-                
                 const nomePet = a ? a.nome : "Paciente desconhecido";
                 const especie = a?.especie || "Pet";
-                const raca = a?.raca ? ` - ${a.raca}` : "";
+                const raca = a?.raca ? ` · ${a.raca}` : "";
                 const nomeTutor = t ? t.nome : "Tutor não vinculado";
                 const codigoFormatado = item.codigo || `CNS-${String(item.id).padStart(4, "0")}`;
-
-                const tagsSintomas = (item.queixa_principal || "")
-                  .split(",")
-                  .map((tag) => tag.trim())
-                  .filter(Boolean);
-
-                // Altura do card é fixa: mostramos até 2 tags e um contador "+N" para o resto.
-                const MAX_TAGS_VISIVEIS = 2;
-                const tagsVisiveis = tagsSintomas.slice(0, MAX_TAGS_VISIVEIS);
-                const tagsOcultas = tagsSintomas.slice(MAX_TAGS_VISIVEIS);
-
+                const tagsSintomas = (item.queixa_principal || "").split(",").map((tag) => tag.trim()).filter(Boolean);
+                const MAX_TAGS = 4;
+                const tagsVisiveis = tagsSintomas.slice(0, MAX_TAGS);
+                const tagsOcultas = tagsSintomas.slice(MAX_TAGS);
                 const avatarBg = obterCorAvatar(especie);
                 const iconColor = obterCorIcone(especie);
                 const estaSendoChamado = item.status === "Chamando para Triagem";
 
                 return (
-                  <div 
-                    key={item.id} 
-                    style={{ 
-                      display: "flex", 
-                      justifyContent: "space-between", 
-                      alignItems: "flex-start", 
-                      boxSizing: "border-box",
-                      height: "100%",
-                      padding: "24px", 
-                      backgroundColor: estaSendoChamado ? "#fef2f2" : "#ffffff", 
-                      borderRadius: "16px", 
-                      border: "1px solid #e5e7eb",
-                      borderLeft: "6px solid #4f46e5",
-                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
-                      transition: "transform 0.2s, box-shadow 0.2s",
-                      cursor: "default",
-                      textAlign: "left",
-                      overflow: "hidden"
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.transform = "translateY(-2px)";
-                      e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1)";
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.05)";
-                    }}
-                  >
-                    <div style={{ display: "flex", gap: "20px", alignItems: "flex-start", flex: 1, minWidth: 0, overflow: "hidden" }}>
-                      {/* Avatar Gigante */}
-                      <div style={{ 
-                        backgroundColor: avatarBg, 
-                        width: "90px", 
-                        height: "90px", 
-                        borderRadius: "50%", 
-                        display: "flex", 
-                        alignItems: "center", 
-                        justifyContent: "center",
-                        flexShrink: 0,
-                        boxShadow: "inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)"
-                      }}>
+                  <div key={item.id} className={`tg-card ${estaSendoChamado ? "chamando" : ""}`}>
+                    <div className="tg-card-top">
+                      <div className="tg-avatar" style={{ backgroundColor: avatarBg }}>
                         {renderizarIconeAnimal(especie, false, iconColor, "large")}
                       </div>
-
-                      {/* Coluna Central com Textos Seguros e Flexíveis */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0, overflow: "hidden" }}>
-                        
-                        {/* Código na Frente do Nome e Espécie/Raça */}
-                        <div
-                          title={`${codigoFormatado} - ${nomePet} (${especie}${raca})`}
-                          style={{ fontSize: "18px", fontWeight: "800", color: "#111827", lineHeight: "1.3", wordBreak: "break-word", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", flexShrink: 0 }}
-                        >
-                          <span style={{ color: "#4f46e5", marginRight: "6px" }}>{codigoFormatado}</span>
-                          - {nomePet} <span style={{ fontWeight: "500", color: "#4b5563", fontSize: "15px" }}>({especie}{raca})</span>
-                        </div>
-
-                        {/* Tutor */}
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#4b5563", fontSize: "15px", flexShrink: 0, minWidth: 0 }}>
-                          <FaUser size={14} color="#9ca3af" style={{ flexShrink: 0 }} />
-                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }} title={nomeTutor}>Tutor: <strong style={{ color: "#111827" }}>{nomeTutor}</strong></span>
-                        </div>
-
-                        {/* Sintomas com Quebra de Linha Limpa */}
-                        <div
-                          title={item.queixa_principal || ""}
-                          style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "2px", width: "100%", flex: 1, minHeight: 0, overflow: "hidden" }}
-                        >
-                          <span style={{ fontSize: "14px", fontWeight: "600", color: "#9ca3af", flexShrink: 0 }}>Sintomas / Queixa:</span>
-                          {tagsSintomas.length === 0 ? (
-                            <span style={{ fontSize: "14px", color: "#6b7280" }}>-</span>
-                          ) : (
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", flexShrink: 0 }}>
-                              {tagsVisiveis.map((tag, idx) => {
-                                const colors = obterCorSintoma(tag);
-                                return (
-                                  <span 
-                                    key={idx}
-                                    title={tag}
-                                    style={{ 
-                                      backgroundColor: colors.bg, 
-                                      color: colors.text, 
-                                      padding: "4px 12px", 
-                                      borderRadius: "20px", 
-                                      fontSize: "13px",
-                                      fontWeight: "700",
-                                      lineHeight: "18px",
-                                      boxSizing: "border-box",
-                                      maxWidth: "100%",
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis"
-                                    }}
-                                  >
-                                    {tag}
-                                  </span>
-                                );
-                              })}
-                              {tagsOcultas.length > 0 && (
-                                <span
-                                  title={tagsOcultas.join(", ")}
-                                  style={{ backgroundColor: "#f3f4f6", color: "#4b5563", padding: "4px 10px", borderRadius: "20px", fontSize: "13px", fontWeight: "700", lineHeight: "18px", flexShrink: 0 }}
-                                >
-                                  +{tagsOcultas.length}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {item.queixa_principal && item.queixa_principal.length > 30 && tagsSintomas.length <= 1 && (
-                            <p style={{ 
-                              fontSize: "13px", 
-                              color: "#4b5563", 
-                              margin: 0, 
-                              overflowWrap: "break-word", 
-                              wordBreak: "break-word",
-                              lineHeight: "1.4",
-                              maxHeight: "3.8em",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              display: "-webkit-box",
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical"
-                            }}>
-                              {item.queixa_principal}
-                            </p>
-                          )}
-                        </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="tg-cod">{codigoFormatado}</div>
+                        <div className="tg-nome" title={`${nomePet} (${especie}${raca})`}>{nomePet}</div>
+                        <div className="tg-especie" title={`${especie}${raca}`}>{especie}{raca}</div>
                       </div>
+                      <span className={`tg-status ${estaSendoChamado ? "chamando" : ""}`}>
+                        <FaClock size={11} /> {estaSendoChamado ? "Chamando..." : "Aguardando"}
+                      </span>
                     </div>
 
-                    {/* Coluna Direita (Status e Botões de Ação) */}
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between", minHeight: "95px", flexShrink: 0, marginLeft: "16px" }}>
-                      <span style={{ 
-                        backgroundColor: estaSendoChamado ? "#fee2e2" : "#fef3c7", 
-                        color: estaSendoChamado ? "#991b1b" : "#b45309", 
-                        padding: "6px 12px", 
-                        borderRadius: "20px", 
-                        fontSize: "12px", 
-                        fontWeight: "700",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-                        whiteSpace: "nowrap"
-                      }}>
-                        <FaClock size={12} color={estaSendoChamado ? "#991b1b" : "#b45309"} />
-                        {estaSendoChamado ? "📢 Chamando..." : "Aguardando Triagem"}
-                      </span>
+                    <div className="tg-tutor" title={nomeTutor}><FaUser size={12} color="#94a3b8" /> Tutor: <strong>{nomeTutor}</strong></div>
 
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "stretch", marginTop: "16px" }}>
-                        <button
-                          onClick={(e) => chamarPaciente(item, e)}
-                          title="Chamar no Painel"
-                          style={{
-                            backgroundColor: "#0284c7",
-                              justifyContent: "center",
-                            color: "white",
-                            border: "none",
-                            padding: "8px 12px",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            fontWeight: "600",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-                            transition: "background 0.2s"
-                          }}
-                        >
-                          <MdCampaign size={16} /> Chamar
-                        </button>
+                    <div className="tg-queixa" title={item.queixa_principal || ""}>
+                      <span className="tg-lbl">Sintomas / queixa</span>
+                      {tagsSintomas.length === 0 ? (
+                        <span style={{ fontSize: "13px", color: "#94a3b8" }}>Não informado</span>
+                      ) : (
+                        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                          {tagsVisiveis.map((tag, idx) => {
+                            const colors = obterCorSintoma(tag);
+                            return <span key={idx} className="tg-tag" title={tag} style={{ backgroundColor: colors.bg, color: colors.text }}>{tag}</span>;
+                          })}
+                          {tagsOcultas.length > 0 && <span className="tg-tag" title={tagsOcultas.join(", ")} style={{ backgroundColor: "#f1f5f9", color: "#475569" }}>+{tagsOcultas.length}</span>}
+                        </div>
+                      )}
+                    </div>
 
-                        <button
-                          onClick={() => selecionarParaTriagem(item)}
-                          style={{
-                            backgroundColor: "#4f46e5",
-                            color: "white",
-                            border: "none",
-                            padding: "8px 14px",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            fontWeight: "600",
-                            boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-                            transition: "background 0.2s"
-                          }}
-                        >
-                          Iniciar Triagem
-                        </button>
-                      </div>
+                    <div className="tg-acoes">
+                      <button className="tg-b chamar" onClick={(e) => chamarPaciente(item, e)} title="Chamar no painel"><MdCampaign size={17} /> Chamar</button>
+                      <button className="tg-b iniciar" onClick={() => selecionarParaTriagem(item)}>Iniciar triagem →</button>
                     </div>
                   </div>
                 );
@@ -1175,6 +1021,50 @@ function Triagem() {
     </Layout>
   );
 }
+
+const CSS_TRIAGEM = `
+.tg-hero{background:linear-gradient(135deg,#be123c 0%,#e11d48 55%,#fb7185 100%);border-radius:20px;padding:20px 26px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 10px 30px -14px rgba(225,29,72,.6);margin-bottom:18px}
+.tg-hero h1{margin:0;font-size:24px;font-weight:800;display:flex;align-items:center;gap:10px;letter-spacing:-.3px}
+.tg-hero p{margin:4px 0 0;font-size:13px;opacity:.9}
+.tg-btn-hero{background:#fff;color:#be123c;border:none;padding:10px 16px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(0,0,0,.14);font-family:inherit}
+.tg-btn-hero:hover{filter:brightness(.96)}
+.tg-sync{font-size:12px;font-weight:600;color:#ffe4e6}
+.tg-kpis{display:grid;grid-template-columns:160px 160px 1fr;gap:12px;margin-bottom:16px;align-items:stretch}
+.tg-kpi{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:12px 16px}
+.tg-kpi b{display:block;font-size:26px;font-weight:800;line-height:1.1;color:#0f172a}
+.tg-kpi span{font-size:12px;color:#64748b;font-weight:600}
+.tg-busca{display:flex;align-items:center}
+.tg-busca input{width:100%;height:100%;min-height:50px;border:1px solid #e2e8f0;border-radius:16px;padding:0 16px;font-size:14px;outline:none;background:#fff;font-family:inherit;box-sizing:border-box}
+.tg-busca input:focus{border-color:#e11d48;box-shadow:0 0 0 3px rgba(225,29,72,.12)}
+.tg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.tg-card{background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px;transition:box-shadow .15s,transform .15s;position:relative;overflow:hidden}
+.tg-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:#f59e0b}
+.tg-card.chamando::before{background:#dc2626}
+.tg-card.chamando{background:#fff7f7;border-color:#fecaca;animation:tgPulse 1.6s ease-in-out infinite}
+.tg-card:hover{box-shadow:0 14px 28px -16px rgba(15,23,42,.4);transform:translateY(-2px)}
+@keyframes tgPulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.25)}50%{box-shadow:0 0 0 6px rgba(220,38,38,0)}}
+.tg-card-top{display:flex;align-items:center;gap:12px}
+.tg-avatar{width:58px;height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tg-cod{font-size:11.5px;font-weight:800;color:#4f46e5;letter-spacing:.3px}
+.tg-nome{font-size:18px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.tg-especie{font-size:12.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-status{font-size:11.5px;font-weight:800;padding:5px 10px;border-radius:99px;background:#fef3c7;color:#b45309;display:flex;align-items:center;gap:5px;white-space:nowrap;align-self:flex-start}
+.tg-status.chamando{background:#fee2e2;color:#991b1b}
+.tg-tutor{font-size:13.5px;color:#475569;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-tutor strong{color:#0f172a}
+.tg-lbl{display:block;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.tg-queixa{min-height:54px}
+.tg-tag{padding:4px 11px;border-radius:99px;font-size:12.5px;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-acoes{display:flex;gap:8px;margin-top:auto}
+.tg-b{border:none;border-radius:12px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:filter .15s}
+.tg-b:hover{filter:brightness(.94)}
+.tg-b.chamar{background:#e0f2fe;color:#0369a1}
+.tg-b.iniciar{background:#4f46e5;color:#fff;flex:1;box-shadow:0 6px 14px -8px #4f46e5}
+.tg-vazio{background:#fff;border:2px dashed #cbd5e1;border-radius:20px;text-align:center;padding:46px 20px;color:#64748b}
+.tg-paciente{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#f0fdfa,#ecfeff);border:1px solid #99f6e4;border-radius:16px;padding:14px 18px;margin-bottom:20px}
+.tg-paciente-ico{width:46px;height:46px;border-radius:14px;background:#ccfbf1;display:flex;align-items:center;justify-content:center;font-size:22px}
+@media (max-width:760px){.tg-kpis{grid-template-columns:1fr 1fr}.tg-busca{grid-column:1 / -1}.tg-grid{grid-template-columns:1fr}}
+`;
 
 const estiloInput = {
   width: "100%",
