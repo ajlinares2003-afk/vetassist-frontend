@@ -40,6 +40,7 @@ const emojiEspecie = (esp) => {
 };
 
 const CSS = `
+.ag-root,.ag-modal,.ag-card{text-align:left}
 .ag-root{font-family:inherit;color:#0f172a}
 .ag-hero{background:linear-gradient(135deg,#0f766e 0%,#0d9488 55%,#14b8a6 100%);border-radius:20px;padding:22px 26px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 10px 30px -12px rgba(13,148,136,.55);margin-bottom:18px}
 .ag-hero h1{margin:0;font-size:24px;font-weight:800;display:flex;align-items:center;gap:10px;letter-spacing:-.3px}

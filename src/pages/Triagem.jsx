@@ -1023,6 +1023,7 @@ function Triagem() {
 }
 
 const CSS_TRIAGEM = `
+.tg-hero,.tg-kpis,.tg-card,.tg-paciente,.tg-vazio{text-align:left}.tg-vazio{text-align:center}
 .tg-hero{background:linear-gradient(135deg,#be123c 0%,#e11d48 55%,#fb7185 100%);border-radius:20px;padding:20px 26px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 10px 30px -14px rgba(225,29,72,.6);margin-bottom:18px}
 .tg-hero h1{margin:0;font-size:24px;font-weight:800;display:flex;align-items:center;gap:10px;letter-spacing:-.3px}
 .tg-hero p{margin:4px 0 0;font-size:13px;opacity:.9}
