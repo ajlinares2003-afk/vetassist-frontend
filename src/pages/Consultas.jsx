@@ -471,6 +471,16 @@ function Consultas() {
   const [salvandoAplic, setSalvandoAplic] = useState(false);
   const [examesFinal, setExamesFinal] = useState([]);   // exames do atendimento com o destino escolhido ao finalizar
   const [mensagemSucesso, setMensagemSucesso] = useState("");
+  useEffect(() => {
+    if (!mensagemErro) return undefined;
+    const t = setTimeout(() => setMensagemErro(""), 9000);
+    return () => clearTimeout(t);
+  }, [mensagemErro]);
+  useEffect(() => {
+    if (!mensagemSucesso) return undefined;
+    const t = setTimeout(() => setMensagemSucesso(""), 5000);
+    return () => clearTimeout(t);
+  }, [mensagemSucesso]);
   
   const [consultaParaExcluir, setConsultaParaExcluir] = useState(null);
   const [modalExclusaoAberto, setModalExclusaoAberto] = useState(false);
@@ -700,19 +710,29 @@ function Consultas() {
         console.warn("Nenhuma triagem vinculada.", errTriagem);
       }
 
+      // TPC, mucosas e ECC registrados no atendimento (tabela consulta); se o servidor ainda não tem a rota, segue sem eles
+      let sinaisSalvos = {};
+      try {
+        const respSV = await api.get(`/sinais-vitais/${consulta.id}`, config);
+        if (respSV.data) sinaisSalvos = respSV.data;
+      } catch (errSV) {
+        console.warn("Sinais vitais do atendimento indisponíveis.", errSV);
+      }
+
       setCodigo(consulta.codigo || `CNS-${consulta.id}`);
       setAnimalId(consulta.animal_id || "");
       setQueixaPrincipal(consulta.queixa_principal || dadosTriagem?.queixa_principal || "");
       setExameFisico(consulta.exame_fisico || dadosTriagem?.exame_fisico || "");
       setSuspeitaDiagnostica(consulta.suspeita_diagnostica || "");
       setSugestoesCopiloto(consulta.parecer_copiloto || "");
-      setTemperatura(dadosTriagem?.temperatura ?? consulta.temperatura ?? "");
-      setFrequenciaCardiaca(dadosTriagem?.frequencia_cardiaca ?? consulta.frequencia_cardiaca ?? "");
-      setFrequenciaRespiratoria(dadosTriagem?.frequencia_respiratoria ?? consulta.frequencia_respiratoria ?? "");
-      setPesoAtendimento(dadosTriagem?.peso ?? consulta.peso_atendimento ?? "");
-      setTpcSegundos(dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "");
-      setMucosas(dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas");
-      setEcc(dadosTriagem?.ecc ?? consulta.ecc ?? "");
+      // O que o veterinário gravou no atendimento vale mais que a triagem da recepção (antes a triagem sobrescrevia as edições)
+      setTemperatura(consulta.temperatura ?? dadosTriagem?.temperatura ?? "");
+      setFrequenciaCardiaca(consulta.frequencia_cardiaca ?? dadosTriagem?.frequencia_cardiaca ?? "");
+      setFrequenciaRespiratoria(consulta.frequencia_respiratoria ?? dadosTriagem?.frequencia_respiratoria ?? "");
+      setPesoAtendimento(consulta.peso_atendimento ?? dadosTriagem?.peso ?? "");
+      setTpcSegundos(sinaisSalvos.tpc_segundos ?? dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "");
+      setMucosas(sinaisSalvos.mucosas ?? dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas");
+      setEcc(sinaisSalvos.ecc ?? dadosTriagem?.ecc ?? consulta.ecc ?? "");
       // paciente internado continua com o status de internação ao reabrir o atendimento
       const statusAoAbrir = ehInternado(consulta.status) ? consulta.status
         : (consulta.status === "Aguardando Cirurgia" || consulta.indicacao_cirurgia) ? "Aguardando Cirurgia" : "Em Atendimento";
@@ -1321,6 +1341,7 @@ function Consultas() {
   const salvarConsulta = async (arg) => {
     const finalizar = arg && arg.finalizar ? arg : null;   // chamado pelo onClick recebe o evento, que não tem "finalizar"
     const internar = arg && arg.internar ? arg : null;     // grava o atendimento e abre a Internação já preenchida
+    const fecharAoSalvar = Boolean(arg && arg.fechar);     // "Salvar e fechar"; o botão "Salvar atendimento" mantém a tela aberta
     try {
       setMensagemErro("");
       setMensagemSucesso("");
@@ -1367,10 +1388,21 @@ function Consultas() {
         solicitar_exames_preventivos: Boolean(solicitarExamesPreventivos)
       };
 
-      if (consultaEditando) {
-        await api.put(`/consultas/${consultaEditando.id}`, novaConsulta, config);
-      } else {
-        await api.post("/consultas/", novaConsulta, config);
+      const respSalvar = consultaEditando
+        ? await api.put(`/consultas/${consultaEditando.id}`, novaConsulta, config)
+        : await api.post("/consultas/", novaConsulta, config);
+      const consultaSalva = respSalvar?.data || {};
+      const idSalvo = consultaEditando?.id ?? consultaSalva.id;
+
+      // TPC, mucosas e ECC não têm coluna no cadastro da consulta: vão pela rota de sinais vitais do atendimento
+      let sinaisNaoGravados = false;
+      if (idSalvo) {
+        try {
+          await api.put(`/sinais-vitais/${idSalvo}`, { tpc_segundos: tpcSegundos !== "" ? Number(tpcSegundos) : null, mucosas: mucosas || null, ecc: ecc || null }, config);
+        } catch (errSV) {
+          sinaisNaoGravados = true;
+          console.warn("Não foi possível gravar TPC/mucosas/ECC:", errSV);
+        }
       }
 
       if (internar && consultaEditando) {
@@ -1394,10 +1426,22 @@ function Consultas() {
         conta = (await api.post(`/contas/finalizar/${consultaEditando.id}`, finalizar.dados, config)).data;
       }
 
+      if (!finalizar && !fecharAoSalvar) {
+        // salva e continua na tela: o atendimento passa a existir (se era novo) e os próximos "Salvar" atualizam o mesmo registro
+        setConsultaEditando((ant) => ({ ...(ant || {}), ...consultaSalva, id: idSalvo, status: statusFinal }));
+        setStatusAtendimento(statusFinal);
+        if (consultaSalva.codigo) setCodigo(consultaSalva.codigo);
+        carregarConsultas();
+        if (sinaisNaoGravados) setMensagemErro("⚠️ Atendimento salvo, mas o TPC/mucosas/ECC não foram gravados: o servidor ainda não tem a rota de sinais vitais.");
+        else setMensagemSucesso("✅ Atendimento salvo. Você pode continuar editando.");
+        return;
+      }
+
       limparFormulario();
       setMostrarFormulario(false);
       setModalFinalizar(false);
       carregarConsultas();
+      if (sinaisNaoGravados) setMensagemErro("⚠️ Atendimento salvo, mas o TPC/mucosas/ECC não foram gravados: o servidor ainda não tem a rota de sinais vitais.");
       if (conta) {
         const semPreco = (conta.itens || []).some((i) => i.sem_preco);
         setMensagemSucesso(`✅ Atendimento finalizado. Conta de ${moeda(conta.total)} enviada ao Caixa.` +
@@ -1549,8 +1593,8 @@ function Consultas() {
     return cod.includes(termo) || nomeA.includes(termo) || tutorA.includes(termo) || String(c.queixa_principal || "").toLowerCase().includes(termo);
   });
 
-  const estiloInput = { width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "14px", outline: "none", backgroundColor: "#ffffff", boxSizing: "border-box" };
-  const estiloLabel = { display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" };
+  const estiloInput = { width: "100%", height: "42px", padding: "0 12px", border: "1px solid #dbe2ea", borderRadius: "10px", fontSize: "14px", outline: "none", backgroundColor: "#ffffff", boxSizing: "border-box" };
+  const estiloLabel = { display: "block", fontSize: "12px", fontWeight: "700", color: "#475569", marginBottom: "6px", textAlign: "left" };
 
   const estiloAlerta = (alerta) =>
     alerta?.nivel === "ok"
@@ -1597,9 +1641,9 @@ function Consultas() {
   );
   const impressaoBloqueada = !receitaConferida || itensReceitaValidos.length === 0 || Boolean(motivoBloqueioControlado);
 
-  const estiloPainel = { border: "1px solid #e5e7eb", borderRadius: "10px", padding: "16px", backgroundColor: "#ffffff", minWidth: 0 };
-  const estiloTituloPainel = { margin: "0 0 14px 0", color: "#111827", fontSize: "15px", fontWeight: 700 };
-  const estiloLabelVital = { display: "block", fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "6px" };
+  const estiloPainel = { border: "1px solid #e2e8f0", borderRadius: "18px", padding: "20px", backgroundColor: "#ffffff", minWidth: 0, boxShadow: "0 1px 2px rgba(15,23,42,.04), 0 10px 24px -20px rgba(15,23,42,.35)" };
+  const estiloTituloPainel = { margin: "0 0 16px 0", color: "#0f172a", fontSize: "13px", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".6px", textAlign: "left", borderLeft: "4px solid #4f46e5", paddingLeft: "10px" };
+  const estiloLabelVital = { display: "block", fontSize: "12px", fontWeight: "700", color: "#475569", marginBottom: "6px", textAlign: "left" };
   const estiloInputVital = { ...estiloInput, height: "38px" };
   const estiloAlertaVital = (alerta) => ({ ...estiloAlerta(alerta), height: "38px" });
 
@@ -1665,13 +1709,22 @@ function Consultas() {
         </div>
       </div>
 
-      {mensagemSucesso && <div style={{ backgroundColor: "#dcfce7", color: "#166534", padding: "12px", borderRadius: "8px", marginBottom: "15px", fontWeight: "500" }}>{mensagemSucesso}</div>}
-      {mensagemErro && <div style={{ backgroundColor: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px", marginBottom: "15px", fontWeight: "500" }}>{mensagemErro}</div>}
+      {(mensagemSucesso || mensagemErro) && (
+        <div style={mostrarFormulario ? { position: "fixed", top: 16, right: 16, zIndex: 4000, maxWidth: 420, display: "flex", flexDirection: "column", gap: 8 } : { marginBottom: 15 }} role="status" aria-live="polite">
+          {mensagemSucesso && <div style={{ backgroundColor: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0", padding: "12px 16px", borderRadius: "12px", fontWeight: 600, boxShadow: mostrarFormulario ? "0 12px 30px -12px rgba(0,0,0,.3)" : "none" }}>{mensagemSucesso}</div>}
+          {mensagemErro && <div style={{ backgroundColor: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca", padding: "12px 16px", borderRadius: "12px", fontWeight: 600, boxShadow: mostrarFormulario ? "0 12px 30px -12px rgba(0,0,0,.3)" : "none" }}>{mensagemErro}</div>}
+        </div>
+      )}
 
       {mostrarFormulario && (
-        <div className="cns-form" style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", marginBottom: "25px", border: "1px solid #e5e7eb" }}>
+        <div className="cns-form" style={{ backgroundColor: "#f8fafc", padding: "22px", borderRadius: "22px", marginBottom: "25px", border: "1px solid #e2e8f0", textAlign: "left", boxShadow: "0 18px 40px -28px rgba(15,23,42,.5)" }}>
           <style>{`
             @keyframes spin { to { transform: rotate(360deg); } }
+            .cns-form button { border-radius: 10px !important; transition: filter .15s, box-shadow .15s; }
+            .cns-form button:hover:not(:disabled) { filter: brightness(.95); }
+            .cns-form textarea { border-radius: 12px !important; }
+            .cns-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: linear-gradient(135deg, #eef2ff, #f5f3ff); border: 1px solid #c7d2fe; border-radius: 18px; padding: 14px 18px; margin-bottom: 18px; }
+            .cns-barra-acoes { position: sticky; bottom: 0; z-index: 20; background: rgba(255,255,255,.94); backdrop-filter: blur(8px); border: 1px solid #e2e8f0 !important; border-radius: 18px; padding: 12px 16px !important; box-shadow: 0 -10px 30px -18px rgba(15,23,42,.45); margin-top: 18px !important; }
             .cns-topo { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: stretch; margin-bottom: 20px; }
             .cns-vitais { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
             .cns-ia-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
@@ -1682,6 +1735,22 @@ function Consultas() {
             @media (max-width: 1100px) { .cns-topo { grid-template-columns: minmax(0, 1fr); } }
             @media (max-width: 720px) { .cns-ia-grid { grid-template-columns: minmax(0, 1fr); } }
           `}</style>
+
+          <div className="cns-cabecalho">
+            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+              <div style={{ width: 48, height: 48, borderRadius: 15, background: ESTILO_ESPECIE(animais.find((a) => a.id === Number(animalId))?.especie).fundo, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
+                {ESTILO_ESPECIE(animais.find((a) => a.id === Number(animalId))?.especie).icone}
+              </div>
+              <div>
+                <div style={{ fontSize: 11.5, fontWeight: 800, color: "#4f46e5", letterSpacing: ".5px" }}>ATENDIMENTO {codigo || "NOVO"}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{animais.find((a) => a.id === Number(animalId))?.nome || "Selecione o paciente"}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              {renderBadgeStatus(statusAtendimento)}
+              {consultaEditando?.id && <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Registro já criado: “Salvar” mantém você nesta tela</span>}
+            </div>
+          </div>
 
           {/* LINHA SUPERIOR: SINAIS VITAIS (esquerda) | ANOTAÇÕES CLÍNICAS (direita) */}
           <div className="cns-topo">
@@ -1801,7 +1870,7 @@ function Consultas() {
           </div>
 
           {/* COPILOTO CLÍNICO & ANÁLISE DE EXAMES */}
-          <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "16px", marginBottom: "8px" }}>
+          <div style={{ background: "linear-gradient(180deg,#f0fdf4,#ecfdf5)", border: "1px solid #bbf7d0", borderRadius: "18px", padding: "20px", marginBottom: "8px", boxShadow: "0 10px 24px -22px rgba(22,163,74,.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginBottom: "6px" }}>
               <h4 style={{ margin: 0, color: "#166534", display: "flex", alignItems: "center", gap: "6px", fontSize: "15px" }}>
                 <MdPsychology size={20} /> Copiloto Clínico & Análise de Exames (VetAssist AI)
@@ -1991,7 +2060,7 @@ function Consultas() {
           </div>
 
           {/* BARRA DE AÇÕES */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
+          <div className="cns-barra-acoes" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
               <button
                 type="button"
@@ -2032,7 +2101,8 @@ function Consultas() {
               {consultaEditando?.id && !(forcarCirurgia || indicacaoCirurgia) && (
                 <button type="button" onClick={abrirFinalizar} title="Grava o prontuário, trava o atendimento e envia a conta para o Caixa" style={{ backgroundColor: "#2563eb", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "700", boxShadow: "0 2px 4px rgba(37, 99, 235, 0.35)" }}>🏁 Finalizar atendimento</button>
               )}
-              <button type="button" onClick={salvarConsulta} style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "700", boxShadow: "0 2px 4px rgba(22, 163, 74, 0.35)" }}>Salvar atendimento</button>
+              <button type="button" onClick={() => salvarConsulta({ fechar: true })} title="Grava o atendimento e volta para a lista" style={{ backgroundColor: "#ffffff", color: "#166534", border: "1px solid #86efac", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "700" }}>Salvar e fechar</button>
+              <button type="button" onClick={salvarConsulta} title="Grava o atendimento e continua na tela" style={{ backgroundColor: "#16a34a", color: "white", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "700", boxShadow: "0 2px 4px rgba(22, 163, 74, 0.35)" }}>Salvar atendimento</button>
             </div>
           </div>
         </div>
