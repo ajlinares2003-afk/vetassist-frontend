@@ -192,6 +192,67 @@ const ehControlado = (i) =>
 // Status em que o paciente ainda não foi liberado pela triagem (não aparece na fila de consulta)
 const STATUS_FINALIZADOS = ["FINALIZADO", "Finalizado", "Aguardando Pagamento"];
 const ehInternado = (st) => String(st || "").startsWith("Em Internação");
+const CSS_LISTA = `
+.cl-card,.cl-barra,.cl-hero{text-align:left}
+.cl-hero{background:linear-gradient(135deg,#4338ca 0%,#4f46e5 55%,#818cf8 100%);border-radius:20px;padding:20px 26px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 10px 30px -14px rgba(79,70,229,.65);margin-bottom:18px}
+.cl-hero h1{margin:0;font-size:24px;font-weight:800;display:flex;align-items:center;gap:10px;letter-spacing:-.3px;color:#fff}
+.cl-hero p{margin:4px 0 0;font-size:13px;opacity:.9}
+.cl-resumo{display:flex;gap:10px;flex-wrap:wrap}
+.cl-resumo span{background:rgba(255,255,255,.16);border-radius:12px;padding:8px 14px;font-size:12px;font-weight:600}
+.cl-resumo b{display:block;font-size:20px;font-weight:800;line-height:1.1}
+.cl-barra{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px}
+.cl-abas{display:flex;gap:6px;background:#fff;border:1px solid #e2e8f0;padding:5px;border-radius:14px;flex-wrap:wrap}
+.cl-aba{border:none;background:transparent;color:#334155;padding:8px 13px;border-radius:10px;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;display:flex;align-items:center;gap:7px;transition:background .15s}
+.cl-aba:hover{background:#f1f5f9}
+.cl-aba.on{background:#4f46e5;color:#fff;box-shadow:0 6px 14px -8px #4f46e5}
+.cl-aba.vazia:not(.on){color:#94a3b8}
+.cl-aba em{font-style:normal;font-size:11px;font-weight:800;min-width:20px;text-align:center;padding:1px 7px;border-radius:99px;background:#e2e8f0;color:#475569}
+.cl-aba.on em{background:rgba(255,255,255,.25);color:#fff}
+.cl-busca{flex:1;min-width:220px;max-width:380px}
+.cl-busca input{width:100%;height:42px;border:1px solid #e2e8f0;border-radius:12px;padding:0 14px;font-size:14px;outline:none;background:#fff;box-sizing:border-box;font-family:inherit}
+.cl-busca input:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.14)}
+.cl-lista{display:flex;flex-direction:column;gap:10px}
+.cl-card{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #e2e8f0;border-left:5px solid var(--cor);border-radius:16px;padding:14px 16px;transition:box-shadow .15s,transform .15s}
+.cl-card:hover{box-shadow:0 12px 26px -16px rgba(15,23,42,.4);transform:translateY(-1px)}
+.cl-avatar{width:48px;height:48px;border-radius:15px;background:var(--fundo);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.cl-id{width:190px;flex-shrink:0;min-width:0}
+.cl-cod{font-size:11.5px;font-weight:800;color:#4f46e5;letter-spacing:.3px}
+.cl-nome{font-size:16px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-tutor{font-size:12.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-meio{flex:1;min-width:0}
+.cl-queixa{font-size:13.5px;color:#334155;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cl-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;align-items:center}
+.cl-chip{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;background:#f1f5f9;color:#475569;white-space:nowrap}
+.cl-acoes{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap;flex-shrink:0;max-width:450px}
+.cl-b{border:none;border-radius:10px;padding:8px 12px;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:filter .15s}
+.cl-b:hover{filter:brightness(.94)}
+.cl-b.prim{background:#4f46e5;color:#fff;box-shadow:0 6px 14px -9px #4f46e5}
+.cl-b.chamar{background:#e0f2fe;color:#0369a1}
+.cl-b.sec{background:#f1f5f9;color:#334155}
+.cl-b.dang{background:#fef2f2;color:#dc2626;padding:8px 9px}
+.cl-vazio{background:#fff;border:2px dashed #cbd5e1;border-radius:20px;text-align:center;padding:44px 20px;color:#64748b}
+@media (max-width:980px){.cl-card{flex-wrap:wrap}.cl-id{width:auto;flex:1}.cl-meio{flex-basis:100%;order:3}.cl-acoes{max-width:none;width:100%;justify-content:flex-start;order:4}}
+`;
+const ESTILO_ESPECIE = (esp) => {
+  const e = String(esp || "").toLowerCase();
+  if (e.includes("can")) return { icone: "🐶", fundo: "#dbeafe" };
+  if (e.includes("fel")) return { icone: "🐱", fundo: "#fce7f3" };
+  if (e.includes("coelho") || e.includes("lago")) return { icone: "🐰", fundo: "#ffedd5" };
+  if (e.includes("ave")) return { icone: "🦜", fundo: "#dcfce7" };
+  if (e.includes("equ")) return { icone: "🐴", fundo: "#fef3c7" };
+  return { icone: "🐾", fundo: "#e2e8f0" };
+};
+const COR_STATUS_LISTA = (st) => {
+  const v = String(st || "");
+  if (v.startsWith("Em Internação")) return v.includes("UTI") ? "#dc2626" : "#7c3aed";
+  if (v === "Aguardando Cirurgia") return "#ea580c";
+  if (v.startsWith("Chamando")) return "#dc2626";
+  if (v === "Aguardando Pagamento") return "#d97706";
+  if (["FINALIZADO", "Finalizado"].includes(v)) return "#16a34a";
+  if (v === "Em Atendimento" || v === "EM_ATENDIMENTO") return "#4f46e5";
+  return "#6366f1";
+};
+
 const moeda = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const STATUS_ANTES_DA_CONSULTA = [
   "AGUARDANDO_TRIAGEM", "Aguardando Triagem", "Aguardando Triagem (Recepção)",
@@ -1409,7 +1470,7 @@ function Consultas() {
       CANCELADO: { bg: "#fee2e2", color: "#991b1b", label: "❌ Cancelado" }
     };
     const conf = configs[statusVal] || { bg: "#f1f5f9", color: "#475569", label: String(statusVal) };
-    return <span style={{ backgroundColor: conf.bg, color: conf.color, padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "600" }}>{conf.label}</span>;
+    return <span style={{ backgroundColor: conf.bg, color: conf.color, padding: "3px 11px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", whiteSpace: "nowrap" }}>{conf.label}</span>;
   };
 
   const renderizarTextoFormatadoIA = (textoBruto) => {
@@ -1484,7 +1545,8 @@ function Consultas() {
     const termo = busca.toLowerCase();
     const cod = (c.codigo || `CNS-${String(c.id).padStart(4, "0")}`).toLowerCase();
     const nomeA = obterNomeAnimal(c.animal_id).toLowerCase();
-    return cod.includes(termo) || nomeA.includes(termo);
+    const tutorA = obterTutorAnimal(animais.find((a) => a.id === c.animal_id)).toLowerCase();
+    return cod.includes(termo) || nomeA.includes(termo) || tutorA.includes(termo) || String(c.queixa_principal || "").toLowerCase().includes(termo);
   });
 
   const estiloInput = { width: "100%", height: "42px", padding: "0 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "14px", outline: "none", backgroundColor: "#ffffff", boxSizing: "border-box" };
@@ -1589,10 +1651,18 @@ function Consultas() {
 
   return (
     <Layout>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <h1 style={{ display: "flex", alignItems: "center", gap: "12px", margin: 0, fontSize: "26px", color: "#1e1b4b" }}>
-          <MdEvent color="#4f46e5" size={38} /> {tituloPagina}
-        </h1>
+      <style>{CSS_LISTA}</style>
+      <div className="cl-hero">
+        <div>
+          <h1><MdEvent size={32} /> {tituloPagina}</h1>
+          <p>Fila de consultas, internações e atendimentos do dia</p>
+        </div>
+        <div className="cl-resumo">
+          <span><b>{contagemAbas.atendimento || 0}</b>em atendimento</span>
+          <span><b>{contagemAbas.internados || 0}</b>internados</span>
+          <span><b>{contagemAbas.cirurgia || 0}</b>cirurgia</span>
+          <span><b>{contagemAbas.pagamento || 0}</b>a cobrar</span>
+        </div>
       </div>
 
       {mensagemSucesso && <div style={{ backgroundColor: "#dcfce7", color: "#166534", padding: "12px", borderRadius: "8px", marginBottom: "15px", fontWeight: "500" }}>{mensagemSucesso}</div>}
@@ -1971,78 +2041,73 @@ function Consultas() {
       {/* TABELA DE CONSULTAS */}
       {!mostrarFormulario && (
         <>
-          <div role="tablist" aria-label="Filtro de atendimentos" style={{ display: "flex", gap: "6px", backgroundColor: "#e2e8f0", padding: "4px", borderRadius: "10px", marginBottom: "16px", width: "fit-content", maxWidth: "100%", flexWrap: "wrap" }}>
-            {ABAS_ATENDIMENTO.map((aba) => {
-              const ativa = abaAtiva === aba.id;
-              const qtd = contagemAbas[aba.id] || 0;
-              return (
-                <button
-                  key={aba.id}
-                  role="tab"
-                  aria-selected={ativa}
-                  onClick={() => setAbaAtiva(aba.id)}
-                  style={{ backgroundColor: ativa ? "#4f46e5" : "transparent", color: ativa ? "#ffffff" : (qtd === 0 && aba.id !== "todos" ? "#94a3b8" : "#334155"), border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "13px", boxShadow: ativa ? "0 2px 5px rgba(79, 70, 229, 0.4)" : "none" }}
-                >
-                  {aba.rotulo}{aba.id !== "todos" ? ` (${qtd})` : ""}
-                </button>
-              );
-            })}
+          <div className="cl-barra">
+            <div role="tablist" aria-label="Filtro de atendimentos" className="cl-abas">
+              {ABAS_ATENDIMENTO.map((aba) => {
+                const ativa = abaAtiva === aba.id;
+                const qtd = contagemAbas[aba.id] || 0;
+                return (
+                  <button key={aba.id} role="tab" aria-selected={ativa} onClick={() => setAbaAtiva(aba.id)}
+                    className={`cl-aba ${ativa ? "on" : ""} ${qtd === 0 && aba.id !== "todos" ? "vazia" : ""}`}>
+                    {aba.rotulo}{aba.id !== "todos" && <em>{qtd}</em>}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="cl-busca">
+              <input type="search" placeholder="Buscar por paciente, tutor, código ou queixa..." value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar atendimentos" />
+            </div>
           </div>
 
-          <div style={{ overflowX: "auto", backgroundColor: "white", borderRadius: "12px", border: "1px solid #e5e7eb" }}>
-            <table style={{ width: "100%", minWidth: "1000px", borderCollapse: "collapse", textAlign: "center" }}>
-              <thead>
-                <tr style={{ backgroundColor: "#4f46e5", color: "white", fontSize: "14px" }}>
-                  <th style={{ padding: "14px", whiteSpace: "nowrap" }}>Código</th>
-                  <th style={{ padding: "14px", whiteSpace: "nowrap" }}>Paciente</th>
-                  <th style={{ padding: "14px" }}>Queixa Principal</th>
-                  <th style={{ padding: "14px", whiteSpace: "nowrap" }}>Peso</th>
-                  <th style={{ padding: "14px", whiteSpace: "nowrap" }}>Temperatura</th>
-                  <th style={{ padding: "14px", whiteSpace: "nowrap" }}>Status</th>
-                  <th style={{ padding: "14px", whiteSpace: "nowrap" }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {consultasFiltradas.length > 0 ? (
-                  consultasFiltradas.map((c) => (
-                    <tr key={c.id} style={{ borderBottom: "1px solid #f3f4f6", fontSize: "14px" }}>
-                      <td style={{ padding: "14px", fontWeight: "bold", color: "#4f46e5", whiteSpace: "nowrap" }}>{c.codigo || `CNS-${c.id}`}</td>
-                      <td style={{ padding: "14px", fontWeight: "600", whiteSpace: "nowrap" }}>{obterNomeAnimal(c.animal_id)}</td>
-                      <td style={{ padding: "14px", color: "#4b5563", textAlign: "left" }}>{c.queixa_principal}</td>
-                      <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{obterPesoFormatado(c)}</td>
-                      <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeTemperatura(c.temperatura)}</td>
-                      <td style={{ padding: "14px", whiteSpace: "nowrap" }}>{renderBadgeStatus(c.status)}</td>
-                      <td style={{ padding: "14px", display: "flex", justifyContent: "center", gap: "6px", whiteSpace: "nowrap" }}>
-                        {!STATUS_FINALIZADOS.includes(c.status) && !ehInternado(c.status) && (
-                        <button onClick={(e) => chamarPaciente(c, e)} style={{ backgroundColor: "#0284c7", color: "white", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}>
-                          <MdCampaign size={16} /> Chamar
-                        </button>
-                        )}
-                        {!STATUS_FINALIZADOS.includes(c.status) && (
-                          <button onClick={() => iniciarAtendimentoVeterinario(c)} style={{ backgroundColor: "#4f46e5", color: "white", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
-                            💉 Atender
-                          </button>
-                        )}
-                        <button onClick={() => abrirHistorico(c.animal_id)} title="Receitas e exames anteriores do paciente" style={{ backgroundColor: "#f3f4f6", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
-                          📋 Histórico
-                        </button>
-                        <button onClick={() => setConsultaDetalhes(c)} style={{ backgroundColor: "#f3f4f6", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>
-                          <MdVisibility size={16} /> Ver
-                        </button>
-                        {!STATUS_FINALIZADOS.includes(c.status) && !ehInternado(c.status) && (
-                        <button onClick={() => { setConsultaParaExcluir(c); setModalExclusaoAberto(true); }} style={{ backgroundColor: "#fee2e2", color: "#991b1b", border: "none", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}>
-                          <MdDelete size={16} /> Excluir
-                        </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr><td colSpan="7" style={{ padding: "24px", color: "#6b7280" }}>Nenhum atendimento clínico encontrado.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          {consultasFiltradas.length === 0 ? (
+            <div className="cl-vazio">
+              <div style={{ fontSize: "44px" }}>🩺</div>
+              <p style={{ fontSize: "17px", fontWeight: 800, color: "#334155", margin: "6px 0 4px" }}>Nenhum atendimento encontrado</p>
+              <p style={{ fontSize: "13px", margin: 0 }}>{busca ? "Tente outro termo de busca ou outra aba." : "Quando houver pacientes nesta etapa, eles aparecem aqui."}</p>
+            </div>
+          ) : (
+            <div className="cl-lista">
+              {consultasFiltradas.map((c) => {
+                const animal = animais.find((x) => x.id === c.animal_id);
+                const esp = ESTILO_ESPECIE(animal?.especie);
+                const tutor = obterTutorAnimal(animal);
+                const encerrado = STATUS_FINALIZADOS.includes(c.status);
+                const internado = ehInternado(c.status);
+                const pesoTxt = obterPesoFormatado(c);
+                return (
+                  <div key={c.id} className="cl-card" style={{ "--cor": COR_STATUS_LISTA(c.status), "--fundo": esp.fundo }}>
+                    <div className="cl-avatar">{esp.icone}</div>
+                    <div className="cl-id">
+                      <div className="cl-cod">{c.codigo || `CNS-${c.id}`}</div>
+                      <div className="cl-nome" title={obterNomeAnimal(c.animal_id)}>{animal?.nome || "-"} <span style={{ fontSize: "11.5px", color: "#94a3b8", fontWeight: 600 }}>{animal ? (animal.codigo || `PET-${animal.id}`) : ""}</span></div>
+                      <div className="cl-tutor" title={tutor}>{tutor ? `👤 ${tutor}` : animal?.especie || ""}</div>
+                    </div>
+                    <div className="cl-meio">
+                      <div className="cl-queixa" title={c.queixa_principal || ""}>{c.queixa_principal || <span style={{ color: "#94a3b8" }}>Sem queixa registrada</span>}</div>
+                      <div className="cl-chips">
+                        {renderBadgeStatus(c.status)}
+                        {pesoTxt !== "-" && <span className="cl-chip">⚖️ {pesoTxt}</span>}
+                        {(c.temperatura || c.temperatura === 0) && <span className="cl-chip" style={{ background: "#fff" , border: "1px solid #e2e8f0" }}>{renderBadgeTemperatura(c.temperatura)}</span>}
+                      </div>
+                    </div>
+                    <div className="cl-acoes">
+                      {!encerrado && (
+                        <button className="cl-b prim" onClick={() => iniciarAtendimentoVeterinario(c)}>💉 Atender</button>
+                      )}
+                      {!encerrado && !internado && (
+                        <button className="cl-b chamar" onClick={(e) => chamarPaciente(c, e)}><MdCampaign size={16} /> Chamar</button>
+                      )}
+                      <button className="cl-b sec" onClick={() => abrirHistorico(c.animal_id)} title="Receitas e exames anteriores do paciente">📋 Histórico</button>
+                      <button className="cl-b sec" onClick={() => setConsultaDetalhes(c)}><MdVisibility size={16} /> Ver</button>
+                      {!encerrado && !internado && (
+                        <button className="cl-b dang" title="Excluir atendimento" aria-label="Excluir atendimento" onClick={() => { setConsultaParaExcluir(c); setModalExclusaoAberto(true); }}><MdDelete size={17} /></button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </>
       )}
 
