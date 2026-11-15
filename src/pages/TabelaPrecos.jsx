@@ -4,8 +4,8 @@ import { MdReceiptLong, MdSave, MdAdd } from "react-icons/md";
 import api from "../api/api";
 import Layout from "../components/Layout";
 
-const CATEGORIAS = ["CONSULTA", "RETORNO", "EXAME", "MEDICAMENTO", "PROCEDIMENTO", "INTERNACAO", "CIRURGIA", "INSUMO", "OUTRO"];
-const ROTULO_CAT = { CONSULTA: "Consulta", RETORNO: "Retorno", EXAME: "Exame", MEDICAMENTO: "Medicamento", PROCEDIMENTO: "Procedimento", INTERNACAO: "Internação", CIRURGIA: "Cirurgia", INSUMO: "Insumo", OUTRO: "Outro" };
+const CATEGORIAS = ["CONSULTA", "RETORNO", "EXAME", "MEDICAMENTO", "VACINA", "PROCEDIMENTO", "INTERNACAO", "CIRURGIA", "INSUMO", "OUTRO"];
+const ROTULO_CAT = { CONSULTA: "Consulta", RETORNO: "Retorno", EXAME: "Exame", MEDICAMENTO: "Medicamento", VACINA: "Vacina / Imunizante", PROCEDIMENTO: "Procedimento", INTERNACAO: "Internação", CIRURGIA: "Cirurgia", INSUMO: "Insumo", OUTRO: "Outro" };
 const UNIDADES = { un: "unidade", aplicacao: "aplicação", mL: "mL", dose: "dose", dia: "dia" };
 const estiloInput = { padding: "7px 9px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "13px", boxSizing: "border-box", width: "100%" };
 const mensagemApi = (error, padrao) => {
@@ -88,8 +88,8 @@ function TabelaPrecos() {
         </div>
 
         <div style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e40af", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", marginBottom: "12px" }}>
-          <strong>Como o sistema casa os preços:</strong> medicamentos e exames são encontrados pelas <em>palavras-chave</em> (separadas por vírgula; se vazio, usa o nome). Ex.: palavras-chave <code>buprenorfina</code> casa com "Buprenorfina solução injetável 0,3 mg/mL".
-          Unidade <em>aplicação</em> multiplica pelo nº de aplicações da receita; unidade <em>mL</em> multiplica pelos mL totais. Exames só entram na conta automática se tiverem preço cadastrado.
+          <strong>Como o sistema casa os preços:</strong> medicamentos, vacinas e exames são encontrados pelas <em>palavras-chave</em> (separadas por vírgula; se vazio, usa o nome). Ex.: palavras-chave <code>buprenorfina</code> casa com "Buprenorfina solução injetável 0,3 mg/mL".
+          Vacinas/imunizantes aplicados na clínica usam a unidade <em>dose</em> (ex.: palavras-chave <code>v10, polivalente</code>). Unidade <em>aplicação</em> multiplica pelo nº de aplicações da receita; unidade <em>mL</em> multiplica pelos mL totais. Exames só entram na conta automática se tiverem preço cadastrado.
         </div>
 
         {sucesso && <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #86efac", color: "#166534", padding: "10px 14px", borderRadius: "8px", fontSize: "14px", marginBottom: "10px" }}>{sucesso}</div>}
