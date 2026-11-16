@@ -988,6 +988,9 @@ function Triagem() {
                 const codigoFormatado = item.codigo || `CNS-${String(item.id).padStart(4, "0")}`;
                 const tagsSintomas = (item.queixa_principal || "").split(",").map((tag) => tag.trim()).filter(Boolean);
                 const MAX_TAGS = 4;
+                // Queixa escrita como frase (vírgulas no meio do texto) não é lista de tags: vira um bloco de texto único.
+                const queixaTexto = (item.queixa_principal || "").trim();
+                const queixaEhFrase = queixaTexto.length > 0 && (tagsSintomas.length > 6 || tagsSintomas.some((t) => t.length > 28));
                 const tagsVisiveis = tagsSintomas.slice(0, MAX_TAGS);
                 const tagsOcultas = tagsSintomas.slice(MAX_TAGS);
                 const avatarBg = obterCorAvatar(especie);
@@ -1010,12 +1013,14 @@ function Triagem() {
                       </span>
                     </div>
 
-                    <div className="tg-tutor" title={nomeTutor}><FaUser size={12} color="#94a3b8" /> Tutor: <strong>{nomeTutor}</strong></div>
+                    <div className="tg-tutor" title={nomeTutor}><FaUser size={12} color="#94a3b8" style={{ flexShrink: 0, marginTop: 3 }} /> <span>Tutor: <strong>{nomeTutor}</strong></span></div>
 
                     <div className="tg-queixa" title={item.queixa_principal || ""}>
                       <span className="tg-lbl">Sintomas / queixa</span>
                       {tagsSintomas.length === 0 ? (
                         <span style={{ fontSize: "13px", color: "#94a3b8" }}>Não informado</span>
+                      ) : queixaEhFrase ? (
+                        <div className="tg-queixa-texto">{queixaTexto}</div>
                       ) : (
                         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                           {tagsVisiveis.map((tag, idx) => {
@@ -1076,10 +1081,11 @@ const CSS_TRIAGEM = `
 .tg-especie{font-size:12.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tg-status{font-size:11.5px;font-weight:800;padding:5px 10px;border-radius:99px;background:#fef3c7;color:#b45309;display:flex;align-items:center;gap:5px;white-space:nowrap;align-self:flex-start}
 .tg-status.chamando{background:#fee2e2;color:#991b1b}
-.tg-tutor{font-size:13.5px;color:#475569;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-tutor{text-align:left;font-size:13.5px;color:#475569;display:flex;align-items:flex-start;gap:6px;line-height:1.35;overflow-wrap:anywhere}
 .tg-tutor strong{color:#0f172a}
 .tg-lbl{display:block;font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
-.tg-queixa{min-height:54px}
+.tg-queixa{min-height:54px;text-align:left}
+.tg-queixa-texto{font-size:13px;font-weight:600;line-height:1.45;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:8px 10px;overflow-wrap:anywhere;text-align:left}
 .tg-tag{padding:4px 11px;border-radius:99px;font-size:12.5px;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tg-acoes{display:flex;gap:8px;margin-top:auto}
 .tg-b{border:none;border-radius:12px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:filter .15s}
