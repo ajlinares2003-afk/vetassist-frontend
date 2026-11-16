@@ -104,7 +104,7 @@ const CSS = `
 .ck-tutor b { color: #0f172a; }
 .ck-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .ck-tag { font-size: 12.5px; font-weight: 700; padding: 4px 11px; border-radius: 999px; line-height: 1.2; }
-.ck-queixa { font-size: 13px; color: #b91c1c; font-weight: 600; line-height: 1.45; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 8px 10px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.ck-queixa { font-size: 13px; color: #b91c1c; font-weight: 600; line-height: 1.45; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 8px 10px; overflow-wrap: anywhere; }
 .ck-lado { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 10px; flex-shrink: 0; }
 .ck-status { display: inline-flex; align-items: center; gap: 6px; background: #fef3c7; color: #b45309; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .ck-espera { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: #64748b; }
