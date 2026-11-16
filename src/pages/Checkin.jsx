@@ -103,7 +103,7 @@ const CSS = `
 .ck-tutor b { color: #0f172a; }
 .ck-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .ck-tag { font-size: 12.5px; font-weight: 700; padding: 4px 11px; border-radius: 999px; line-height: 1.2; }
-.ck-queixa { font-size: 12.5px; color: #64748b; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ck-queixa { font-size: 13px; color: #334155; line-height: 1.45; background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px; padding: 8px 10px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .ck-lado { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 10px; flex-shrink: 0; }
 .ck-status { display: inline-flex; align-items: center; gap: 6px; background: #fef3c7; color: #b45309; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .ck-espera { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: #64748b; }
@@ -427,7 +427,9 @@ function Checkin() {
               const tagsVisiveis = tags.slice(0, 3);
               const ocultas = tags.slice(3);
               const espera = textoEspera(item.data_consulta || item.data_criacao);
-              const longa = tags.length <= 1 && (item.queixa_principal || "").length > 30;
+              // Queixa digitada como frase (com vírgulas no meio do texto) não é lista de tags: mostra como texto único.
+              // Só vira "chips" quando todas as partes são curtas (tags rápidas ou palavras soltas).
+              const longa = (item.queixa_principal || "").trim().length > 0 && (tags.length > 6 || tags.some((t) => t.length > 28));
 
               return (
                 <div key={item.id} className="ck-card" style={{ "--faixa": cor }}>
@@ -449,7 +451,7 @@ function Checkin() {
                         {ocultas.length > 0 && <span className="ck-tag" style={{ backgroundColor: "#f1f5f9", color: "#475569" }} title={ocultas.join(", ")}>+{ocultas.length}</span>}
                       </div>
                     )}
-                    {longa && <div className="ck-queixa">{item.queixa_principal}</div>}
+                    {longa && <div className="ck-queixa" title={item.queixa_principal}>{item.queixa_principal}</div>}
                   </div>
 
                   <div className="ck-lado">
