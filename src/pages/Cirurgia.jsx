@@ -905,6 +905,7 @@ function FichaAnestesica({ cirurgia, farmacos, cfg, erroApi, onFechar, onAviso }
                       )}
                       {acimaMax && <div className="cx-alerta verm"><MdWarning size={16} style={{ flexShrink: 0 }} /> Dose acima da faixa máxima ({fmtNum(f.dose_max)} {f.unidade_dose}). Confira antes de usar.</div>}
                       {foraFaixa && !acimaMax && <div className="cx-alerta amar"><MdWarning size={16} style={{ flexShrink: 0 }} /> Dose abaixo da faixa usual ({fmtNum(f.dose_min)} {f.unidade_dose}).</div>}
+                      {f.classe === "INDUCAO" && <div className="cx-alerta amar"><MdWarning size={16} style={{ flexShrink: 0 }} /> O volume calculado é o teto estimado, não o volume a aplicar de uma vez. Administre fracionado, ao efeito (perda de reflexos), principalmente se o paciente já recebeu pré-anestesia.</div>}
                       {ehLocal && <div className="cx-alerta amar"><MdWarning size={16} style={{ flexShrink: 0 }} /> Anestésico local: a dose calculada é o limite máximo total do paciente, somando todos os bloqueios. Nunca por via intravenosa.</div>}
                       {f.status !== "VALIDADO" && <div className="cx-alerta amar"><MdWarning size={16} style={{ flexShrink: 0 }} /> Dose ainda não validada por um veterinário (rascunho). Confira antes de usar.</div>}
                       {f.observacoes && <div className="cx-alerta azul"><span>{f.observacoes}</span></div>}
