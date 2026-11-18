@@ -276,7 +276,7 @@ const pertenceAba = (status, aba) => {
   const encerrado = STATUS_ENCERRADOS.includes(st) || st === "Aguardando Pagamento";
   const preConsulta = STATUS_ANTES_DA_CONSULTA.includes(st);
   const internado = ehInternado(st);
-  const cirurgia = st === "Aguardando Cirurgia";
+  const cirurgia = st === "Aguardando Cirurgia" || st === "Em Cirurgia";
   const pagamento = st === "Aguardando Pagamento";
   switch (aba) {
     case "todos": return true;
@@ -685,7 +685,7 @@ function Consultas() {
 
       await api.put(`/consultas/${consulta.id}`, {
         // paciente internado (ou aguardando cirurgia) mantém o status ao clicar em Atender
-        status: ehInternado(consulta.status) ? consulta.status
+        status: (ehInternado(consulta.status) || consulta.status === "Em Cirurgia") ? consulta.status
           : (consulta.status === "Aguardando Cirurgia" || consulta.indicacao_cirurgia) ? "Aguardando Cirurgia" : "Em Atendimento",
         queixa_principal: consulta.queixa_principal ?? null,
         historico_clinico: consulta.historico_clinico ?? null,
@@ -734,7 +734,7 @@ function Consultas() {
       setMucosas(sinaisSalvos.mucosas ?? dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas");
       setEcc(sinaisSalvos.ecc ?? dadosTriagem?.ecc ?? consulta.ecc ?? "");
       // paciente internado continua com o status de internação ao reabrir o atendimento
-      const statusAoAbrir = ehInternado(consulta.status) ? consulta.status
+      const statusAoAbrir = (ehInternado(consulta.status) || consulta.status === "Em Cirurgia") ? consulta.status
         : (consulta.status === "Aguardando Cirurgia" || consulta.indicacao_cirurgia) ? "Aguardando Cirurgia" : "Em Atendimento";
       setStatusAtendimento(statusAoAbrir);
 
@@ -1502,6 +1502,7 @@ function Consultas() {
       "Aguardando Vacina": { bg: "#f3e8ff", color: "#6b21a8", label: "💉 Aguardando Vacina" },
       "Em Vacinação": { bg: "#f3e8ff", color: "#6b21a8", label: "💉 Em Vacinação" },
       "Aguardando Cirurgia": { bg: "#ffedd5", color: "#9a3412", label: "🔪 Aguardando Cirurgia" },
+      "Em Cirurgia": { bg: "#e0e7ff", color: "#3730a3", label: "🔪 Em Cirurgia" },
       EM_ATENDIMENTO: { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
       "Em Atendimento": { bg: "#e0e7ff", color: "#3730a3", label: "💉 Em Atendimento" },
       "Aguardando Consulta (Fila Vet)": { bg: "#e0e7ff", color: "#3730a3", label: "🩺 Pronto para Consulta" },
