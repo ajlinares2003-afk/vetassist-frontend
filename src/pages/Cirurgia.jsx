@@ -191,6 +191,17 @@ const CSS = `
 .cx-tab td { padding: 9px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
 .cx-tab th, .cx-tab td { text-align: left; }
 .cx-tab tr { break-inside: avoid; page-break-inside: avoid; }
+.cx-resumo { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 14px; margin-top: 8px; font-size: 13px; color: #334155; }
+.cx-resumo .topo { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.cx-resumo .nm { font-size: 15px; font-weight: 800; color: #0f172a; }
+.cx-chip { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: #f1f5f9; color: #475569; white-space: nowrap; }
+.cx-chip.sinal { background: #ecfeff; color: #155e75; }
+.cx-resumo .queixa { margin-top: 8px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.cx-resumo details { margin-top: 8px; }
+.cx-resumo summary { cursor: pointer; font-weight: 800; color: #6d28d9; font-size: 12.5px; }
+.cx-resumo .bloco { margin-top: 8px; }
+.cx-resumo .bloco b { display: block; font-size: 11.5px; color: #64748b; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
+.cx-resumo .bloco div { white-space: pre-wrap; line-height: 1.55; }
 .cx-grupo { margin: 18px 0 8px; font-size: 13px; font-weight: 800; color: #5b21b6; text-transform: uppercase; letter-spacing: .5px; }
 .cx-check { display: flex; gap: 10px; align-items: flex-start; background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 12px 14px; margin-top: 14px; font-size: 13px; color: #92400e; cursor: pointer; }
 .cx-doc-topo { border-bottom: 2px solid #6d28d9; padding-bottom: 12px; margin-bottom: 16px; }
@@ -215,6 +226,40 @@ const CSS = `
 }
 `;
 
+function ResumoClinico({ c, aberto = false }) {
+  if (!c) return null;
+  const { Icone, bg, cor } = estiloEspecie(c.especie);
+  const idade = c.idade !== null && c.idade !== undefined ? (c.idade < 1 ? `${Math.round(c.idade * 12)} meses` : `${fmtNum(c.idade, 1)} ano(s)`) : null;
+  const sinais = [
+    c.temperatura ? `${fmtNum(c.temperatura, 1)} °C` : null,
+    c.frequencia_cardiaca ? `FC ${c.frequencia_cardiaca}` : null,
+    c.frequencia_respiratoria ? `FR ${c.frequencia_respiratoria}` : null,
+  ].filter(Boolean);
+  return (
+    <div className="cx-resumo">
+      <div className="topo">
+        <span className="cx-av" style={{ width: 36, height: 36, backgroundColor: bg }}><Icone size={19} color={cor} /></span>
+        <span className="nm">{c.animal_nome}</span>
+        <span style={{ color: "#64748b" }}>{c.animal_codigo}</span>
+        <span className="cx-chip">{[c.especie, c.raca].filter(Boolean).join(" · ")}</span>
+        {c.sexo && <span className="cx-chip">{c.sexo}</span>}
+        {idade && <span className="cx-chip">{idade}</span>}
+        {c.peso ? <span className="cx-chip">{fmtNum(c.peso)} kg</span> : null}
+        {sinais.map((x) => <span key={x} className="cx-chip sinal">{x}</span>)}
+        <span style={{ color: "#64748b" }}>Tutor: {c.tutor_nome || "-"}</span>
+      </div>
+      {c.queixa_principal && <div className="queixa"><b>Queixa / anamnese:</b> {c.queixa_principal}</div>}
+      <details open={aberto}>
+        <summary>Ver histórico clínico completo</summary>
+        {c.queixa_principal && <div className="bloco"><b>Queixa / anamnese</b><div>{c.queixa_principal}</div></div>}
+        {c.historico_clinico && <div className="bloco"><b>Histórico clínico</b><div>{c.historico_clinico}</div></div>}
+        {c.exame_fisico && <div className="bloco"><b>Exame físico</b><div>{c.exame_fisico}</div></div>}
+        {c.justificativa_cirurgica && <div className="bloco"><b>Justificativa da indicação cirúrgica</b><div>{c.justificativa_cirurgica}</div></div>}
+      </details>
+    </div>
+  );
+}
+
 const FORM_CIRURGIA = { consultaId: "", descricao: "", asa: ASA[0], status: STATUS[0], inicio: "", fim: "", obs: "", cirurgiaoId: "" };
 const FORM_FARMACO = { nome: "", classe: "PRE_ANESTESICA", especie: "CANINO", dose_min: "", dose_max: "", dose_padrao: "", unidade_dose: "mg/kg", concentracao: "", unidade_conc: "mg/mL", via: "", observacoes: "", ativo: true, validado: false };
 
@@ -224,6 +269,7 @@ function Cirurgia() {
   const [cirurgias, setCirurgias] = useState([]);
   const [consultas, setConsultas] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
+  const [contextos, setContextos] = useState([]);
   const [farmacos, setFarmacos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState("");
@@ -256,12 +302,14 @@ function Cirurgia() {
     if (!localStorage.getItem("token")) return navigate("/");
     try {
       setCarregando(true);
-      const [rc, rk, ru, rf] = await Promise.all([
+      const [rc, rk, ru, rf, rx] = await Promise.all([
         api.get("/cirurgias/", cfg()),
         api.get("/consultas/", cfg()).catch(() => ({ data: [] })),
         api.get("/cirurgias/usuarios/veterinarios", cfg()).catch(() => ({ data: [] })),
         api.get("/cirurgias/farmacos", { ...cfg(), params: { incluir_inativos: true } }).catch(() => ({ data: [] })),
+        api.get("/cirurgias/contextos", cfg()).catch(() => ({ data: [] })),
       ]);
+      setContextos(rx.data || []);
       setCirurgias(rc.data || []);
       setConsultas(rk.data || []);
       setUsuarios(ru.data || []);
@@ -276,9 +324,10 @@ function Cirurgia() {
   useEffect(() => { carregar(); }, []);
 
   const consultaPorId = (id) => consultas.find((c) => c.id === Number(id));
+  const ctxDe = (id) => contextos.find((c) => c.consulta_id === Number(id));
   const idsComCirurgia = useMemo(() => new Set(cirurgias.map((c) => c.consulta_id)), [cirurgias]);
 
-  const fila = consultas.filter((c) => c.indicacao_cirurgia === true && !idsComCirurgia.has(c.id) && !STATUS_ENCERRADOS.includes(c.status));
+  const fila = contextos.filter((c) => c.indicacao_cirurgia === true && !idsComCirurgia.has(c.consulta_id) && !STATUS_ENCERRADOS.includes(c.status));
 
   const visiveis = useMemo(() => {
     const termo = semAcento(busca).trim();
@@ -286,9 +335,9 @@ function Cirurgia() {
       if (filtro === "ATIVAS" && c.status === "Concluída") return false;
       if (filtro === "CONCLUIDAS" && c.status !== "Concluída") return false;
       if (!termo) return true;
-      return semAcento(`${c.codigo} ${c.animal_nome} ${c.descricao_tecnica} ${c.classificacao_asa}`).includes(termo);
+      return semAcento(`${c.codigo} ${c.animal_nome || ctxDe(c.consulta_id)?.animal_nome || ""} ${c.descricao_tecnica} ${c.classificacao_asa}`).includes(termo);
     });
-  }, [cirurgias, busca, filtro]);
+  }, [cirurgias, busca, filtro, contextos]);
 
   const nAguardando = cirurgias.filter((c) => c.status === "Aguardando Cirurgia").length;
   const nEmCirurgia = cirurgias.filter((c) => c.status === "Em Cirurgia").length;
@@ -326,6 +375,7 @@ function Cirurgia() {
   };
 
   const abrirNovo = (consultaId = "") => {
+    setMensagemErro(""); setMensagemSucesso("");
     setEditandoId(null);
     setJustificativaAsa("");
     setForm({ ...FORM_CIRURGIA, consultaId: consultaId ? String(consultaId) : "", inicio: agoraInput() });
@@ -368,6 +418,18 @@ function Cirurgia() {
       setMensagemErro(erroApi(error, "Erro ao salvar o procedimento."));
     } finally {
       setSalvando(false);
+    }
+  };
+
+  const dispensar = async (c) => {
+    if (!window.confirm(`Remover ${c.animal_nome} (${c.consulta_codigo}) da fila cirúrgica? A indicação será descartada.`)) return;
+    setMensagemErro(""); setMensagemSucesso("");
+    try {
+      await api.post(`/cirurgias/dispensar-indicacao/${c.consulta_id}`, {}, cfg());
+      setMensagemSucesso("Paciente removido da fila cirúrgica.");
+      await carregar();
+    } catch (error) {
+      setMensagemErro(erroApi(error, "Não foi possível dispensar a indicação."));
     }
   };
 
@@ -478,12 +540,18 @@ function Cirurgia() {
                 <h3><MdWarning size={20} /> Fila cirúrgica: pacientes com indicação de cirurgia</h3>
                 <p>Atendimentos com indicação cirúrgica que ainda não têm procedimento aberto.</p>
                 {fila.map((c) => (
-                  <div key={c.id} className="cx-fila-item">
-                    <div>
-                      <b>{c.codigo || `CNS-${c.id}`}</b> <span style={{ color: "#64748b", fontSize: 12.5 }}>· {c.status}</span><br />
-                      <span style={{ fontSize: 13, color: "#92400e" }}>{c.justificativa_cirurgica || c.queixa_principal || "Sem justificativa registrada"}</span>
+                  <div key={c.consulta_id} className="cx-fila-item" style={{ display: "block" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                      <div>
+                        <b>{c.consulta_codigo}</b> <span style={{ color: "#64748b", fontSize: 12.5 }}>· {c.status}</span>
+                        {c.justificativa_cirurgica && <div style={{ fontSize: 13, color: "#92400e", marginTop: 2 }}>Indicação: {c.justificativa_cirurgica}</div>}
+                      </div>
+                      <div className="cx-acoes">
+                        <button type="button" className="cx-btn roxo mini" onClick={() => abrirNovo(c.consulta_id)}>Abrir procedimento</button>
+                        <button type="button" className="cx-btn cinza mini" onClick={() => dispensar(c)} title="A indicação foi descartada">Sem indicação</button>
+                      </div>
                     </div>
-                    <button type="button" className="cx-btn roxo mini" onClick={() => abrirNovo(c.id)}>Abrir procedimento</button>
+                    <ResumoClinico c={c} />
                   </div>
                 ))}
               </div>
@@ -511,13 +579,17 @@ function Cirurgia() {
               <div className="cx-lista">
                 {visiveis.map((c) => {
                   const cons = consultaPorId(c.consulta_id);
+                  const px = ctxDe(c.consulta_id);
+                  const nomePac = c.animal_nome || px?.animal_nome || "Paciente";
+                  const { Icone: IconeP, bg: bgP, cor: corP } = estiloEspecie(px?.especie);
                   return (
                     <div key={c.id} className="cx-card">
                       <div className="cx-pac">
-                        <div className="cx-av" style={{ backgroundColor: "#ede9fe" }}><MdLocalHospital size={24} color="#6d28d9" /></div>
+                        <div className="cx-av" style={{ backgroundColor: bgP }}><IconeP size={24} color={corP} /></div>
                         <div style={{ minWidth: 0 }}>
-                          <div className="cx-nome">{c.animal_nome || "Paciente"}</div>
-                          <div className="cx-sub"><span className="cx-cod">{c.codigo || `CIR-${String(c.id).padStart(3, "0")}`}</span>{cons?.codigo && <span>{cons.codigo}</span>}</div>
+                          <div className="cx-nome">{nomePac}</div>
+                          <div className="cx-sub"><span className="cx-cod">{c.codigo || `CIR-${String(c.id).padStart(3, "0")}`}</span>{(px?.consulta_codigo || cons?.codigo) && <span>{px?.consulta_codigo || cons?.codigo}</span>}</div>
+                          <div className="cx-sub">{[px?.especie, px?.peso ? `${fmtNum(px.peso)} kg` : null].filter(Boolean).join(" · ")}{px?.tutor_nome ? ` · ${px.tutor_nome}` : ""}</div>
                           <div className="cx-sub">{c.classificacao_asa}</div>
                         </div>
                       </div>
@@ -598,8 +670,8 @@ function Cirurgia() {
                   <label className="cx-label">Atendimento de origem *</label>
                   <select className="cx-select" value={form.consultaId} disabled={!!editandoId} onChange={(e) => { setForm({ ...form, consultaId: e.target.value }); if (e.target.value) sugerirComIA(e.target.value); }}>
                     <option value="">Selecione</option>
-                    {consultas.filter((c) => c.indicacao_cirurgia === true || String(c.id) === form.consultaId).map((c) => (
-                      <option key={c.id} value={c.id}>{c.codigo || `CNS-${c.id}`} - {(c.queixa_principal || "").slice(0, 60)}</option>
+                    {contextos.filter((c) => c.indicacao_cirurgia === true || String(c.consulta_id) === form.consultaId).map((c) => (
+                      <option key={c.consulta_id} value={c.consulta_id}>{c.consulta_codigo} · {c.animal_nome} ({c.especie})</option>
                     ))}
                   </select>
                 </div>
@@ -627,6 +699,7 @@ function Cirurgia() {
                   </select>
                 </div>
               </div>
+              {form.consultaId && <ResumoClinico c={ctxDe(form.consultaId)} />}
               {justificativaAsa && <div className="cx-ia"><strong>🤖 Parecer automático da IA:</strong> {justificativaAsa}</div>}
               <div style={{ marginTop: 14 }}>
                 <label className="cx-label">Descrição técnica do procedimento *</label>
@@ -647,7 +720,9 @@ function Cirurgia() {
         {detalhe && (
           <div className="cx-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setDetalhe(null); }}>
             <div className="cx-modal">
-              <h3 className="tit"><MdLocalHospital color="#6d28d9" /> {detalhe.codigo || `CIR-${String(detalhe.id).padStart(3, "0")}`} · {detalhe.animal_nome || "Paciente"}</h3>
+              <h3 className="tit"><MdLocalHospital color="#6d28d9" /> {detalhe.codigo || `CIR-${String(detalhe.id).padStart(3, "0")}`} · {detalhe.animal_nome || ctxDe(detalhe.consulta_id)?.animal_nome || "Paciente"}</h3>
+              <ResumoClinico c={ctxDe(detalhe.consulta_id)} />
+              <div style={{ height: 14 }} />
               <div className="cx-grid" style={{ marginBottom: 14 }}>
                 <div className="cx-box"><div className="cx-label">Classificação ASA</div>{detalhe.classificacao_asa}</div>
                 <div className="cx-box"><div className="cx-label">Status</div><span className={`cx-badge ${badgeStatus(detalhe.status)}`}>{detalhe.status}</span></div>
@@ -700,6 +775,7 @@ function Cirurgia() {
         {anestesia && (
           <FichaAnestesica
             cirurgia={anestesia}
+            contexto={ctxDe(anestesia.consulta_id)}
             farmacos={farmacos.filter((f) => f.ativo)}
             cfg={cfg}
             erroApi={erroApi}
@@ -712,7 +788,7 @@ function Cirurgia() {
   );
 }
 
-function FichaAnestesica({ cirurgia, farmacos, cfg, erroApi, onFechar, onAviso }) {
+function FichaAnestesica({ cirurgia, contexto, farmacos, cfg, erroApi, onFechar, onAviso }) {
   const [paciente, setPaciente] = useState(null);
   const [ficha, setFicha] = useState(null);
   const [texto, setTexto] = useState({ protocolo_mpa: "", protocolo_inducao: "", protocolo_manutencao: "", fluidoterapia: "" });
@@ -840,6 +916,8 @@ function FichaAnestesica({ cirurgia, farmacos, cfg, erroApi, onFechar, onAviso }
             <span>{cirurgia.classificacao_asa}</span>
           </div>
         )}
+
+        {contexto && <div className="no-print" style={{ marginBottom: 12 }}><ResumoClinico c={contexto} /></div>}
 
         <div className="no-print">
           <div className="cx-calc">
