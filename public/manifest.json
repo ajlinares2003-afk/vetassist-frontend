@@ -1,0 +1,18 @@
+{
+  "name": "VetAssist AI",
+  "short_name": "VetAssist",
+  "description": "Sistema de apoio clínico e gestão veterinária VetAssist AI",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f766e",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
