@@ -789,6 +789,10 @@ function Cirurgia() {
 }
 
 function FichaAnestesica({ cirurgia, contexto, farmacos, cfg, erroApi, onFechar, onAviso }) {
+  const hepatopata = /portossistem|shunt|hepatopatia|encefalopatia hepatica|insuficiencia hepatica|hepatica grave/.test(
+    semAcento([contexto?.queixa_principal, contexto?.historico_clinico, contexto?.exame_fisico, contexto?.justificativa_cirurgica,
+      contexto?.suspeita_diagnostica, cirurgia?.descricao, cirurgia?.observacoes].filter(Boolean).join(" "))
+  );
   const [paciente, setPaciente] = useState(null);
   const [ficha, setFicha] = useState(null);
   const [texto, setTexto] = useState({ protocolo_mpa: "", protocolo_inducao: "", protocolo_manutencao: "", fluidoterapia: "" });
@@ -918,6 +922,13 @@ function FichaAnestesica({ cirurgia, contexto, farmacos, cfg, erroApi, onFechar,
         )}
 
         {contexto && <div className="no-print" style={{ marginBottom: 12 }}><ResumoClinico c={contexto} /></div>}
+
+        {hepatopata && (
+          <div className="cx-alerta amar no-print" style={{ marginTop: 0, marginBottom: 12 }}>
+            <MdWarning size={16} style={{ flexShrink: 0 }} />
+            <span><b>Suspeita de hepatopatia / shunt portossistêmico no prontuário.</b> Metabolização e depuração hepáticas reduzidas: evite benzodiazepínicos (ex.: diazepam, midazolam) e fármacos de metabolização hepática sem avaliação, prefira doses menores e titulação, confira glicemia, coagulação e albumina antes de anestesiar e monitore a temperatura. O veterinário define o protocolo.</span>
+          </div>
+        )}
 
         <div className="no-print">
           <div className="cx-calc">

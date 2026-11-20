@@ -444,6 +444,7 @@ function Consultas() {
   const [geradoExames, setGeradoExames] = useState(false);
   const [carregandoExames, setCarregandoExames] = useState(false);
   const [erroExames, setErroExames] = useState("");
+  const [avisoRetornoExames, setAvisoRetornoExames] = useState("");
   const [novoExame, setNovoExame] = useState("");
   const [salvandoExames, setSalvandoExames] = useState(false);
   const [examesSalvos, setExamesSalvos] = useState(false);
@@ -1145,6 +1146,7 @@ function Consultas() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setExamesSugeridos((res.data.exames || []).map((e) => ({ ...e, _id: novoId(), selecionado: true })));
+      setAvisoRetornoExames(res.data.ja_realizados?.length || String(res.data.aviso || "").startsWith("Retorno") ? String(res.data.aviso || "") : "");
       setGeradoExames(true);
     } catch (error) {
       setErroExames(mensagemApi(error, "Não foi possível gerar a sugestão de exames."));
@@ -1288,6 +1290,7 @@ function Consultas() {
     setExamesSugeridos([]);
     setGeradoExames(false);
     setErroExames("");
+    setAvisoRetornoExames("");
     setNovoExame("");
     setExamesSalvos(false);
     setModalHistorico(false);
@@ -2579,6 +2582,12 @@ function Consultas() {
             {erroExames && (
               <div role="alert" style={{ backgroundColor: "#fee2e2", color: "#991b1b", padding: "10px 12px", borderRadius: "8px", marginBottom: "12px", fontSize: "13px", fontWeight: 500 }}>
                 {erroExames}
+              </div>
+            )}
+
+            {avisoRetornoExames && !carregandoExames && (
+              <div role="status" style={{ backgroundColor: "#eff6ff", color: "#1e3a8a", border: "1px solid #bfdbfe", padding: "10px 12px", borderRadius: "8px", marginBottom: "12px", fontSize: "13px", lineHeight: 1.45 }}>
+                {avisoRetornoExames}
               </div>
             )}
 
