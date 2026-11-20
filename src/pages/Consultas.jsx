@@ -2591,7 +2591,7 @@ function Consultas() {
               </div>
             )}
 
-            {geradoExames && !carregandoExames && examesSugeridos.length === 0 && (
+            {geradoExames && !carregandoExames && examesSugeridos.length === 0 && !avisoRetornoExames && (
               <div style={{ padding: "14px", backgroundColor: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: "8px", fontSize: "13px", color: "#475569", marginBottom: "12px" }}>
                 A IA não considerou necessário solicitar exames para este parecer. Você pode adicionar exames manualmente.
               </div>
