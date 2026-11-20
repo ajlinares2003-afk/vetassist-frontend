@@ -763,6 +763,7 @@ function Consultas() {
       const formData = new FormData();
       formData.append("queixa_principal", queixaPrincipal);
       if (animalId) formData.append("animal_id", animalId);
+      if (consultaEditando?.id) formData.append("consulta_id", consultaEditando.id);
       formData.append("especie", animalEncontrado?.especie || "Não informada");
       formData.append("raca", animalEncontrado?.raca || "SRD");
       if (idadeAtendimento) formData.append("idade", `${idadeAtendimento} anos`);
