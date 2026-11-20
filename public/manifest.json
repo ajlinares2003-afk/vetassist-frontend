@@ -8,11 +8,11 @@
   "theme_color": "#0f766e",
   "lang": "pt-BR",
   "icons": [
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    }
-  ]
+  {
+    "src": "/vetassist-logo.svg",
+    "sizes": "any",
+    "type": "image/svg+xml",
+    "purpose": "any"
+  }
+]
 }
