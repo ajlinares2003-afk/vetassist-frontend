@@ -2648,7 +2648,7 @@ function Consultas() {
             )}
 
             {Object.keys(CATEGORIA_EXAME_ROTULO).map((cat) => {
-              const lista = examesSugeridos.filter((e) => e.categoria === cat);
+              const lista = examesSugeridos.filter((e) => e.categoria === cat).sort((a, b) => Number(a.momento === "APOS_ESTABILIZACAO") - Number(b.momento === "APOS_ESTABILIZACAO"));
               if (lista.length === 0) return null;
               return (
                 <div key={cat} style={{ marginBottom: "12px" }}>
@@ -2659,6 +2659,7 @@ function Consultas() {
                       <label htmlFor={`ex-${ex._id}`} style={{ flex: 1, cursor: "pointer", minWidth: 0 }}>
                         <span style={{ fontSize: "14px", fontWeight: 600, color: "#111827" }}>{ex.nome}</span>
                         {ex.prioridade === "URGENTE" && <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 700, color: "#991b1b", backgroundColor: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "999px", padding: "1px 8px" }}>Urgente</span>}
+                        {ex.momento === "APOS_ESTABILIZACAO" && <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 700, color: "#1e3a8a", backgroundColor: "#dbeafe", border: "1px solid #93c5fd", borderRadius: "999px", padding: "1px 8px" }}>Após estabilização</span>}
                         {ex.justificativa && <span style={{ display: "block", fontSize: "12px", color: "#475569", marginTop: "2px", lineHeight: 1.4 }}>{ex.justificativa}</span>}
                       </label>
                       <button type="button" onClick={() => removerExame(ex._id)} aria-label={`Remover ${ex.nome}`} style={{ background: "none", border: "none", color: "#b91c1c", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>✕</button>
