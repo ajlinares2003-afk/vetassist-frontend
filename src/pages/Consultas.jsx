@@ -79,7 +79,7 @@ const avaliarMucosas = (valor) => {
 
 // SUGESTÃO de ECC pelo peso (mesma regra da Triagem). Não substitui a palpação: o veterinário confirma ou edita.
 const calcularECC = (peso, pesoRef, aplicavel = true) => {
-  if (aplicavel === false) return { texto: "Avaliar clinicamente (filhote)", nivel: null };
+  if (aplicavel === false) return { texto: "Filhote: avaliar", nivel: null };
   const v = parseFloat(peso);
   const m = String(pesoRef || "").match(/(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/);
   if (isNaN(v) || v <= 0) return null;
@@ -2437,7 +2437,7 @@ function Consultas() {
               </div>
               {aplicClinica.length === 0 && <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "8px" }}>Nenhuma aplicação na clínica registrada.</div>}
               {aplicClinica.map((a) => (
-                <div key={a._id} style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1.4fr 2fr auto", gap: "6px", marginBottom: "6px", alignItems: "center" }}>
+                <div key={a._id} style={{ display: "grid", gridTemplateColumns: "1.6fr 1.6fr 1.1fr 2.8fr auto", gap: "6px", marginBottom: "6px", alignItems: "center" }}>
                   <input value={a.medicamento || ""} onChange={(e) => alterarAplic(a._id, "medicamento", e.target.value)} placeholder="Medicamento" style={{ ...estiloInput, height: "34px", fontSize: "12px" }} />
                   <input value={a.dosagem || ""} onChange={(e) => alterarAplic(a._id, "dosagem", e.target.value)} placeholder="Dose" style={{ ...estiloInput, height: "34px", fontSize: "12px" }} />
                   <input value={a.frequencia || ""} onChange={(e) => alterarAplic(a._id, "frequencia", e.target.value)} placeholder="Frequência" style={{ ...estiloInput, height: "34px", fontSize: "12px" }} />
