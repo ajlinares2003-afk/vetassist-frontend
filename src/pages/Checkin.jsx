@@ -169,6 +169,28 @@ const CSS = `
 }
 `;
 
+// Queixa longa no card da fila: mostra um trecho e "ver mais..." (tamanho padrão do card)
+function QueixaRecolhivel({ texto }) {
+  const [aberto, setAberto] = useState(false);
+  const LIMITE = 140;
+  const longo = texto.length > LIMITE;
+  const mostrado = aberto || !longo ? texto : texto.slice(0, LIMITE).trimEnd() + "...";
+  return (
+    <div className="ck-queixa" title={texto}>
+      {mostrado}
+      {longo && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setAberto(!aberto); }}
+          style={{ background: "none", border: "none", color: "#b91c1c", fontWeight: 700, cursor: "pointer", padding: "0 0 0 4px", fontSize: "13px" }}
+        >
+          {aberto ? "ver menos" : "ver mais..."}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Checkin() {
   const navigate = useNavigate();
   const [animais, setAnimais] = useState([]);
@@ -452,7 +474,7 @@ function Checkin() {
                         {ocultas.length > 0 && <span className="ck-tag" style={{ backgroundColor: "#f1f5f9", color: "#475569" }} title={ocultas.join(", ")}>+{ocultas.length}</span>}
                       </div>
                     )}
-                    {longa && <div className="ck-queixa" title={item.queixa_principal}>{item.queixa_principal}</div>}
+                    {longa && <QueixaRecolhivel texto={item.queixa_principal} />}
                   </div>
 
                   <div className="ck-lado">
