@@ -134,6 +134,16 @@ function useValorEstavel(valor, ms = 1200) {
 const TEMP_PLAUSIVEL = [25, 45];
 const TPC_PLAUSIVEL = [0, 10];
 
+// ECC (escala 1 a 9): valor único. O ideal vem da referência da espécie ("Ideal: 5/9" ou "Ideal: 4 a 5").
+const idealECCTriagem = (refTexto) => {
+  const t = String(refTexto || "").replace(/\(?\s*escala[^)]*\)?/gi, "");
+  const unico = t.match(/([1-9])\s*\/\s*9/);
+  if (unico) return Number(unico[1]);
+  const faixa = t.match(/([1-9])\s*(?:a|-|–)\s*([1-9])/i);
+  if (faixa) return Math.round((Number(faixa[1]) + Number(faixa[2])) / 2);
+  return 5;
+};
+
 function Triagem() {
   const navigate = useNavigate();
 
@@ -294,20 +304,20 @@ function Triagem() {
       const pesoMax = parseFloat(matches[2]);
 
       if (pesoNum < pesoMin * 0.85) {
-        setEcc("1 a 2 (Muito Magro)");
+        setEcc("1");
       } else if (pesoNum >= pesoMin * 0.85 && pesoNum < pesoMin) {
-        setEcc("3 (Abaixo do Peso)");
+        setEcc("3");
       } else if (pesoNum >= pesoMin && pesoNum <= pesoMax) {
-        setEcc("4 a 5 (Ideal)");
+        setEcc(String(idealECCTriagem(refsDinamicas.eccRef)));
       } else if (pesoNum > pesoMax && pesoNum <= pesoMax * 1.20) {
-        setEcc("6 a 7 (Sobrepeso)");
+        setEcc("6");
       } else {
-        setEcc("8 a 9 (Obeso)");
+        setEcc("8");
       }
     } else {
-      setEcc("Indeterminado");
+      setEcc("");
     }
-  }, [peso, refsDinamicas.pesoRef, refsDinamicas.pesoAplicavel]);
+  }, [peso, refsDinamicas.pesoRef, refsDinamicas.pesoAplicavel, refsDinamicas.eccRef]);
 
   useEffect(() => {
     const tpcNum = parseFloat(String(tpcSegundos).replace(",", "."));
@@ -740,7 +750,7 @@ function Triagem() {
 
         <div>
           <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "4px", display: "block" }}>ECC (Condição Corporal)</label>
-          <input type="text" value={ecc} onChange={(e) => setEcc(e.target.value)} style={{ ...estiloInput, backgroundColor: ecc ? "#f0fdf4" : "white", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado..." />
+          <input type="text" inputMode="numeric" value={ecc} onChange={(e) => setEcc(e.target.value.replace(/[^1-9]/g, "").slice(0, 1))} style={{ ...estiloInput, backgroundColor: ecc ? "#f0fdf4" : "white", color: "#166534", fontWeight: "600" }} placeholder="Auto-calculado (1 a 9)" />
           <span style={{ fontSize: "10px", color: "#0284c7", display: "block", marginTop: "3px" }}>{refsDinamicas.eccRef}</span>
           {["porte", "grupo"].includes(refsDinamicas.correspondencia) && ecc && (
             <span style={{ fontSize: "10px", color: "#b45309", display: "block", marginTop: "3px" }}>
