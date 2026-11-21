@@ -410,6 +410,7 @@ function Consultas() {
   const [solicitarExamesPreventivos, setSolicitarExamesPreventivos] = useState(false);
 
   const [sugestoesCopiloto, setSugestoesCopiloto] = useState("");
+  const [parecerEm, setParecerEm] = useState(null);
   const [carregandoCopiloto, setCarregandoCopiloto] = useState(false);
   const [etapaProgressoIA, setEtapaProgressoIA] = useState("");
   const [arquivosExames, setArquivosExames] = useState([]);
@@ -726,6 +727,7 @@ function Consultas() {
       setExameFisico(consulta.exame_fisico || dadosTriagem?.exame_fisico || "");
       setSuspeitaDiagnostica(consulta.suspeita_diagnostica || "");
       setSugestoesCopiloto(consulta.parecer_copiloto || "");
+      setParecerEm(consulta.parecer_copiloto_em || null);
       // O que o veterinário gravou no atendimento vale mais que a triagem da recepção (antes a triagem sobrescrevia as edições)
       setTemperatura(consulta.temperatura ?? dadosTriagem?.temperatura ?? "");
       setFrequenciaCardiaca(consulta.frequencia_cardiaca ?? dadosTriagem?.frequencia_cardiaca ?? "");
@@ -796,6 +798,7 @@ function Consultas() {
 
       setSuspeitaDiagnostica(suspeitaPura);
       setSugestoesCopiloto(response.data.sugestoes || "");
+      setParecerEm(new Date().toISOString());
 
       setIndicacaoInternacao(response.data.indicacao_internacao || null);
       if (response.data.indicacao_cirurgia !== undefined) {
@@ -1272,6 +1275,7 @@ function Consultas() {
     setJustificativaCirurgica("");
     setSolicitarExamesPreventivos(false);
     setSugestoesCopiloto("");
+    setParecerEm(null);
     setArquivosExames([]);
     setRefs(null);
     setMensagemErro("");
@@ -2001,6 +2005,11 @@ function Consultas() {
               <div style={{ padding: "16px", backgroundColor: "#ffffff", borderRadius: "8px", border: "1px solid #d1d5db", marginTop: "14px" }}>
                 <div style={{ fontSize: "14px", fontWeight: "bold", color: "#166534", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
                   🤖 Parecer Detalhado do Copiloto:
+                  {parecerEm && (
+                    <span style={{ marginLeft: "auto", fontSize: "12px", fontWeight: "normal", color: "#6b7280" }}>
+                      Gerado em {new Date(parecerEm).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
                 </div>
                 <div style={{ backgroundColor: "#f8fafc", padding: "12px", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                   {renderizarTextoFormatadoIA(sugestoesCopiloto)}
@@ -2309,6 +2318,11 @@ function Consultas() {
             {consultaDetalhes.parecer_copiloto && (
               <div style={{ marginBottom: "20px" }}>
                 <strong style={{ fontSize: "13px", color: "#166534" }}>🤖 Parecer do Copiloto:</strong>
+                {consultaDetalhes.parecer_copiloto_em && (
+                  <span style={{ marginLeft: "8px", fontSize: "12px", color: "#6b7280" }}>
+                    Gerado em {new Date(consultaDetalhes.parecer_copiloto_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
                 <div style={{ margin: "4px 0 0 0", padding: "12px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "6px", fontSize: "14px", color: "#14532d", whiteSpace: "pre-line" }}>
                   {consultaDetalhes.parecer_copiloto}
                 </div>
