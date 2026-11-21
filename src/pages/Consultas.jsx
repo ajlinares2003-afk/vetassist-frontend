@@ -184,6 +184,8 @@ const tituloDocumento = (prefixo, animal, segundaVia = false) => {
 // POSSIVELMENTE_CONTROLADOS de routers/atendimento_ia.py. O veterinário pode marcar/desmarcar à mão.
 const REGEX_CONTROLADOS = /(tramadol|morfina|metadona|fentanil|codeina|petidina|meperidina|buprenorfina|oxicodona|hidromorfona|remifentanil|sufentanil|alfentanil|tapentadol|cetamina|ketamina|tiletamina|zolazepam|diazepam|midazolam|clonazepam|alprazolam|lorazepam|clorazepato|fenobarbital|pentobarbital|amitriptilina|clomipramina|fluoxetina|sertralina|paroxetina|carbamazepina)/;
 const semAcento = (v) => String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+// CRMV válido: número (4 a 7 dígitos) e UF do conselho
+const crmvValido = (em) => /^\d{4,7}$/.test(String(em?.crmv || "").trim()) && /^[A-Za-z]{2}$/.test(String(em?.ufCrmv || "").trim());
 const ehControlado = (i) =>
   typeof i.controladoManual === "boolean"
     ? i.controladoManual
@@ -411,6 +413,26 @@ function Consultas() {
 
   const [sugestoesCopiloto, setSugestoesCopiloto] = useState("");
   const [parecerEm, setParecerEm] = useState(null);
+  const [laudosSalvos, setLaudosSalvos] = useState([]);
+  const carregarLaudosSalvos = async (idConsulta) => {
+    if (!idConsulta) { setLaudosSalvos([]); return; }
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.get(`/consultas/${idConsulta}/anexos`, { headers: { Authorization: `Bearer ${token}` } });
+      setLaudosSalvos(Array.isArray(res.data) ? res.data : []);
+    } catch (_e) {
+      setLaudosSalvos([]);
+    }
+  };
+  const abrirLaudoSalvo = async (anexo) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.get(`/consultas/anexos/${anexo.id}/download`, { responseType: "blob", headers: { Authorization: `Bearer ${token}` } });
+      window.open(URL.createObjectURL(res.data), "_blank");
+    } catch (_e) {
+      window.alert("Não foi possível abrir o laudo.");
+    }
+  };
   const [carregandoCopiloto, setCarregandoCopiloto] = useState(false);
   const [etapaProgressoIA, setEtapaProgressoIA] = useState("");
   const [arquivosExames, setArquivosExames] = useState([]);
@@ -728,6 +750,7 @@ function Consultas() {
       setSuspeitaDiagnostica(consulta.suspeita_diagnostica || "");
       setSugestoesCopiloto(consulta.parecer_copiloto || "");
       setParecerEm(consulta.parecer_copiloto_em || null);
+      carregarLaudosSalvos(consulta.id);
       // O que o veterinário gravou no atendimento vale mais que a triagem da recepção (antes a triagem sobrescrevia as edições)
       setTemperatura(consulta.temperatura ?? dadosTriagem?.temperatura ?? "");
       setFrequenciaCardiaca(consulta.frequencia_cardiaca ?? dadosTriagem?.frequencia_cardiaca ?? "");
@@ -798,6 +821,7 @@ function Consultas() {
 
       setSuspeitaDiagnostica(suspeitaPura);
       setSugestoesCopiloto(response.data.sugestoes || "");
+      carregarLaudosSalvos(consultaEditando?.id);
       setParecerEm(new Date().toISOString());
 
       setIndicacaoInternacao(response.data.indicacao_internacao || null);
@@ -953,7 +977,7 @@ function Consultas() {
   const motivoBloqueioControlado = (() => {
     const ctrl = itensReceitaValidos.filter(ehControlado);
     if (ctrl.length === 0) return "";
-    if (!emitente.nome.trim() || !emitente.crmv.trim()) return "Preencha nome e CRMV do emitente (receita de controle especial).";
+    if (!emitente.nome.trim() || !crmvValido(emitente)) return "Preencha nome e CRMV válido (número e UF) do emitente (receita de controle especial).";
     if (ctrl.some((i) => !extrairQuantidade(i))) return "Informe a quantidade de cada medicamento controlado (ex.: 1 caixa).";
     return "";
   })();
@@ -1095,8 +1119,8 @@ function Consultas() {
     // Controlados saem em documento separado e em 2 vias (1ª farmácia/clínica; 2ª proprietário)
     if (controlados.length > 0) {
       const em = ctx.emitente || emitente;
-      if (!String(em.nome || "").trim() || !String(em.crmv || "").trim()) {
-        window.alert("Receita controlada: informe nome e CRMV do veterinário emitente (campo na tela da receita ou no cadastro do usuário).");
+      if (!String(em.nome || "").trim() || !crmvValido(em)) {
+        window.alert("Receita controlada: informe nome e CRMV válido (número e UF) do veterinário emitente.");
         return;
       }
     }
@@ -2001,6 +2025,17 @@ function Consultas() {
               </div>
             </div>
 
+            {laudosSalvos.length > 0 && (
+              <div style={{ marginTop: "12px", padding: "10px 14px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>📎 Laudos salvos neste atendimento</div>
+                {laudosSalvos.map((a) => (
+                  <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", fontSize: "13px", padding: "4px 0", flexWrap: "wrap" }}>
+                    <button type="button" onClick={() => abrirLaudoSalvo(a)} style={{ background: "none", border: "none", color: "#1d4ed8", cursor: "pointer", textAlign: "left", padding: 0 }}>{a.nome_original}</button>
+                    <span style={{ color: "#6b7280", fontSize: "12px" }}>{a.criado_em ? new Date(a.criado_em).toLocaleString("pt-BR") : ""} · {Math.round((a.tamanho_bytes || 0) / 1024)} KB</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {sugestoesCopiloto && (
               <div style={{ padding: "16px", backgroundColor: "#ffffff", borderRadius: "8px", border: "1px solid #d1d5db", marginTop: "14px" }}>
                 <div style={{ fontSize: "14px", fontWeight: "bold", color: "#166534", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
