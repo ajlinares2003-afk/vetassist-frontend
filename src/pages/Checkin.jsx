@@ -169,24 +169,14 @@ const CSS = `
 }
 `;
 
-// Queixa longa no card da fila: mostra um trecho e "ver mais..." (tamanho padrão do card)
+// Queixa longa no card da fila: mesmo visual do card da Triagem (rótulo + texto completo)
 function QueixaRecolhivel({ texto }) {
-  const [aberto, setAberto] = useState(false);
-  const LIMITE = 140;
-  const longo = texto.length > LIMITE;
-  const mostrado = aberto || !longo ? texto : texto.slice(0, LIMITE).trimEnd() + "...";
   return (
-    <div className="ck-queixa" title={texto} style={{ alignSelf: "stretch" }}>
-      {mostrado}
-      {longo && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setAberto(!aberto); }}
-          style={{ background: "none", border: "none", color: "#b91c1c", fontWeight: 700, cursor: "pointer", padding: "0 0 0 4px", fontSize: "13px" }}
-        >
-          {aberto ? "ver menos" : "ver mais..."}
-        </button>
-      )}
+    <div title={texto} style={{ width: "100%", alignSelf: "stretch" }}>
+      <span style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".5px", marginBottom: "6px" }}>Sintomas / queixa</span>
+      <div style={{ fontSize: "13px", fontWeight: 600, lineHeight: 1.45, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "10px", padding: "8px 10px", overflowWrap: "anywhere", textAlign: "left" }}>
+        {texto}
+      </div>
     </div>
   );
 }
