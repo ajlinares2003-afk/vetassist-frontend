@@ -160,7 +160,7 @@ const obterTutorAnimal = (a) => {
 
 // ---------- Receita médica e solicitação de exames (sugeridas pela IA) ----------
 const TIPO_USO_ROTULO = {
-  HUMANO: "Uso Humano (Farmácia / Drogaria)",
+  HUMANO: "Venda em Farmácia ou Drogaria",
   VETERINARIO: "Uso Veterinário (Pet Shop / Agropecuária)",
   CLINICA: "Uso Clínico (aplicação na clínica)",
   A_CONFIRMAR: "Disponibilidade a confirmar",
