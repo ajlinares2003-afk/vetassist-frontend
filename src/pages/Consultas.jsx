@@ -1389,7 +1389,7 @@ function Consultas() {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
       const cirurgiaFinal = forcarCirurgia || indicacaoCirurgia;
-      let statusFinal = cirurgiaFinal && !ehInternado(statusAtendimento) ? "Aguardando Cirurgia" : statusAtendimento;
+      let statusFinal = cirurgiaFinal && !ehInternado(statusAtendimento) ? "Aguardando Cirurgia" : (statusAtendimento === "Aguardando Cirurgia" ? "Em Atendimento" : statusAtendimento);
 
       const parecerCompletoIA = [
         suspeitaDiagnostica ? `Suspeita Diagnóstica: ${suspeitaDiagnostica}` : "",
