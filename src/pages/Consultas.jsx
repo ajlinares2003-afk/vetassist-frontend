@@ -1658,7 +1658,10 @@ function Consultas() {
   const alertaMucosas = avaliarMucosas(mucosas);
   const alertaECC = avaliarECC(ecc, refs?.ecc_ref);
   const sugestaoECC = calcularECC(pesoAtendimento, refs?.peso_ref, refs?.peso_ref_aplicavel);
-  const mostrarSugestaoECC = !ecc && Boolean(sugestaoECC?.nivel);
+  // Valor único (1 a 9) sugerido: o ponto médio do ideal da espécie. Evita gravar "4 a 5" como se fosse um escore.
+  const idealRefECC = idealECC(refs?.ecc_ref);
+  const valorSugeridoECC = idealRefECC ? String(Math.round((idealRefECC[0] + idealRefECC[1]) / 2)) : "";
+  const mostrarSugestaoECC = !ecc && Boolean(sugestaoECC?.nivel) && Boolean(valorSugeridoECC);
 
   const temIndicacaoReal = indicacaoCirurgia || forcarCirurgia;
   const jaInternado = ehInternado(statusAtendimento) || ehInternado(consultaEditando?.status);
@@ -1847,13 +1850,13 @@ function Consultas() {
                 )}
                 {renderCardVital(
                   "cns-ecc", "ECC (1 a 9)",
-                  <input id="cns-ecc" type="text" value={ecc} onChange={(e) => setEcc(e.target.value)} placeholder="Ex.: 5" maxLength={60} style={estiloAlertaVital(alertaECC)} />,
+                  <input id="cns-ecc" type="text" inputMode="numeric" value={ecc} onChange={(e) => setEcc(e.target.value.replace(/[^1-9]/g, "").slice(0, 1))} placeholder="Ex.: 5" maxLength={1} style={estiloAlertaVital(alertaECC)} />,
                   <>
                     {refTxt("ecc_ref")}
                     {mostrarSugestaoECC && (
                       <span style={{ display: "block", marginTop: "4px", color: "#475569" }}>
-                        Sugestão pelo peso: {sugestaoECC.texto} (confirme na palpação){" "}
-                        <button type="button" onClick={() => setEcc(sugestaoECC.texto)}
+                        Sugestão pelo peso: {sugestaoECC.texto} (confirme na palpação). Usar aplica {valorSugeridoECC}.{" "}
+                        <button type="button" onClick={() => valorSugeridoECC && setEcc(valorSugeridoECC)}
                           style={{ border: "none", background: "none", color: "#0369a1", cursor: "pointer", fontSize: "11px", fontWeight: 700, padding: 0, textDecoration: "underline" }}>
                           Usar
                         </button>
