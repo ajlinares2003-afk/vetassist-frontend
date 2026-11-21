@@ -88,7 +88,7 @@ const CSS = `
 .ck-select { width: 100%; height: 44px; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 12px; font-size: 14px; background: #fff; outline: none; color: #0f172a; }
 .ck-textarea { width: 100%; min-height: 110px; padding: 12px 14px; border: 1px solid #d1d5db; border-radius: 12px; font-size: 14px; background: #fff; outline: none; color: #0f172a; resize: vertical; font-family: inherit; text-align: left; }
 
-.ck-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 16px; }
+.ck-grid { display: flex; flex-direction: column; align-items: stretch; width: 100%; gap: 16px; }
 .ck-card { position: relative; width: 100%; box-sizing: border-box; justify-self: stretch; display: flex; gap: 16px; padding: 18px 18px 18px 22px; background: #fff; border: 1px solid #e5e7eb; border-radius: 18px; box-shadow: 0 2px 6px rgba(15,23,42,.05); transition: transform .18s, box-shadow .18s; overflow: hidden; text-align: left; }
 .ck-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--faixa, #4f46e5); }
 .ck-card:hover { transform: translateY(-2px); box-shadow: 0 12px 22px rgba(15,23,42,.10); }
