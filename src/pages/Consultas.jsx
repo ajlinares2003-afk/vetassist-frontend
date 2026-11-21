@@ -759,6 +759,7 @@ function Consultas() {
       setTpcSegundos(sinaisSalvos.tpc_segundos ?? dadosTriagem?.tpc_segundos ?? consulta.tpc_segundos ?? "");
       setMucosas(sinaisSalvos.mucosas ?? dadosTriagem?.mucosas ?? consulta.mucosas ?? "Normocoradas");
       setEcc(sinaisSalvos.ecc ?? dadosTriagem?.ecc ?? consulta.ecc ?? "");
+      setIndicacaoCirurgia(Boolean(consulta.indicacao_cirurgia));
       // paciente internado continua com o status de internação ao reabrir o atendimento
       const statusAoAbrir = (ehInternado(consulta.status) || consulta.status === "Em Cirurgia") ? consulta.status
         : (consulta.status === "Aguardando Cirurgia" || consulta.indicacao_cirurgia) ? "Aguardando Cirurgia" : "Em Atendimento";
@@ -1388,7 +1389,7 @@ function Consultas() {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
       const cirurgiaFinal = forcarCirurgia || indicacaoCirurgia;
-      let statusFinal = (cirurgiaFinal || consultaEditando?.indicacao_cirurgia) && !ehInternado(statusAtendimento) ? "Aguardando Cirurgia" : statusAtendimento;
+      let statusFinal = cirurgiaFinal && !ehInternado(statusAtendimento) ? "Aguardando Cirurgia" : statusAtendimento;
 
       const parecerCompletoIA = [
         suspeitaDiagnostica ? `Suspeita Diagnóstica: ${suspeitaDiagnostica}` : "",
