@@ -113,7 +113,7 @@ function BibliotecaIA() {
       // sem Content-Type manual: o navegador define o boundary do multipart
       const res = await api.post("/rag/publicacoes", dados, { headers: cabecalho() });
       setFeedback({
-        texto: `"${res.data.titulo}" enviada: ${res.data.trechos_total} trechos serão gravados em segundo plano. Você pode sair desta tela.`,
+        texto: `"${res.data.titulo}" recebida. A leitura e a vetorização seguem em segundo plano; acompanhe o progresso na lista. Você pode sair desta tela.`,
         tipo: "sucesso",
       });
       setTitulo("");
@@ -222,14 +222,14 @@ function BibliotecaIA() {
           <div style={{ display: "flex", alignItems: "flex-start", gap: "6px", marginTop: "12px", fontSize: "11px", color: "#64748B" }}>
             <MdInfoOutline size={14} style={{ flexShrink: 0, marginTop: "1px" }} />
             <span>
-              A leitura é feita na hora; a vetorização continua em segundo plano e leva cerca de 1 minuto a cada
-              90 trechos (limite do plano gratuito do Gemini). Use "Bulário em tabela" apenas para PDFs no formato
+              A leitura é feita página a página em segundo plano (acompanhe o percentual na lista) e a vetorização
+              leva cerca de 1 minuto a cada 90 trechos (limite do plano gratuito do Gemini). Use "Bulário em tabela" apenas para PDFs no formato
               nome do fármaco + doses por espécie.
             </span>
           </div>
 
           <button type="submit" disabled={enviando} style={{ ...estiloBotaoPrimario, marginTop: "14px", opacity: enviando ? 0.7 : 1 }}>
-            <MdUploadFile size={18} /> {enviando ? "Lendo o PDF..." : "Enviar publicação"}
+            <MdUploadFile size={18} /> {enviando ? "Enviando o PDF..." : "Enviar publicação"}
           </button>
         </form>
 
@@ -263,7 +263,7 @@ function BibliotecaIA() {
                         </div>
                         <div style={{ fontSize: "12px", color: "#64748B", marginTop: "2px" }}>
                           {p.estado === "processando"
-                            ? `${p.feitos || 0} de ${p.total} trechos processados`
+                            ? textoProgresso(p)
                             : `${p.trechos.toLocaleString("pt-BR")} trechos · ${formatarTamanho(p.caracteres)} de texto`}
                         </div>
                       </div>
@@ -307,7 +307,9 @@ function BibliotecaIA() {
                         <div style={{ height: "6px", borderRadius: "999px", backgroundColor: "#E2E8F0", overflow: "hidden" }}>
                           <div style={{ width: `${pct}%`, height: "100%", backgroundColor: "#0D9488", transition: "width 0.4s ease" }} />
                         </div>
-                        <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px" }}>{pct}%</div>
+                        <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px" }}>
+                          {p.fase === "vetorizando" ? "Vetorização" : "Leitura"}: {pct}%
+                        </div>
                       </div>
                     )}
 
@@ -332,6 +334,14 @@ function BibliotecaIA() {
       </div>
     </Layout>
   );
+}
+
+function textoProgresso(p) {
+  const feitos = p.feitos || 0;
+  const total = p.total || 0;
+  if (p.fase === "vetorizando") return `Vetorizando: ${feitos} de ${total} trechos`;
+  if (total === 0) return "Preparando a leitura do PDF...";
+  return `Lendo o PDF: página ${feitos} de ${total}`;
 }
 
 function formatarTamanho(caracteres) {
