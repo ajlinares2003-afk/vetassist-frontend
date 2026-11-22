@@ -360,6 +360,7 @@ function Cirurgia() {
         temperatura: c.temperatura || null,
         frequencia_cardiaca: c.frequencia_cardiaca || null,
         frequencia_respiratoria: c.frequencia_respiratoria || null,
+        peso: c.peso || null,
       }, cfg());
       if (r.data) {
         setForm((f) => ({
@@ -717,7 +718,7 @@ function Cirurgia() {
               )}
               <div style={{ marginTop: 14 }}>
                 <label className="cx-label">Descrição técnica do procedimento *</label>
-                <textarea className="cx-area" rows={4} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="Procedimento planejado, técnica, achados..." />
+                <textarea className="cx-area" rows={4} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="Procedimento escolhido pelo cirurgião, técnica, achados transoperatórios, intercorrências, hemostasia e fechamento" />
               </div>
               <div style={{ marginTop: 14 }}>
                 <label className="cx-label">Observações / pós-operatório</label>
