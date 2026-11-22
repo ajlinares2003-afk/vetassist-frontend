@@ -917,8 +917,9 @@ function Consultas() {
     if (vet) setEmitente((prev) => ({ ...prev, nome: vet.nome || prev.nome, crmv: vet.crmv || prev.crmv }));
     setModalReceita(true);
     // Reabrir não apaga o que o veterinário já editou; "Gerar novamente" refaz a sugestão.
-    // Só gera sozinha na primeira vez: se já há sugestão gerada ou aplicações registradas no prontuário, não busca de novo.
-    if (!receitaGerada && itensReceita.length === 0 && aplicClinica.length === 0 && !carregandoReceita) gerarReceitaIA();
+    // Só gera sozinha na primeira vez: se já há sugestão gerada, não busca de novo.
+    // As aplicações da clínica (vindas do parecer) não contam como receita gerada: só a sugestão da IA conta.
+    if (!receitaGerada && itensReceita.length === 0 && !carregandoReceita) gerarReceitaIA();
   };
 
   const alterarItemReceita = (id, campo, valor) => {
