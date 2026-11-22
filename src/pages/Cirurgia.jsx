@@ -723,6 +723,7 @@ function Cirurgia() {
                 <label className="cx-label">Observações / pós-operatório</label>
                 <textarea className="cx-area" rows={3} value={form.obs} onChange={(e) => setForm({ ...form, obs: e.target.value })} />
               </div>
+              {mensagemErro && <div className="cx-msg erro"><MdErrorOutline size={20} /> {mensagemErro}</div>}
               <div className="cx-fim">
                 <button type="button" className="cx-btn cinza" onClick={() => setFormAberto(false)}>Cancelar</button>
                 <button type="submit" className="cx-btn verde" disabled={salvando}>{salvando ? "Salvando..." : editandoId ? "Salvar alterações" : "Salvar procedimento"}</button>
