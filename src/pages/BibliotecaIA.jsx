@@ -208,7 +208,7 @@ function BibliotecaIA() {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", marginTop: "12px" }}>
-            <label style={estiloSubLabel}>Arquivo PDF (até 50 MB, com texto selecionável)</label>
+            <label style={estiloSubLabel}>Arquivo PDF (até 100 MB, com texto selecionável)</label>
             <input
               key={chaveInput}
               type="file"
