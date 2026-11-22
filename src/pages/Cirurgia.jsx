@@ -281,6 +281,8 @@ function Cirurgia() {
   const [editandoId, setEditandoId] = useState(null);
   const [form, setForm] = useState(FORM_CIRURGIA);
   const [justificativaAsa, setJustificativaAsa] = useState("");
+  const [checklistAsa, setChecklistAsa] = useState([]);
+  const [observacoesPosIa, setObservacoesPosIa] = useState("");
   const [carregandoIa, setCarregandoIa] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [detalhe, setDetalhe] = useState(null);
@@ -349,6 +351,7 @@ function Cirurgia() {
     if (!c) return;
     setCarregandoIa(true);
     setJustificativaAsa("");
+    setChecklistAsa([]);
     try {
       const r = await api.post("/consultas/sugerir-asa", {
         queixa_principal: c.queixa_principal || "Não informada",
@@ -366,6 +369,8 @@ function Cirurgia() {
           obs: r.data.observacoes_pos || f.obs,
         }));
         if (r.data.justificativa) setJustificativaAsa(r.data.justificativa);
+        setChecklistAsa(Array.isArray(r.data.checklist_pre_anestesico) ? r.data.checklist_pre_anestesico : []);
+        setObservacoesPosIa(r.data.observacoes_pos || "");
       }
     } catch (e) {
       setMensagemErro("Não foi possível gerar a sugestão automática da IA. Preencha os campos manualmente.");
@@ -701,6 +706,15 @@ function Cirurgia() {
               </div>
               {form.consultaId && <ResumoClinico c={ctxDe(form.consultaId)} />}
               {justificativaAsa && <div className="cx-ia"><strong>🤖 Parecer automático da IA:</strong> {justificativaAsa}</div>}
+              {checklistAsa.length > 0 && (
+                <div className="cx-ia">
+                  <strong>✅ Checklist pré-anestésico (apoio, confira cada item):</strong>
+                  <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
+                    {checklistAsa.map((item, i) => <li key={i}>{item}</li>)}
+                  </ul>
+                  {observacoesPosIa && <div style={{ marginTop: 6 }}><strong>Pós-anestésico:</strong> {observacoesPosIa}</div>}
+                </div>
+              )}
               <div style={{ marginTop: 14 }}>
                 <label className="cx-label">Descrição técnica do procedimento *</label>
                 <textarea className="cx-area" rows={4} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="Procedimento planejado, técnica, achados..." />
