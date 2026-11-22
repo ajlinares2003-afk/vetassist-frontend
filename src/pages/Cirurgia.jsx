@@ -386,7 +386,6 @@ function Cirurgia() {
     setJustificativaAsa("");
     setForm({ ...FORM_CIRURGIA, consultaId: consultaId ? String(consultaId) : "", inicio: agoraInput() });
     setFormAberto(true);
-    if (consultaId) sugerirComIA(consultaId);
   };
 
   const abrirEdicao = (c) => {
@@ -671,10 +670,17 @@ function Cirurgia() {
                 {editandoId ? "✏️ Editar procedimento cirúrgico" : "🔪 Abrir procedimento cirúrgico"}
                 {carregandoIa && <span style={{ fontSize: 12, color: "#6d28d9", fontWeight: 600, display: "inline-flex", gap: 4, alignItems: "center" }}><MdAutoAwesome /> IA preenchendo sugestões...</span>}
               </h3>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+                <button type="button" className="cx-btn" disabled={!form.consultaId || carregandoIa}
+                  onClick={() => sugerirComIA(form.consultaId)}
+                  style={{ background: "#ede9fe", color: "#6d28d9", border: "1px solid #c4b5fd", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <MdAutoAwesome /> {carregandoIa ? "Gerando sugestão..." : "Sugestão de IA"}
+                </button>
+              </div>
               <div className="cx-grid">
                 <div>
                   <label className="cx-label">Atendimento de origem *</label>
-                  <select className="cx-select" value={form.consultaId} disabled={!!editandoId} onChange={(e) => { setForm({ ...form, consultaId: e.target.value }); if (e.target.value) sugerirComIA(e.target.value); }}>
+                  <select className="cx-select" value={form.consultaId} disabled={!!editandoId} onChange={(e) => setForm({ ...form, consultaId: e.target.value })}>
                     <option value="">Selecione</option>
                     {contextos.filter((c) => c.indicacao_cirurgia === true || String(c.consulta_id) === form.consultaId).map((c) => (
                       <option key={c.consulta_id} value={c.consulta_id}>{c.consulta_codigo} · {c.animal_nome} ({c.especie})</option>
