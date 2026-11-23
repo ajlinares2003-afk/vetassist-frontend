@@ -56,6 +56,9 @@ function BibliotecaIA() {
         if (atual && atual.estado === "pronta") {
           setFeedback({ texto: `"${t}" foi concluída: ${atual.trechos} trechos disponíveis para o Copiloto.`, tipo: "sucesso" });
         }
+        if (atual && atual.estado === "incompleta") {
+          setFeedback({ texto: `"${t}" ficou incompleta: ${atual.feitos} de ${atual.total} trechos gravados. Envie o mesmo PDF com o mesmo título para retomar.`, tipo: "erro" });
+        }
       });
       emProcessamentoAntes.current = agora;
 
@@ -113,7 +116,9 @@ function BibliotecaIA() {
       // sem Content-Type manual: o navegador define o boundary do multipart
       const res = await api.post("/rag/publicacoes", dados, { headers: cabecalho() });
       setFeedback({
-        texto: `"${res.data.titulo}" recebida. A leitura e a vetorização seguem em segundo plano; acompanhe o progresso na lista. Você pode sair desta tela.`,
+        texto: res.data.retomando
+          ? `"${res.data.titulo}" será retomada a partir de ${res.data.ja_gravados} trechos já gravados. Acompanhe o progresso na lista.`
+          : `"${res.data.titulo}" recebida. A leitura e a vetorização seguem em segundo plano; acompanhe o progresso na lista. Você pode sair desta tela.`,
         tipo: "sucesso",
       });
       setTitulo("");
@@ -224,7 +229,7 @@ function BibliotecaIA() {
             <span>
               A leitura é feita página a página em segundo plano (acompanhe o percentual na lista) e a vetorização
               leva cerca de 1 minuto a cada 90 trechos (limite do plano gratuito do Gemini). Use "Bulário em tabela" apenas para PDFs no formato
-              nome do fármaco + doses por espécie.
+              nome do fármaco + doses por espécie. Se uma publicação ficar incompleta, envie o mesmo PDF com o mesmo título para retomar.
             </span>
           </div>
 
@@ -264,15 +269,17 @@ function BibliotecaIA() {
                         <div style={{ fontSize: "12px", color: "#64748B", marginTop: "2px" }}>
                           {p.estado === "processando"
                             ? textoProgresso(p)
-                            : `${p.trechos.toLocaleString("pt-BR")} trechos · ${formatarTamanho(p.caracteres)} de texto`}
+                            : p.estado === "incompleta"
+                              ? `${p.feitos || 0} de ${p.total || 0} trechos gravados`
+                              : `${p.trechos.toLocaleString("pt-BR")} trechos · ${formatarTamanho(p.caracteres)} de texto`}
                         </div>
                       </div>
 
                       <span style={estiloEstado(p.estado)}>
                         {p.estado === "pronta" && <MdCheckCircle size={14} />}
                         {p.estado === "processando" && <MdHourglassTop size={14} />}
-                        {p.estado === "erro" && <MdError size={14} />}
-                        {p.estado === "pronta" ? "Pronta" : p.estado === "processando" ? "Processando" : "Erro"}
+                        {(p.estado === "erro" || p.estado === "incompleta") && <MdError size={14} />}
+                        {p.estado === "pronta" ? "Pronta" : p.estado === "processando" ? "Processando" : p.estado === "incompleta" ? "Incompleta" : "Erro"}
                       </span>
 
                       {confirmando === p.titulo ? (
@@ -302,18 +309,18 @@ function BibliotecaIA() {
                       )}
                     </div>
 
-                    {p.estado === "processando" && (
+                    {(p.estado === "processando" || p.estado === "incompleta") && (
                       <div style={{ marginTop: "10px" }}>
                         <div style={{ height: "6px", borderRadius: "999px", backgroundColor: "#E2E8F0", overflow: "hidden" }}>
                           <div style={{ width: `${pct}%`, height: "100%", backgroundColor: "#0D9488", transition: "width 0.4s ease" }} />
                         </div>
                         <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px" }}>
-                          {p.fase === "vetorizando" ? "Vetorização" : "Leitura"}: {pct}%
+                          {p.estado === "incompleta" ? "Gravado" : p.fase === "vetorizando" ? "Vetorização" : "Leitura"}: {pct}%
                         </div>
                       </div>
                     )}
 
-                    {p.estado === "erro" && p.mensagem && (
+                    {(p.estado === "erro" || p.estado === "incompleta") && p.mensagem && (
                       <div style={{ ...estiloErro, marginTop: "10px" }}>
                         <MdError size={16} style={{ flexShrink: 0 }} />
                         <span>{p.mensagem}</span>
