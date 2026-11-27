@@ -197,6 +197,7 @@ const CSS = `
 .cx-chip { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: #f1f5f9; color: #475569; white-space: nowrap; }
 .cx-chip.sinal { background: #ecfeff; color: #155e75; }
 .cx-resumo .queixa { margin-top: 8px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.cx-resumo .queixa.completo { display: block; -webkit-line-clamp: unset; overflow: visible; }
 .cx-resumo details { margin-top: 8px; }
 .cx-resumo summary { cursor: pointer; font-weight: 800; color: #6d28d9; font-size: 12.5px; }
 .cx-resumo .bloco { margin-top: 8px; }
@@ -227,6 +228,7 @@ const CSS = `
 `;
 
 function ResumoClinico({ c, aberto = false }) {
+  const [expandido, setExpandido] = useState(aberto);
   if (!c) return null;
   const { Icone, bg, cor } = estiloEspecie(c.especie);
   const idade = c.idade !== null && c.idade !== undefined ? (c.idade < 1 ? `${Math.round(c.idade * 12)} meses` : `${fmtNum(c.idade, 1)} ano(s)`) : null;
@@ -248,10 +250,9 @@ function ResumoClinico({ c, aberto = false }) {
         {sinais.map((x) => <span key={x} className="cx-chip sinal">{x}</span>)}
         <span style={{ color: "#64748b" }}>Tutor: {c.tutor_nome || "-"}</span>
       </div>
-      {c.queixa_principal && <div className="queixa"><b>Queixa / anamnese:</b> {c.queixa_principal}</div>}
-      <details open={aberto}>
+      {c.queixa_principal && <div className={`queixa${expandido ? " completo" : ""}`}><b>Queixa / anamnese:</b> {c.queixa_principal}</div>}
+      <details open={expandido} onToggle={(e) => setExpandido(e.currentTarget.open)}>
         <summary>Ver histórico clínico completo</summary>
-        {c.queixa_principal && <div className="bloco"><b>Queixa / anamnese</b><div>{c.queixa_principal}</div></div>}
         {c.historico_clinico && <div className="bloco"><b>Histórico clínico</b><div>{c.historico_clinico}</div></div>}
         {c.exame_fisico && <div className="bloco"><b>Exame físico</b><div>{c.exame_fisico}</div></div>}
         {c.justificativa_cirurgica && <div className="bloco"><b>Justificativa da indicação cirúrgica</b><div>{c.justificativa_cirurgica}</div></div>}
