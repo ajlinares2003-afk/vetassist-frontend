@@ -285,6 +285,8 @@ function Cirurgia() {
   const [checklistAsa, setChecklistAsa] = useState([]);
   const [observacoesPosIa, setObservacoesPosIa] = useState("");
   const [carregandoIa, setCarregandoIa] = useState(false);
+  const [carregandoRascunho, setCarregandoRascunho] = useState(false);
+  const [erroRascunho, setErroRascunho] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [detalhe, setDetalhe] = useState(null);
 
@@ -345,6 +347,21 @@ function Cirurgia() {
   const nAguardando = cirurgias.filter((c) => c.status === "Aguardando Cirurgia").length;
   const nEmCirurgia = cirurgias.filter((c) => c.status === "Em Cirurgia").length;
   const nConcluidas = cirurgias.filter((c) => c.status === "Concluída").length;
+
+  const gerarRascunhoTecnico = async () => {
+    if (!form.consultaId) return;
+    if (form.descricao.trim() && !window.confirm("Substituir o texto atual do campo pelo rascunho gerado?")) return;
+    setCarregandoRascunho(true);
+    setErroRascunho("");
+    try {
+      const r = await api.post(`/cirurgias/rascunho-tecnico/${form.consultaId}`, {}, cfg());
+      setForm((f) => ({ ...f, descricao: r.data.descricao_tecnica || f.descricao }));
+    } catch (error) {
+      setErroRascunho(erroApi(error, "Não foi possível gerar o rascunho."));
+    } finally {
+      setCarregandoRascunho(false);
+    }
+  };
 
   /* ---------- formulário de cirurgia ---------- */
   const sugerirComIA = async (consultaId) => {
@@ -724,8 +741,9 @@ function Cirurgia() {
                 </div>
               )}
               <div style={{ marginTop: 14 }}>
-                <label className="cx-label">Descrição técnica do procedimento *</label>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}><label className="cx-label">Descrição técnica do procedimento *</label><button type="button" className="cx-btn cinza" disabled={!form.consultaId || carregandoRascunho} onClick={gerarRascunhoTecnico}>{carregandoRascunho ? "Gerando rascunho..." : "Gerar rascunho"}</button></div>
                 <textarea className="cx-area" rows={4} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="Procedimento escolhido pelo cirurgião, técnica, achados transoperatórios, intercorrências, hemostasia e fechamento" />
+                {erroRascunho && <div className="cx-msg erro" style={{ marginTop: 8 }}><MdErrorOutline size={20} /> {erroRascunho}</div>}
               </div>
               <div style={{ marginTop: 14 }}>
                 <label className="cx-label">Observações / pós-operatório</label>
