@@ -287,6 +287,7 @@ function Cirurgia() {
   const [carregandoIa, setCarregandoIa] = useState(false);
   const [carregandoRascunho, setCarregandoRascunho] = useState(false);
   const [erroRascunho, setErroRascunho] = useState("");
+  const [fontesRascunho, setFontesRascunho] = useState([]);
   const [salvando, setSalvando] = useState(false);
   const [detalhe, setDetalhe] = useState(null);
 
@@ -353,9 +354,11 @@ function Cirurgia() {
     if (form.descricao.trim() && !window.confirm("Substituir o texto atual do campo pelo rascunho gerado?")) return;
     setCarregandoRascunho(true);
     setErroRascunho("");
+    setFontesRascunho([]);
     try {
       const r = await api.post(`/cirurgias/rascunho-tecnico/${form.consultaId}`, {}, cfg());
       setForm((f) => ({ ...f, descricao: r.data.descricao_tecnica || f.descricao }));
+      setFontesRascunho(r.data.fontes || []);
     } catch (error) {
       setErroRascunho(erroApi(error, "Não foi possível gerar o rascunho."));
     } finally {
@@ -742,8 +745,9 @@ function Cirurgia() {
               )}
               <div style={{ marginTop: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}><label className="cx-label">Descrição técnica do procedimento *</label><button type="button" className="cx-btn cinza" disabled={!form.consultaId || carregandoRascunho} onClick={gerarRascunhoTecnico}>{carregandoRascunho ? "Gerando rascunho..." : "Gerar rascunho"}</button></div>
-                <textarea className="cx-area" rows={4} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="Procedimento escolhido pelo cirurgião, técnica, achados transoperatórios, intercorrências, hemostasia e fechamento" />
+                <textarea className="cx-area" rows={4} style={{ fieldSizing: "content", minHeight: 110, overflow: "hidden", resize: "vertical" }} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="Procedimento escolhido pelo cirurgião, técnica, achados transoperatórios, intercorrências, hemostasia e fechamento" />
                 {erroRascunho && <div className="cx-msg erro" style={{ marginTop: 8 }}><MdErrorOutline size={20} /> {erroRascunho}</div>}
+                {fontesRascunho.length > 0 && <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>Fontes consultadas: {fontesRascunho.join("; ")}</div>}
               </div>
               <div style={{ marginTop: 14 }}>
                 <label className="cx-label">Observações / pós-operatório</label>
